@@ -142,7 +142,10 @@ The rest of the first machine's notes are in `docs/history/PLAN.md`, "Machine st
 1. Branch from `main` (from a fork, if you cannot push here). Never commit to `main`
    directly. A design change and its build are two pull requests.
 2. Make the change. Run `make test`. For the Rack module, also `make -C rack selftest`.
-3. Open a pull request and fill in the template. Link the issue.
+3. Open a pull request and fill in the template. Link the issue. If it changes the page,
+   put its preview link under "Try it": `https://kinggs.github.io/pocket-instruments/pr-<n>/web/rhythm.html`,
+   where `<n>` is the pull request's number. `.github/workflows/pages.yml` publishes it a
+   minute or two after each push (not for a pull request from a fork).
 4. CI must pass. No second approval is required.
 5. Squash merge.
 
