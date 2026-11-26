@@ -2,6 +2,8 @@
 # at the top of the folder, beside rust-toolchain.toml.
 [workspace]
 members = ["core"]
+# The terminal host is its own workspace (term/Cargo.toml, D123 item 2).
+exclude = ["term"]
 resolver = "3"
 
 # P1: no unwinding can reach C. `cargo test` ignores this and unwinds, as it must.
