@@ -2514,7 +2514,7 @@ Why one map: a player who learns it on one host has it on the others (D22, D28).
 and `>` are Shift with another key, on a US layout, while Shift is now the latch (D113).
 
 ### D117 — The terminal host's screen: 80 by 24, and a pocket size of 48 by 10
-**2026-11-26 · proposed (the design session) · extends D111 item 3, which is itself proposed and not ruled · nothing built; a terminal host still needs its design pass (issue 8)**
+**2026-11-26 · proposed (the design session) · extends D111 item 3 (proposed there; a ruling on it, numbered D118, was in pull request 86 and not merged when this was written) · nothing built; a terminal host still needs its design pass (issue 8)**
 
 1. **80 by 24 fits exactly:** a status line; the weave in half-block cells, 78 wide in 8
    rows; a row for the lane's ticks and a row of step marks; then the grid, the sliders
