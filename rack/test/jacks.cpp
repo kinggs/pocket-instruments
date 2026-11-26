@@ -50,6 +50,11 @@
 //                  patched after a pulse ended unseen reads 0 V; the self-test's count of pulses.
 //   voices         (Session 39) VOICES is 5 V times each track, a non-finite sample 0 V; an
 //                  unpatched VOICES keeps what it last carried.
+//   lights         (issue 101; D120, ENGINE.md §14 and §17, designed 2026-11-26) what a grid key
+//                  shows, by pi::keyLights: the frame, the twill, the field, the core and its
+//                  fern, the stitch, the bar and pressed from the view in every row, write on or
+//                  off; and each case of the source marks' table, from held, the host's fx
+//                  latch, sampled and the ROUTE masks.
 //
 // Since Session 39 every check reads the outputs through Module, which drives jacks.hpp as
 // Rhythm.cpp does: each output's own voltages, kept from frame to frame as Rack keeps them.
@@ -743,6 +748,82 @@ static void voices() {
     check(sounding > 0 && !bad, "voices", why);
 }
 
+// A view by hand: only the bytes keyLights reads.
+struct V {
+    uint8_t b[PI_VIEW_SIZE] = {};
+    V &u16(uint32_t at, uint32_t x) { b[at] = uint8_t(x); b[at + 1] = uint8_t(x >> 8); return *this; }
+    V &held(uint32_t x) { for (int i = 0; i < 4; i++) b[PI_VIEW_HELD + i] = uint8_t(x >> 8 * i); return *this; }
+};
+static void lights() {
+    using pi::keyLights;
+    const pi::Routes none{};
+    std::string why;
+    auto expect = [&](bool ok, const char *what) { if (!ok) why += std::string(what) + "; "; };
+    // Nothing set: nothing lit.
+    V v;
+    pi::Lights l = keyLights(v.b, 3, false, false, none);
+    expect(!l.frame && !l.twill && !l.field && !l.core && !l.fern && !l.stitch && !l.bar && !l.pressed && l.mark == pi::MARK_NONE, "a bare view lights nothing");
+    // The frame: the playhead, while playing and a step has played.
+    v.b[PI_VIEW_STEP] = 3;
+    v.b[PI_VIEW_FLAGS] = PI_VIEW_FLAG_PLAYING;
+    expect(!keyLights(v.b, 3, false, false, none).frame, "no frame before a step has played");
+    v.b[PI_VIEW_FLAGS] = PI_VIEW_FLAG_PLAYING | PI_VIEW_FLAG_STEP;
+    expect(keyLights(v.b, 3, false, false, none).frame && !keyLights(v.b, 4, false, false, none).frame, "the frame on the playhead alone");
+    // Field, stitch, bar, pressed: their bits, in every row.
+    v.u16(PI_VIEW_FIELD, 1 << 3).u16(PI_VIEW_STITCH, 1 << 4).u16(PI_VIEW_BAR, 1 << 5).held(1u << 6);
+    expect(keyLights(v.b, 3, false, false, none).field && !keyLights(v.b, 4, false, false, none).field, "field");
+    expect(keyLights(v.b, 4, false, false, none).stitch && !keyLights(v.b, 3, false, false, none).stitch, "stitch");
+    expect(keyLights(v.b, 5, false, false, none).bar, "bar");
+    expect(keyLights(v.b, 6, false, false, none).pressed && !keyLights(v.b, 3, false, false, none).pressed, "pressed");
+    // The core: the host's half step, write on or off, the grid sounds or not (D120: flag 4
+    // gates nothing). White, or fern while an effect is heard and fx sounds names the sound.
+    for (uint8_t flags : {uint8_t(PI_VIEW_FLAG_PLAYING | PI_VIEW_FLAG_STEP | PI_VIEW_FLAG_WRITE), uint8_t(PI_VIEW_FLAG_PLAYING | PI_VIEW_FLAG_STEP | PI_VIEW_FLAG_SOUNDS)}) {
+        v.b[PI_VIEW_FLAGS] = flags;
+        expect(keyLights(v.b, 7, true, false, none).core && !keyLights(v.b, 7, false, false, none).core, "the core is the host's half step, in either mode");
+        v.b[PI_VIEW_HEARD] = 0;
+        v.u16(PI_VIEW_FX_SOUNDS, 0xffff);
+        expect(!keyLights(v.b, 7, true, false, none).fern, "nothing heard: a white core");
+        v.b[PI_VIEW_HEARD] = 2;
+        expect(keyLights(v.b, 7, true, false, none).fern, "heard and through: fern");
+        expect(!keyLights(v.b, 7, false, false, none).fern, "no core, no fern");
+        v.u16(PI_VIEW_FX_SOUNDS, 0xffff & ~(1 << 7));
+        expect(!keyLights(v.b, 7, true, false, none).fern && keyLights(v.b, 8, true, false, none).fern, "a sound out of the effects stays white");
+        // The twill: key heard - 1 alone.
+        expect(keyLights(v.b, 1, false, false, none).twill && !keyLights(v.b, 2, false, false, none).twill && !keyLights(v.b, 0, false, false, none).twill, "the twill on key heard - 1");
+        v.b[PI_VIEW_HEARD] = 0;
+        bool any = false;
+        for (int n = 0; n < 16; n++) any |= keyLights(v.b, n, true, false, none).twill;
+        expect(!any, "nothing heard: no twill");
+    }
+    // The source marks (D112 item 4), ENGINE.md's table. Nothing down: none, whatever is routed.
+    V m;
+    m.u16(PI_VIEW_SAMPLED, 1 << 2 | 1 << 3);
+    pi::Routes rt{1u << 3 | 1u << 9, 1u << 4 | 1u << 5, 1u << 5 | 1u << 6};
+    bool any = false;
+    for (int n = 0; n < 16; n++) any |= keyLights(m.b, n, false, false, rt).mark != pi::MARK_NONE;
+    expect(!any, "no mark unless sound or fx is down");
+    // Sound held: a ring where RETURN takes the sound (it wins over a sample), a dash on a sample.
+    m.held(1u << PI_KEY_SOUND);
+    expect(keyLights(m.b, 2, false, false, rt).mark == pi::MARK_DASH, "sound held: a sample is a dash");
+    expect(keyLights(m.b, 3, false, false, rt).mark == pi::MARK_RING, "sound held: back by a cable is a ring, over its sample");
+    expect(keyLights(m.b, 9, false, false, rt).mark == pi::MARK_RING, "sound held: back by a cable is a ring");
+    expect(keyLights(m.b, 0, false, false, rt).mark == pi::MARK_NONE, "sound held: built in code, no mark");
+    // Sound and fx both: sound's marks.
+    m.held(1u << PI_KEY_SOUND | 1u << PI_KEY_FX);
+    expect(keyLights(m.b, 4, false, false, rt).mark == pi::MARK_NONE && keyLights(m.b, 2, false, false, rt).mark == pi::MARK_DASH, "sound and fx: sound's marks");
+    // fx held, or latched (D78: a latched fx is in held only while a grid key is down).
+    for (int how = 0; how < 2; how++) {
+        m.held(how ? 0 : 1u << PI_KEY_FX);
+        bool latched = how == 1;
+        expect(keyLights(m.b, 4, false, latched, rt).mark == pi::MARK_RING, "fx: Rack's beside ours is a ring");
+        expect(keyLights(m.b, 5, false, latched, rt).mark == pi::MARK_DISC, "fx: Rack's in its place is a disc");
+        expect(keyLights(m.b, 6, false, latched, rt).mark == pi::MARK_NONE, "fx: ROUTE 4 alone is nothing (ours)");
+        expect(keyLights(m.b, 2, false, latched, rt).mark == pi::MARK_NONE, "fx: a sample is no effect mark");
+        expect(keyLights(m.b, 0, false, latched, rt).mark == pi::MARK_NONE, "fx: ours, no mark");
+    }
+    check(why.empty(), "lights", why);
+}
+
 int main() {
     if (pi_abi_version() != PI_ABI_VERSION) {
         std::printf("FAILED setup: the core is ABI %u, this test ABI %u\n", pi_abi_version(), PI_ABI_VERSION);
@@ -761,6 +842,7 @@ int main() {
     notFinite();
     triggers();
     voices();
+    lights();
     if (failures) {
         std::printf("rack/test/jacks: %d checks FAILED\n", failures);
         return 1;
@@ -770,7 +852,7 @@ int main() {
                 "TRIGGERS as they were. Every sound returned and effect 2 punched: the core's own punched render within %.1e (largest "
                 "%.1e), and heard. FX SEND's sixteen ramps at three rates; the three settings through FX SEND and FX RETURN; A OUT into "
                 "A IN; masks; the keys and sliders read every 16th frame (every frame in a fixture self-test); the clock's source, the display's "
-                "tempo and the white's hold (ABI 15); not-finite; TRIGGERS' 1 ms pulses at three rates, patched and not, and VOICES.\n",
+                "tempo and the white's hold (ABI 15); not-finite; TRIGGERS' 1 ms pulses at three rates, patched and not, and VOICES; a key's lights and the source marks (D120).\n",
                 double(OWN_RETURN_BOUND), double(worstOwnReturn), double(PUNCH_BOUND), double(worstPunch));
     return 0;
 }

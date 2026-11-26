@@ -260,4 +260,40 @@ inline uint32_t whiteMbpm(const uint8_t *v) {
     return ext ? ext * 100 : viewU32(v, PI_VIEW_TEMPO);
 }
 
+// A key's lights (D112, D115; ENGINE.md §14 and §17, designed 2026-11-26, D120): what grid key
+// n shows, from the view, whether its core is inside its half step (the drawing thread's own
+// clock, from the view's `fires`), whether fx is latched (the host's: D78), and the ROUTE
+// masks the module last sent the core. Each light means the same with write on or off.
+enum Mark : uint8_t { MARK_NONE, MARK_DASH, MARK_RING, MARK_DISC };
+struct Routes {
+    uint32_t sounds, fx, insert; // ROUTE 0 (RETURN), 1 (Rack's), 4 (in its place); Routes{} is none
+};
+struct Lights {
+    bool frame, twill, field, core, fern, stitch, bar, pressed;
+    uint8_t mark;
+};
+inline Lights keyLights(const uint8_t *v, int n, bool coreOn, bool fxLatched, Routes r) {
+    uint32_t held = viewU32(v, PI_VIEW_HELD), bit = 1u << n, heard = v[PI_VIEW_HEARD];
+    uint32_t flags = v[PI_VIEW_FLAGS];
+    auto mask = [&](uint32_t at) { return (uint32_t(v[at]) | uint32_t(v[at + 1]) << 8) & bit; };
+    Lights l{};
+    l.frame = (flags & PI_VIEW_FLAG_PLAYING) && (flags & PI_VIEW_FLAG_STEP) && v[PI_VIEW_STEP] == n;
+    l.twill = heard == uint32_t(n) + 1;
+    l.field = mask(PI_VIEW_FIELD);
+    l.core = coreOn;
+    l.fern = coreOn && heard && mask(PI_VIEW_FX_SOUNDS);
+    l.stitch = mask(PI_VIEW_STITCH);
+    l.bar = mask(PI_VIEW_BAR);
+    l.pressed = held & bit;
+    l.mark = MARK_NONE;
+    if (held >> PI_KEY_SOUND & 1) {
+        if (r.sounds & bit) l.mark = MARK_RING;
+        else if (mask(PI_VIEW_SAMPLED)) l.mark = MARK_DASH;
+    } else if ((held >> PI_KEY_FX & 1) || fxLatched) {
+        if (r.fx & r.insert & bit) l.mark = MARK_DISC;
+        else if (r.fx & bit) l.mark = MARK_RING;
+    }
+    return l;
+}
+
 } // namespace pi

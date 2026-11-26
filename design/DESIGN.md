@@ -5,17 +5,17 @@ Design to `PROMPT.md`. The phone is built (`web/rhythm.html`, Session 12), and t
 (`rack/src/Rhythm.cpp`, Session 13), ~~both without the animation~~ and since Session 14 both weave,
 as a first attempt the owner has not yet watched (D84). ⚠ marks a proposal the owner has not ruled on.
 
-**Changed 2026-11-26, not built (D112 to D117):** the owner ruled that a key's lights mean
+**Changed 2026-11-26 (D112 to D117; built on the page and in Rack in issue 101, D120, D121):** the owner ruled that a key's lights mean
 the same with write on or off, that effects light keys in a dye of their own, that the
 latch is Shift, and that Rack's jacks move to one row. The sections "A key's lights", "The
 keys and the helper", "Loom in a terminal" and "Layout B" say what was drawn. Older lines
-they overrule are struck through, not removed. The page and the Rack module still draw the
-older look.
+they overrule are struck through, not removed. ~~The page and the Rack module still draw the
+older look.~~
 
 **Ruled the same day (D119):** 27 HP, the jack names, every single-key shortcut, the
 effects view by the Shift latch, effects by taps in a terminal with no key-up, a `?` in
 the display's corner for the helper, and a lit field for a sound in use while sound is
-held. Still not built: issue 101 for the page and Rack, issue 8 for the terminal.
+held. ~~Still not built: issue 101 for the page and Rack,~~ Built for the page and Rack in issue 101; still to build: issue 8 for the terminal.
 
 **Where the drawings are.** [The design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK) holds every board, in pages; its
 start page maps the rest. [Loom, the design system](https://claude.ai/artifact/EzTa2cGzc2duUV25f9Huo1) holds the tokens, the type and
@@ -73,7 +73,7 @@ Fonts and fall back to the system monospace offline.
 | `loom/ochre` | `#F0B429` | The playhead frame; the pattern key |
 | `loom/madder` | `#F0654A` | The sound key |
 | `loom/sky` | `#8FAAF7` | The bpm key |
-| `loom/fern` | `#6FD6A0` | The effects (D112 item 3, 2026-11-26; a proposed value ⚠, built on the page, not yet in Rack (issue 101)): the fx key's band, the display's fx block, the lane's ticks, the twill and the fern core on a key |
+| `loom/fern` | `#6FD6A0` | The effects (D112 item 3, 2026-11-26; a proposed value ⚠, built on the page and in Rack (issue 101)): the fx key's band, the display's fx block, the lane's ticks, the twill and the fern core on a key |
 | `loom/lilac` | `#C9C2DD` | Secondary lettering |
 | `loom/thread` | `#6E6A92` | Unlit threads and step marks. Never lettering |
 
@@ -117,7 +117,7 @@ below). As built, and as `loom/states.html` shows, it has these:
 No state depends on hue. Every state differs from every other by shape or by lightness, and
 `loom/states.html` shows them in greyscale to prove it.
 
-### A key's lights, from the outside in (D112 decided; D115 proposed; 2026-11-26; built on the page, not yet in Rack (issue 101))
+### A key's lights, from the outside in (D112 decided; D115 proposed; 2026-11-26; built on the page and in Rack (issue 101))
 
 `tui/Lights.dc.html` draws them on a Rack or page key, with no colour, and in terminal
 cells. ⚠ Every size below is read off that board, which nobody has seen rendered.
@@ -154,6 +154,19 @@ the dash 15 by 4 px. `make play` reads each back off the page in every drawing.
 `design/page-helper.png`: taken by `node web/shot.mjs design`, for the owner's eye. ⚠ The
 numeral sits on the core where both are lit (dark on the core), as the board draws it.
 
+**Built in Rack (issue 101, 2026-11-26).** `rack/src/Rhythm.cpp` draws the same lights from the
+same bytes through `pi::keyLights` (`rack/src/jacks.hpp`), with all six source marks: the
+dash, and the rings and the disc from the `ROUTE` masks the module sends. On an 11.7 mm key
+⚠: frame and twill 1.46 mm each, the twill's stripes 0.4 mm in a 0.8 mm period, the core
+4.68 mm with a 0.37 mm line, the stitch 1.4 mm and the bar 1.0 mm inside the frame, the dash
+1.8 by 0.5 mm, the ring and the disc 1.5 mm across. `rack/test/jacks.cpp`, "lights", holds
+each case. Pictures from Rack's screenshot mode with the face filled by hand
+(`make -C rack PI_FACE_SHOT=1` or `=2 install` into a scratch folder, then `./Rack -t 1` and
+`-t 2`): `rack-lights-playing-100.png` and `-200.png` (playing, write off, effect 6 punched
+with fx and key 6 down; Rack's effect 4 beside ours, effect 2 in its place),
+`rack-lights-sound-held-100.png` and `-200.png` (the sounds in use, samples on 3, 4 and 9,
+RETURN taking 9 and 12).
+
 **The source mark (D112 item 4).** Shown only while sound or fx is held or latched.
 
 | | No mark | A short dash | A ring | A solid disc |
@@ -186,16 +199,16 @@ Grid key:
 | other sound | as it was | as it was | one stitch in the top right corner, ecru on dark, dark on ecru | Another sound has a step here |
 | chosen | as it was | as it was | a bar along the bottom, in the held key's colour | The selected sound, or pattern |
 | ~~fired~~ | ~~white, full size~~ | ~~as it was~~ | | ~~This key's sound has just played~~ (D112 item 1: "sounding" below) |
-| sounding | as it was | as it was | a core in the middle, white, a dark line round it | This key's sound is sounding, write on or off (D112; built on the page, not yet in Rack (issue 101)) |
-| sounding, through the effect | as it was | as it was | the same core, fern | And the effect being heard takes this sound (D112; built on the page, not yet in Rack (issue 101)) |
-| effect heard | as it was | as it was | the twill band inside the frame | Effect *n* is heard, punched or replayed (D112 item 2; built on the page, not yet in Rack (issue 101)) |
+| sounding | as it was | as it was | a core in the middle, white, a dark line round it | This key's sound is sounding, write on or off (D112; built on the page and in Rack (issue 101)) |
+| sounding, through the effect | as it was | as it was | the same core, fern | And the effect being heard takes this sound (D112; built on the page and in Rack (issue 101)) |
+| effect heard | as it was | as it was | the twill band inside the frame | Effect *n* is heard, punched or replayed (D112 item 2; built on the page and in Rack (issue 101)) |
 | queued | dark | broken ecru frame | | This pattern plays next. Chaining is "later" in `WORKFLOW.md` |
 
 Function key:
 
 | State | Looks like |
 |---|---|
-| idle | Dark, with a band across the top: madder, ochre or sky for sound, pattern and bpm, ecru for the other four (fx: fern, D112 item 3; built on the page, not yet in Rack (issue 101)) |
+| idle | Dark, with a band across the top: madder, ochre or sky for sound, pattern and bpm, ecru for the other four (fx: fern, D112 item 3; built on the page and in Rack (issue 101)) |
 | pressed | White, pulled in, no band |
 | latched | The whole face lit: in its own colour for the top three, ecru for the rest. Dark label |
 
@@ -206,13 +219,13 @@ latches sound, pattern, bpm, function or fx until a press of any key ends (D60, 
 Session 19 fx keeps its latch until it is ~~Ctrl+clicked~~ again, and is down only while a
 grid key is (D78), on the page as in Rack.
 
-**The latch is Shift (D113, 2026-11-26; built on the page, not yet in Rack (issue 101)):** Shift+click and Shift+key, on the
+**The latch is Shift (D113, 2026-11-26; built on the page and in Rack (issue 101)):** Shift+click and Shift+key, on the
 page, in Rack and in a terminal. What a latch does is as above. Until it is built both
 hosts still latch by Ctrl+click.
 
 ### ~~What the grid shows, by mode~~ What the grid shows (D37, accepted by D38; write off changed by D71, D72 and D82; the by-mode reading ended by D112)
 
-**Since 2026-11-26 (D112 item 1; built on the page, not yet in Rack (issue 101)) there is one column.** The table below it is
+**Since 2026-11-26 (D112 item 1; built on the page and in Rack (issue 101)) there is one column.** The table below it is
 what is built today.
 
 | | Write on or off |
@@ -247,7 +260,7 @@ it.
 
 While a function key is held the grid changes meaning, in either mode (D51; the core
 decides it, `ENGINE.md` §14): **sound held**, the grid is sounds and the bar marks the chosen
-one, ~~fields off~~ (D119 item 7, built on the page, not yet in Rack (issue 101): a key's field is lit when that sound has at least
+one, ~~fields off~~ (D119 item 7, built on the page and in Rack (issue 101): a key's field is lit when that sound has at least
 one step in the pattern, "in use"); **bpm held**, the fields of keys 1 to *n* are lit, *n* being the master
 volume; **pattern held**, the bar is on key 1. The frame runs throughout.
 
@@ -272,8 +285,8 @@ Drawn in Session 19 on the page and in Rack, from the same view bytes. ~~No key 
 effect (D66 item 3)~~ (superseded by D112 item 2: effect *n* heard lights key *n*'s twill),
 and there is no picture of a machine and no spark (D81 item 3).
 
-**The colour, changed 2026-11-26 (D112 item 3; built on the page, not yet in Rack (issue 101)):** the block and the ticks are
-fern, the effects' own dye, where "madder" stands below. In Rack they are still madder.
+**The colour, changed 2026-11-26 (D112 item 3; built on the page and in Rack (issue 101)):** the block and the ticks are
+fern, the effects' own dye, where "madder" stands below.
 
 - **The effect heard** (byte 55): a solid madder block the size of the write mark, with `fx`
   and the number in it in ground (`fx 3`, `fx 11`). It sits just above the write mark's place
@@ -350,43 +363,50 @@ and then O7.
 
 ## The Rack panel
 
-24 HP: 121.92 mm wide, 128.5 mm tall. `panel.svg` holds only what never changes: the body,
-the display's frame, the two stitched dividers, the slider threads, A and B, the jack labels,
-the pale plate under each output with its marks, and the wordmark.
+~~24 HP: 121.92 mm wide~~ **27 HP: 137.16 mm wide** since issue 101 (layout B, D114, D119), 128.5
+mm tall. `panel.svg` holds only what never changes: the body, the display's frame, the two
+stitched dividers, the slider threads, A and B, the jack labels and the groups' names and
+rules, the pale plate under each output with its marks, and the wordmark.
 
-Everything else is a widget the module draws: the display, sixteen keys, seven function keys,
-two slider caps, thirteen sockets (six until Session 18). Why: they change, and Rack's SVG reader draws no text, no
-dashes and no filters. For the same reason `make_panel.py` turns lettering into outlines and
-draws each stitch as its own rectangle.
+Everything else is a widget the module draws: the display (with the helper's `?`), sixteen
+keys, seven function keys, two slider caps, thirteen sockets (six until Session 18), and the
+keys helper over all of it. Why: they change, and Rack's SVG reader draws no text, no dashes
+and no filters. For the same reason `make_panel.py` turns lettering into outlines and draws
+each stitch as its own rectangle.
 
-Positions in mm from the top-left corner (`uv run pocket-instruments/design/make_panel.py --positions`):
+Positions in mm from the top-left corner (`uv run design/make_panel.py --positions`), layout B:
 
 | Widget | Centre x | Centre y | Width | Height |
 |---|---|---|---|---|
-| display (inside the frame) | 61.00 | 19.50 | 111.30 | 24.30 |
-| key *n*, column *c* and row *r* from 0 | 11 + 12*c* | 44 + 12*r* | 11.70 | 11.70 |
-| slider A (travel) | 60.00 | 59.50 | 5.00 | 43.00 |
-| slider B (travel) | 70.00 | 59.50 | 5.00 | 43.00 |
-| sound | 83.47 | 49.85 | 12.93 | 23.70 |
-| pattern | 97.00 | 49.85 | 12.93 | 23.70 |
-| bpm | 110.53 | 49.85 | 12.93 | 23.70 |
-| function | 81.78 | 74.15 | 9.55 | 23.70 |
-| fx | 91.93 | 74.15 | 9.55 | 23.70 |
-| play | 102.08 | 74.15 | 9.55 | 23.70 |
-| write | 112.23 | 74.15 | 9.55 | 23.70 |
-| jack CLOCK (in) | 12.40 | 97.50 | | |
-| jack RESET (in) | 25.40 | 97.50 | | |
-| jack A OUT (out, 16 channels) | 40.00 | 97.50 | | |
-| jack A IN (in, 16 channels) | 51.67 | 97.50 | | |
-| jack B OUT (out, 16 channels) | 63.33 | 97.50 | | |
-| jack B IN (in, 16 channels) | 75.00 | 97.50 | | |
-| jack FX GATES (out, 16 channels) | 90.00 | 97.50 | | |
-| jack TRIGGERS (out, 16 channels) | 12.40 | 116.30 | | |
-| jack VOICES (out, 16 channels) | 25.40 | 116.30 | | |
-| jack RETURN (in, 16 channels) | 38.40 | 116.30 | | |
-| jack FX SEND (out, 16 channels) | 84.00 | 116.30 | | |
-| jack FX RETURN (in, 16 channels) | 96.00 | 116.30 | | |
-| jack AUDIO (out) | 109.67 | 116.30 | | |
+| display (inside the frame) | 68.58 | 19.50 | 103.16 | 24.30 |
+| key *n*, column *c* and row *r* from 0 | 18.62 + 12*c* | 50 + 12*r* | 11.70 | 11.70 |
+| slider A (travel) | 67.62 | 65.50 | 5.00 | 43.00 |
+| slider B (travel) | 77.62 | 65.50 | 5.00 | 43.00 |
+| sound | 91.09 | 55.85 | 12.93 | 23.70 |
+| pattern | 104.62 | 55.85 | 12.93 | 23.70 |
+| bpm | 118.15 | 55.85 | 12.93 | 23.70 |
+| function | 89.40 | 80.15 | 9.55 | 23.70 |
+| fx | 99.55 | 80.15 | 9.55 | 23.70 |
+| play | 109.70 | 80.15 | 9.55 | 23.70 |
+| write | 119.85 | 80.15 | 9.55 | 23.70 |
+| jack CLOCK (in) | 9.50 | 13.50 | | |
+| jack RESET (in) | 9.50 | 27.50 | | |
+| jack AUDIO (out) | 126.58 | 21.00 | | |
+| SOUNDS: TRIG (TRIGGERS, out, 16 channels) | 10.60 | 116.30 | | |
+| SOUNDS: OUT (VOICES, out, 16) | 21.80 | 116.30 | | |
+| SOUNDS: IN (RETURN, in, 16) | 33.10 | 116.30 | | |
+| SLIDER A: OUT (A OUT, out, 16) | 49.35 | 116.30 | | |
+| SLIDER A: IN (A IN, in, 16) | 60.65 | 116.30 | | |
+| SLIDER B: OUT (B OUT, out, 16) | 76.91 | 116.30 | | |
+| SLIDER B: IN (B IN, in, 16) | 88.21 | 116.30 | | |
+| FX: GATES (FX GATES, out, 16) | 104.46 | 116.30 | | |
+| FX: SEND (FX SEND, out, 16) | 115.66 | 116.30 | | |
+| FX: RETURN (FX RETURN, in, 16) | 126.96 | 116.30 | | |
+
+The 24 HP positions this replaced (D76, D80; two rows at y 97.5 and 116.3) are in this file's
+history and in `make_panel.py`'s comments. Port numbers did not change: a patch keeps its
+cables (Rack ties a cable to a port's number), and `make -C rack selftest` cables every jack
+by number.
 
 Until Session 18 there were six, in one row at y 116.30: CLOCK 10.67, RESET 22.33, RETURN
 34.00, TRIGGERS 80.67, VOICES 95.17, AUDIO 109.67. Every one but AUDIO moved (D76 item 2);
@@ -449,7 +469,25 @@ lower row, y 116.3 (triggers and sound):
   draft of that had a stitched box round the outputs with a plate under AUDIO only; it left
   two outputs on the dark body, against R33, so it went.
 
-### Layout B: one row of jacks, at 27 HP (D114, D119; 2026-11-26; decided, not drawn by `make_panel.py`, not built)
+### Layout B: one row of jacks, at 27 HP (D114, D119; 2026-11-26; built in issue 101)
+
+**As built (issue 101, `make_panel.py --check` passing).** Where the build parted from the
+arithmetic below, measured by `--check` and put to the owner:
+
+- **The row keeps the 5 mm margin** (`docs/RACK-RULES.md`: nothing past the margin). The
+  arithmetic put its ends 2.0 mm from the edges; laid out by the same pitches, centred, the
+  groups stand 4.95 mm further apart than the jacks inside a group, not 6.95.
+- **AUDIO's plate is narrower** (the owner's choice, 2026-11-26): at the board's x it reached
+  2.6 mm from the edge and 0.25 mm from the display's frame. It is now as wide as the room
+  between the margin and the frame (11.15 mm, was 13.8), two lines tall, with its frame; AUDIO
+  sits at 126.58.
+- **The tempo's column stays 25 mm,** not about 20: "240" at 10 mm is 18.0 mm and `bpm` 4.5 mm,
+  so 20 mm cannot hold both side by side. The weave keeps its 78 cells, each 0.895 mm (1.0 at
+  24 HP).
+- **The wordmark** sits centred in the band between the keys and the group names, at y 97.2
+  (the board did not place it ⚠).
+- CLOCK's label clears the top left screw by 0.87 mm.
+- The names in code, the tooltips and the menu were not changed (not ruled ⚠).
 
 The owner ruled the layout (D114), then the width, 27 HP, and the labels (D119 items 1 and
 2). ~~The width is not ruled (O34) and the labels are not (O35).~~ `tui/Panel.dc.html` now
@@ -558,7 +596,7 @@ the function keys side by side.
   function keys sit on the right: the top three 81 px wide, the bottom four 60 px, all
   151 px tall.
 
-## The keys and the helper (D113 and D119 decided; D116's terminal keys proposed; 2026-11-26; built on the page, not yet in Rack (issue 101))
+## The keys and the helper (D113 and D119 decided; D116's terminal keys proposed; 2026-11-26; built on the page and in Rack (issue 101))
 
 One map on every host: the page, Rack and a terminal. `tui/Keyboard.dc.html` draws it on a
 keyboard and `tui/Helper.dc.html` draws the helper at phone size.
@@ -568,16 +606,16 @@ keyboard and `tui/Helper.dc.html` draws the helper at phone size.
 | `1234` / `qwer` / `asdf` / `zxcv` | the grid, keys 1 to 16 | built (D28) |
 | `7` `8` `9` | sound, pattern, bpm | built |
 | `u` `i` `o` `p` | function, fx, play, write | built |
-| Shift + a function key, or Shift + click | latch it (D113) | decided, built on the page, not yet in Rack (issue 101); Rack still Ctrl+click |
-| `t` `g` | slider A up, down | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
-| `y` `h` | slider B up, down | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
-| `space` | play, stop | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
-| `,` `.` | tempo down, up | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
-| `<` `>` | swing less, more | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
-| `-` `=` | volume down, up | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
-| `m` | the sounds sheet | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
-| `?` | the keys helper | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
-| `esc` | lets every latch go | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| Shift + a function key, or Shift + click | latch it (D113) | decided, built on the page and in Rack (issue 101) |
+| `t` `g` | slider A up, down | decided (D119 item 3), built on the page and in Rack (issue 101) |
+| `y` `h` | slider B up, down | decided (D119 item 3), built on the page and in Rack (issue 101) |
+| `space` | play, stop | decided (D119 item 3), built on the page and in Rack (issue 101) |
+| `,` `.` | tempo down, up | decided (D119 item 3), built on the page and in Rack (issue 101) |
+| `<` `>` | swing less, more | decided (D119 item 3), built on the page and in Rack (issue 101) |
+| `-` `=` | volume down, up | decided (D119 item 3), built on the page and in Rack (issue 101) |
+| `m` | the sounds sheet | decided (D119 item 3), built on the page and in Rack (issue 101) |
+| `?` | the keys helper | decided (D119 item 3), built on the page and in Rack (issue 101) |
+| `esc` | lets every latch go | decided (D119 item 3), built on the page and in Rack (issue 101) |
 | `:` | in a terminal: a command line (save, open, export, quit) | proposed ⚠ |
 | Ctrl+Q | in a terminal: quit | proposed ⚠ |
 
@@ -749,7 +787,7 @@ terminal reports key-up, a real hold works as on the other hosts (D119 item 5).
   `pi_weave` itself is called only when the view changes.
 - Contrast is by arithmetic. Nobody has looked at it on a phone in daylight or in Rack at
   normal zoom.
-- ⚠ **The design session of 2026-11-26 (D112 to D117) is drawn and not built.** Its boards
+- ⚠ **The design session of 2026-11-26 (D112 to D117) is ~~drawn and not built~~ built on the page and in Rack (issue 101); the terminal is issue 8.** Its boards
   (`tui/`) were not rendered and checked by the session that drew them, and are kept as
   Claude Design source, not as pictures that open (issue 98). To build, in two issues
   (D119): issue 101 for the page and Rack (first its analysis of what the view carries,
