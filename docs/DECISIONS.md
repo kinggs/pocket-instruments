@@ -2688,6 +2688,33 @@ Not chosen: each host drawing the bar from the chosen-sound byte (26) when the m
 It needs no core change, but every host, the terminal (issue 8) among them, would repeat the
 rule, and D51 has the core decide what is lit.
 
+### D122 — The owner accepts issue 101's look; one press of a shortcut keeps the built steps, as defaults to tune in use
+**2026-11-26 · decided (owner, after seeing issue 101's build; as relayed by the session that ran it) · accepts D112, D115's key lights and D119 item 1 as built on the page and in Rack · answers issue 111 · hosts only, the core does not change**
+
+1. **The look of issue 101's build is accepted.** The owner, after seeing it: "Happy with the
+   looks." This covers a key's lights, `loom/fern`, the Shift latch, the shared keys, the keys
+   helper and the Rack panel at 27 HP in layout B, as `design/DESIGN.md` describes them built.
+   D115 item 1's lights and D112 item 3's fern value stop being stand-ins on the page and in
+   Rack. ⚠ The words do not say he saw the panel with cables in, which issue 101 asked for; the
+   terminal's screens (D117) are not covered: they were not built then.
+2. **How far one press of a shortcut moves (issue 111): the steps the page and Rack already
+   use, as defaults.** The owner: "I don't really know. I think we should choose smart defaults
+   and tweak them as we go on." So:
+
+   | Keys | One press | Range |
+   |---|---|---|
+   | `t` `g`, `y` `h` | slider A or B, 4096 (a sixteenth of the travel) | 0 to 65535 |
+   | `,` `.` | tempo, 1 bpm | 60 to 240 bpm, as the page's and Rack's shortcut clamp |
+   | `<` `>` (Shift with `,` `.`) | swing, 1 of 48 | 0 to 48 |
+   | `-` `=` | volume, 1 of 16 | 1 to 16 |
+
+   A held key repeats at the keyboard's rate on every host. These are defaults, to be tuned
+   in use: a later change to a step needs a decision but no design pass. The terminal host
+   (issue 8) takes the same steps.
+
+Not chosen: a larger tempo step with Shift (issue 111's suggestion for later); it waits for
+playing to ask for it.
+
 ## Open
 
 | ID | Question | Needs |
