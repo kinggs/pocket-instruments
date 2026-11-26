@@ -718,34 +718,65 @@ const OTHERS: u16 = 1 << 5 | 1 << 15;
 
 // Until Session 20 this was `write_off_the_grid_is_sounds_and_nothing_is_lit`, holding the
 // row to (0, 0, 0, true) as D37 had it. D71 and D82 changed the row: the field is the chosen
-// sound's steps in both modes.
+// sound's steps in both modes. Until D120 (2026-11-26, issue 101) it was
+// `write_off_the_field_is_the_chosen_sound_s_steps_with_no_stitch_and_the_grid_is_sounds`,
+// holding the stitch to 0 (D82 item 3). D112 item 1: every light means the same with write
+// on or off, so the stitch is every other sound's steps here too.
+const ALL_STEPS: u16 = 1 << 0 | 1 << 5 | 1 << 15;
 #[test]
-fn write_off_the_field_is_the_chosen_sound_s_steps_with_no_stitch_and_the_grid_is_sounds() {
+fn write_off_the_field_is_the_chosen_sound_s_steps_the_stitch_every_other_sound_s_and_the_grid_is_sounds() {
     let mut h = patterned();
-    assert_eq!(V::of(&h).grid(), (MINE, 0, 0, true), "no stitch, though tracks 0 and 9 have steps");
-    // The same field as with write on: write changes what a tap does, not the lights.
+    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, true), "tracks 0 and 9 make the stitch");
+    // The same field and stitch as with write on: write changes what a tap does, not the lights.
     send(&mut h, &[down(WRITE), up(WRITE)]);
-    assert_eq!(V::of(&h).field(), MINE);
+    assert_eq!((V::of(&h).field(), V::of(&h).stitch()), (MINE, OTHERS));
     send(&mut h, &[down(WRITE), up(WRITE)]);
-    assert_eq!(V::of(&h).grid(), (MINE, 0, 0, true));
+    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, true));
     // It follows the choice, and an edit, like any other change.
     send(&mut h, &[down(SOUND), down(9), up(9), up(SOUND)]);
-    assert_eq!(V::of(&h).grid(), (1 << 15, 0, 0, true), "track 9 chosen");
+    assert_eq!(V::of(&h).grid(), (1 << 15, 1 << 0 | 1 << 5, 0, true), "track 9 chosen");
     send(&mut h, &[cmd(CMD_STEP, 9, 3, 1)]);
-    assert_eq!(V::of(&h).grid(), (1 << 15 | 1 << 3, 0, 0, true));
+    assert_eq!(V::of(&h).grid(), (1 << 15 | 1 << 3, 1 << 0 | 1 << 5, 0, true));
     send(&mut h, &[down(SOUND), down(4), up(4), up(SOUND)]);
-    assert_eq!(V::of(&h).grid(), (0, 0, 0, true), "a sound with no steps lights nothing");
-    // fx and function held take this row too: nothing lights for them.
+    assert_eq!(V::of(&h).grid(), (0, ALL_STEPS | 1 << 3, 0, true), "a sound with no steps: every step is another's");
+    // fx and function held take this row too: they change no field, stitch or bar.
     let mut h = patterned();
     for key in [FX, FUNCTION] {
         send(&mut h, &[down(key)]);
-        assert_eq!(V::of(&h).grid(), (MINE, 0, 0, true), "key {key} held");
+        assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, true), "key {key} held");
         send(&mut h, &[up(key)]);
     }
-    // A tap fires its own sound and changes no light: the white is the host's, from `fires`.
+    // A tap fires its own sound and changes no light: the core is the host's, from `fires`.
     send(&mut h, &[down(5), up(5)]);
-    assert_eq!(V::of(&h).grid(), (MINE, 0, 0, true));
+    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, true));
     assert_eq!(V::of(&h).fires()[5], 1);
+}
+
+/// D120: write on and write off differ only in what a tap does (flag 4), never in field,
+/// stitch or bar, whatever the pattern, its length and the chosen sound.
+#[test]
+fn field_stitch_and_bar_are_the_same_with_write_off_as_with_write_on() {
+    let mut h = patterned();
+    let mut rng = 0x9e37_79b9u32;
+    for round in 0..400 {
+        rng ^= rng << 13;
+        rng ^= rng >> 17;
+        rng ^= rng << 5;
+        let (t, s) = ((rng & 15) as u8, (rng >> 4 & 15) as u8);
+        match rng >> 8 & 3 {
+            0 => send(&mut h, &[cmd(CMD_STEP, t, s, rng >> 12 & 1)]),
+            1 => send(&mut h, &[down(SOUND), down(t), up(t), up(SOUND)]),
+            2 => send(&mut h, &[cmd(CMD_LENGTH, 0, 0, 1 + s as u32)]),
+            _ => send(&mut h, &[]),
+        };
+        let off = V::of(&h);
+        send(&mut h, &[down(WRITE), up(WRITE)]);
+        let on = V::of(&h);
+        send(&mut h, &[down(WRITE), up(WRITE)]);
+        assert!(!off.write() && on.write());
+        let (a, b) = (off.grid(), on.grid());
+        assert_eq!((a.0, a.1, a.2, a.3, b.3), (b.0, b.1, b.2, true, false), "round {round}: length {}, sound {}", off.length(), off.sel());
+    }
 }
 
 /// D82 item 2, "lit in both modes": whatever the pattern, its length and the chosen sound,
@@ -812,14 +843,31 @@ fn sound_held_the_grid_is_sounds_with_the_bar_on_the_chosen_one() {
         if write {
             send(&mut h, &[down(WRITE), up(WRITE)]);
         }
+        // D120 (D119 item 7): the field is the sounds in use, tracks 0, 2 and 9 (was none, D51).
         send(&mut h, &[down(SOUND)]);
-        assert_eq!(V::of(&h).grid(), (0, 0, 1 << 2, true), "write {write}");
+        assert_eq!(V::of(&h).grid(), (IN_USE, 0, 1 << 2, true), "write {write}");
         send(&mut h, &[down(12)]);
-        assert_eq!(V::of(&h).grid(), (0, 0, 1 << 12, true), "the bar follows the choice");
+        assert_eq!(V::of(&h).grid(), (IN_USE, 0, 1 << 12, true), "the bar follows the choice; the field does not");
         // Before the pattern row.
         send(&mut h, &[down(PATTERN)]);
-        assert_eq!(V::of(&h).grid(), (0, 0, 1 << 12, true));
+        assert_eq!(V::of(&h).grid(), (IN_USE, 0, 1 << 12, true));
     }
+}
+const IN_USE: u16 = 1 << 0 | 1 << 2 | 1 << 9;
+
+/// D120: a sound is in use while any of its sixteen steps is on, whatever the length; a step
+/// taken off or a clear takes it out.
+#[test]
+fn sound_held_a_sound_is_in_use_while_any_of_its_sixteen_steps_is_on() {
+    let mut h = patterned();
+    send(&mut h, &[cmd(CMD_LENGTH, 0, 0, 4), down(SOUND)]);
+    assert_eq!(V::of(&h).field(), IN_USE, "track 9's step 16 counts past a length of 4");
+    send(&mut h, &[cmd(CMD_STEP, 9, 15, 0)]);
+    assert_eq!(V::of(&h).field(), 1 << 0 | 1 << 2, "its only step off: out of use");
+    send(&mut h, &[cmd(CMD_STEP, 13, 7, 1)]);
+    assert_eq!(V::of(&h).field(), 1 << 0 | 1 << 2 | 1 << 13);
+    send(&mut h, &[up(SOUND), down(FUNCTION), down(PATTERN), up(PATTERN), up(FUNCTION), down(SOUND)]);
+    assert_eq!(V::of(&h).field(), 0, "cleared: nothing in use");
 }
 
 #[test]
@@ -839,7 +887,8 @@ fn bpm_held_the_fields_show_the_volume() {
         send(&mut h, &[down(SOUND), down(PATTERN)]);
         assert_eq!(V::of(&h).grid(), (0xFFFF, 0, 0, false));
         send(&mut h, &[up(BPM)]);
-        assert_eq!(V::of(&h).grid(), (0, 0, 1 << 2, true), "and the sound row once bpm is let go");
+        // The sound row's field is the sounds in use since D120 (was 0).
+        assert_eq!(V::of(&h).grid(), (IN_USE, 0, 1 << 2, true), "and the sound row once bpm is let go");
     }
 }
 
