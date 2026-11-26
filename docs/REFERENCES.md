@@ -209,6 +209,35 @@ a take.
 | R76 | **Effects 13, 15 and 16 on take c, and the map.** **13:** each note stays on its step and plays as another sound, the same each time. Sound 15 plays as a 404 Hz tone 20 ms long with a quiet tail, 8 dB over the dry tone's peak; sound 8 as noise centred at 2 to 3 kHz in two bursts (to 60 ms, and 65 to 105 ms). **Neither is the sound twelve keys on as the map has it:** sound 11 there is a 75 Hz tone lasting over 380 ms, sound 4 flat noise at 4 to 8 kHz for 175 ms. The map's 13 (lines at 488, 977 and 1 507 Hz, 0.62 periodic, 50 ms) and 14 (a click 5 ms long, then a slow tail) are the kind of sound R70's kick and snare played as, at other pitches (841 for 488 Hz; 1 841 Hz for a click), and R70's hat (a held 73.6 Hz) reads as the map's 11, not 15 or 16. ⚠ So either the map is not "twelve keys on", or a shuffled note is played with other knob values than the map's hits had (the owner finds the knobs act on every sound, `WORKFLOW.md`), or both. Not settled; a take with every sound on its own step, dry and then held, would settle it. **15 (parameter lfo):** the level does not move (peak −0.0 dB); the tone's 440 Hz line is gone and each hit shows lines near 320 to 345 and 590 to 650 Hz, different from hit to hit, and sound 8's tail is cut on every other note. ⚠ Not understood; R67's "6.45 Hz, 16 cents" does not describe it. **16 (vibrato):** 8.7 dB louder; the tone lasts about three steps for half a step and reads between about 65 and 230 Hz, crossing that range about ten times a second; sound 8 swells as slowly as under effect 1; nothing above 8 kHz (−14 to −20 dB), values held four samples as under 1. ⚠ It reads as effect 1's slowed sounds with the rate wobbling; R67's 3.45 Hz and 79 cents were a clipped take | take c, bars 39, 40 and 45 to 49; the map; take a, 121 to 127 s |
 | R77 | **Effect 1 is not a plain hold** (Session 31, a model off the engine). Stand-in sounds on take c's pattern, slowed to a quarter and read by `hardware-fx.py` as the PO-12 was: with each value held to the next grid point, the sound above 10 kHz is 18.5 dB under the whole (above 12 kHz, 19.5); the PO-12's take c reads 47.8 and 62.3 dB under, and −24, under −44 and under −44 dB at 10, 12.9 and 16.3 kHz against dry. Straight lines between the same values read 36.1 dB under; no images at all, 71.6. The script reports no hold for take c ("none, 55 Hz"); on a held model it reports the 4-and-5 frame pattern's period (40.96 frames at 48 kHz), never 4. So R72's "each value held four samples" is not what leaves the device: it smooths after its grid, more than a line does. ⚠ Stand-in sounds, so the response against dry is not like for like; the energy above 10 kHz is. Take c cannot show the release: every sound has ended by the bar the key goes up. The PO-12's old sound 8 still reads at its own next note's step (−48 and −31 dB on bars 3 and 4, against the model's −28 and −28) ⚠ not understood | the model and its readings, in a scratch folder not kept; take c and `report-c.txt` |
 
+## Measured on the owner's machine for the terminal host, 2026-11-26 (issue 8)
+
+Omarchy on kernel 7.2.15, Hyprland 0.56.2, foot 1.28.0, tmux 3.8, herdr 0.9.5, PipeWire
+1.6.9 with WirePlumber, the Scarlett 4i4 as the default sink (surround 4.0, 48 kHz). Keys were
+sent with Hyprland's `send_key_state` dispatcher to a foot window opened on a hidden special
+workspace, never to the focused window: press and release as separate events, with real
+gaps between them (a 300 ms hold of `7` while `1` went down and up). Two throwaway probes,
+not kept: a Python script that sets the terminal raw, pushes the protocol's flags, sends
+`CSI ? u` and logs every byte with its time; and a crossterm program that logs its events.
+tmux ran on its own sockets (`-L`), herdr in its own named session; both were stopped and
+removed after. Sound: a throwaway Rust program on cpal 0.18.2 running the engine's static
+library in the callback (sixteen tracks, a third of all steps on, 160 bpm, effect 4's line
+lent), its output times 0, so the same device path ran in silence.
+
+The kitty keyboard protocol itself: https://sw.kovidgoyal.net/kitty/keyboard-protocol/,
+read 2026-11-26 (flags 1 disambiguate, 2 event types, 4 alternate keys, 8 every key as an
+escape, 16 the text; push `CSI > flags u`, pop `CSI < u`, query `CSI ? u`, reply
+`CSI ? flags u`; support is told by a reply before the primary device attributes'; a key is
+`CSI code[:shifted[:base]] ; 1+modifiers[:type] u`, type 1 press, 2 repeat, 3 release;
+left Shift is 57441). ⚠ Read through a fetch that summarised the page; every sequence used
+was seen in the bytes below.
+
+| # | Fact | Source |
+|---|---|---|
+| R78 | **foot 1.28 reports key-up.** It answered the query with `CSI ? 31 u` (flags 31 pushed) and sent `q` down as `CSI 113;1:1;113u` and up as `CSI 113;1:3u`; Shift+`7` as `CSI 55:38;2:1;38u` (key 7, shifted `&`, Shift) and its release; left Shift itself as 57441 down and up; a held `7` released 516 ms after its press, after `1` went down and up inside it. crossterm 0.29 read the same Shift+`7` as `Char('&')` with no Shift flag, and `TERM` was `xterm-256color` | Measured, the probes above |
+| R79 | **tmux 3.8 passes no key-up and does not answer the query,** with `extended-keys` off, on (`csi-u`) and always (`csi-u`): `q`, Shift+`7`, `7`, `1` and esc arrived as the plain bytes `q`, `&`, `7`, `1`, `\x1b`, and nothing on release. `TERM` was `tmux-256color` | Measured |
+| R80 | **herdr 0.9.5 answers the query but its key-up is not real.** It replied `CSI ? 31 u` and passed the protocol's sequences, but each release came in the same read as its press: `7` down and up at 1512 ms though `7` was held 300 ms, and `1`, pressed inside that hold, arrived after `7`'s release. `HERDR_ENV=1` inside it | Measured |
+| R81 | **Sound through PipeWire, five minutes each, no xrun.** cpal's ALSA host (through PipeWire's ALSA plugin, node `alsa_playback.audioprobe`): 300.0 s, 14 400 512 frames (1.00004 of the clock), 0 xruns, 0 errors, the longest gap between callbacks 12.7 ms at 512-frame quanta, the longest callback 0.73 ms; `pw-top` at 290 s showed ERR 0 on the stream and on the Scarlett. cpal's PipeWire host (node `audioprobe`, built with cpal's `pipewire` feature): 300.0 s, 14 399 488 frames (0.99996), 0 xruns, 0 errors, the longest gap 43.2 ms at 1024-frame quanta, the longest callback 0.73 ms; ERR 0 on the stream and on the Scarlett's output. During that run something else was recording: the Scarlett's input node drove the graph at a quantum of 1024 and showed ERR 48 ⚠ (not this host's; noted for issue 56, not read further). ⚠ Measured, not heard; issue 56's loss is in recording and was not looked for here | Measured |
+
 ## Not yet checked
 
 - EUIPO and UK registered designs and trade marks for Teenage Engineering AB.

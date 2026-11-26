@@ -30,6 +30,9 @@ the two sliders.
   of the sliders, the settings. Every older version still loads.
 - **In Rack** sound also comes in: a returned sound takes its own voice's place before the
   effects (`ENGINE.md` §19).
+- **A third host, the terminal** (`TERMINAL.md`, D123; designed 2026-11-26, not built): its
+  own crate, `term/`, linking the same static library as Rack through the same C ABI. It is
+  Rhythm's host, not a framework: a second instrument would add its own screens there.
 
 ## What is shared in fact
 
