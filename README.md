@@ -6,6 +6,15 @@
 Small calculator-format musical instruments, free and open source, that play in a browser and
 as VCV Rack modules from one shared engine.
 
+<p align="center">
+  <img src="design/page-lights-playing.png" alt="Rhythm on a phone: sixteen keys lit as the beat plays, the display weaving, an effect heard" height="420">
+  &nbsp;
+  <img src="design/rack-showcase.png" alt="Rhythm in VCV Rack, patched into Fundamental's ADSR, VCO, VCF, LFO, Delay and Scope" height="420">
+</p>
+
+<p align="center"><em>On a phone, and in VCV Rack with the reference patch (<code>rack/patch/showcase.json</code>).
+A terminal host is next (<a href="https://github.com/kinggs/pocket-instruments/issues/8">#8</a>).</em></p>
+
 **Play it now:** <https://kinggs.github.io/pocket-instruments/web/rhythm.html> (made for a phone;
 a desktop browser works too).
 
@@ -14,6 +23,33 @@ it for Linux, Windows and both Macs when the core or the plugin changes. To try 
 [rack workflow](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml), sign in
 to GitHub, and download the artifact for your platform. These are unsigned test builds for
 loading by hand. Or build it yourself (below).
+
+## Why this exists
+
+I love, love Teenage Engineering's pocket operators. This project is completely inspired by
+them.
+
+At the same time, I love modular synths. And you can never get a module to take over a voice,
+or do the processing for something, on a pocket operator. Unless... you build an open and free
+module that does it, in VCV Rack. Then suddenly you get:
+
+- **A full drum machine in your rack.** Sixteen sounds, each synthesised in code or played from
+  a sample, sixteen steps, punch-in effects, the pocket operator's own way of playing.
+- **Near-infinite patchability.** Every sound's trigger and audio goes out on its own channel
+  and can come back in. Every effect has its own channel out and back. Replace the kick with
+  your favourite oscillator, put a Rack filter where an effect was, drive the sliders from an
+  LFO. Extend it and change it until it is yours.
+- **And not only in Rack.** One Rust engine plays the same bits everywhere, so you can also
+  have fun with it on a phone, in a browser, and soon in a Linux terminal.
+- **A place to learn and practise.** The workflow stays close to the hardware: the same keys,
+  the same combinations, the same order of doing things. What you learn here carries straight
+  over to the real thing.
+
+### Buy the real ones
+
+Right now. Multiples of them! They are really amazing and so much fun:
+**<https://teenage.engineering/products/po>**. Plain links, no affiliate links, nothing sold
+here.
 
 ## Status
 
@@ -46,22 +82,6 @@ What does not yet:
 - Not every proof has passed. A proof is a test with a pass bar set in advance. The iPhone and
   other-machine checks are part-run, and the feel (P8) and the look (P9) are open
   ([docs/PROOFS.md](docs/PROOFS.md)).
-
-## Why this exists
-
-I love Teenage Engineering's pocket operators. This project comes from that, and from four
-things I wanted:
-
-- **Pocket operators inside Rack.** A drum machine whose every sound, trigger and effect is a
-  jack, so it patches into everything else.
-- **Several of them, connected.** More than one instrument, playing together, in Rack and on the
-  web. Today there is one.
-- **A place to learn and practise.** The workflow stays close to the hardware: the same key
-  names, the same combinations, the same order of doing things. What you learn here carries over
-  to the real thing.
-- **A road to the real thing.** Plain links to Teenage Engineering, no affiliate links.
-
-**Buy the real ones:** <https://teenage.engineering/products/po>
 
 ## What it is not
 
@@ -112,6 +132,32 @@ The look is drawn in public, in Claude Design:
 Where either differs from [design/DESIGN.md](design/DESIGN.md) or
 [docs/DECISIONS.md](docs/DECISIONS.md), the repository is right.
 
+## How it fits together
+
+One engine, written once, in Rust: `no_std`, no allocator, no dependencies, and only `+ − × ÷`
+on the sound path, so it gives the same bits on every host. It holds the whole instrument: the
+clock, the sequencer, the keys and what they mean, the sixteen voices (synthesised, or played
+from a sample), the effects, and a 64-byte view that says what each host should draw. A host
+only passes in what a finger did and draws what it is told.
+
+```mermaid
+flowchart LR
+  subgraph core["core/ (Rust, no_std)"]
+    seq["clock, sequencer, keys"]
+    voices["16 voices: synth or sample"]
+    fx["effects and the bus"]
+    view["the view: what to light"]
+  end
+  core -- "static library, C ABI (pi_engine.h)" --> rack["VCV Rack module<br/>rack/ (C++)"]
+  core -- "WebAssembly (pi_core.wasm)" --> web["phone and browser<br/>web/ (AudioWorklet)"]
+  core -. "next: issue 8" .-> tui["Linux terminal"]
+  rack <-- "jacks: triggers, voices,<br/>sliders, FX send and return" --> patch["the rest of your rack"]
+  harness["harness/ and fixtures/:<br/>Rust, C++ and Node must agree byte for byte"] --- core
+```
+
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the detail, and
+[docs/ENGINE.md](docs/ENGINE.md) the contract.
+
 ## How the repository is laid out
 
 By host at the top. It is built for several instruments, and nothing is made generic until a
@@ -152,7 +198,13 @@ The Rack plugin:
 
 ```sh
 make -C rack install RACK_DIR=/path/to/Rack-SDK   # builds the core and the plugin, installs it in Rack
+make -C rack showcase                             # rack/build/Showcase.vcv: the reference patch
 ```
+
+The reference patch (`rack/patch/showcase.json`, written by `rack/patch/make-showcase.mjs`)
+uses only Rack's own modules: Rack's kick in place of sound 1, a swept VCF as effect 7, an LFO
+on slider A, and a delay on the output. Open it in Rack and press play. It is the patch the
+README's picture shows, and a quick way to try every jack.
 
 To play the page from a clone, run `make hear` and open
 `http://127.0.0.1:8417/web/rhythm.html`. Any static file server on the repository root works
