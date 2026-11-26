@@ -8,6 +8,11 @@ text is in `../DESIGN.md`: "A key's lights", "The keys and the helper", "Loom in
 terminal" and "Layout B". Where a board and that text disagree, the text is the later
 reading.
 
+**This folder is behind the canvas.** It is a copy taken before [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK)
+was laid out in pages: eight of its fifteen boards, and it is not refreshed. Read the canvas
+for the current boards. Whether the repository keeps a copy of the boards at all is not
+ruled (issue 98).
+
 The folder is named for the terminal host, where the canvas began (issue 8; D111 item 3).
 Three of the boards are about every host.
 

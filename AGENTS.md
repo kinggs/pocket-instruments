@@ -21,7 +21,7 @@ Not affiliated with Teenage Engineering; their names are used only to describe.
 | `harness/` | The same fixtures through the `.wasm` in Node and through C++ on the static library; the bench, the fuzz, the race harness |
 | `fixtures/` | Test vectors and the traces they must produce. Formats: `fixtures/README.md` |
 | `samples/` | The starter drum pack: sixteen CC0 files and their origins |
-| `design/` | The look: `DESIGN.md`, the panel and the script that draws it |
+| `design/` | The look: `DESIGN.md`, the panel and the script that draws it. The drawings are on [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK); the tokens and rules in [Loom, the design system](https://claude.ai/artifact/EzTa2cGzc2duUV25f9Huo1) |
 | `docs/` | The design documents (below) |
 | `docs/history/` | `PLAN.md` and `PLAN-HISTORY.md`, frozen as they stood on 2026-11-26. Read-only |
 
@@ -56,6 +56,13 @@ Open the rest only when a line sends you there: `docs/LEARNINGS.md` before repea
 of work it names (planting faults, moving a size bound), `docs/history/` for how a past
 session went, `docs/WORKFLOW.md`, `docs/VOICES.md` and `design/DESIGN.md` when the issue
 touches them.
+
+**Before touching a look** (a key, the panel, the page, the display, a terminal screen):
+read Loom's brand book, the design system's `project/README.md` ([Loom](https://claude.ai/artifact/EzTa2cGzc2duUV25f9Huo1); with the
+Artifact tool, action `read`, `path` `project/README.md`), and the page of [the design
+canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK) for the instrument. Why: the canvas is where the owner rules a look, and
+it is ahead of `design/tui/`. A session whose user cannot open them says so and works from
+`design/DESIGN.md`. Where they differ, `design/DESIGN.md` and `docs/DECISIONS.md` are right.
 
 ## Rules, and how to keep them
 

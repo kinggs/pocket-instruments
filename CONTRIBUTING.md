@@ -34,6 +34,23 @@ two pull requests.
 - A bug fix that makes the code match the documents needs no design step.
 - A decision is never rewritten. A later decision overrules it and says why.
 
+### A look
+
+The owner accepted this way of working on 2026-11-26 (the canvas's start page):
+
+1. **Draw it on [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK),** on the instrument's page, or on Loom's
+   when every instrument shares it. A board's name starts with *Proposed*, *Ruled* or
+   *Built*.
+2. **The owner rules.**
+3. **The ruling goes in `docs/DECISIONS.md`; the rules go in `design/DESIGN.md`.** A
+   change to what the engine shows also goes in `docs/ENGINE.md`, as for any design.
+4. **One issue analyses and builds it,** the design part first, as above.
+5. **A picture of what was built goes back on the canvas, beside the drawing,** named
+   *Built*.
+
+Tokens and type come from [Loom, the design system](https://claude.ai/artifact/EzTa2cGzc2duUV25f9Huo1). Where the canvas or Loom
+differs from the repository, the repository is right until a decision changes it.
+
 ## Rules for every change
 
 **Expected output before the core runs it.** Work a fixture's trace and views out by hand from
