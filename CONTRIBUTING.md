@@ -38,8 +38,9 @@ two pull requests.
 
 The owner accepted this way of working on 2026-11-26 (the canvas's start page):
 
-1. **Draw it on [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK).** A board's name starts with *Proposed*,
-   *Ruled* or *Built*.
+1. **Draw it on [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK),** on the instrument's page, or on Loom's
+   when every instrument shares it. A board's name starts with *Proposed*, *Ruled* or
+   *Built*.
 2. **The owner rules.**
 3. **The ruling goes in `docs/DECISIONS.md`; the rules go in `design/DESIGN.md`.** A
    change to what the engine shows also goes in `docs/ENGINE.md`, as for any design.
