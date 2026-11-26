@@ -2337,6 +2337,24 @@ Not chosen: patterns first and the move last (the session's recommendation: the 
 waited on the proofs and the name). The owner's order puts the project where its issues
 and its contributors can live before the largest piece of work is cut up.
 
+### D111 — The instruments are named by role, Rhythm and Sampler; the second is a sampler; a terminal host proposed
+**2026-11-26 · decided by the owner, between Session 43 and the move · answers O30 · item 3 is proposed, not ruled**
+
+1. **Named by role, no numbers:** the instruments are **Rhythm** and **Sampler**. The owner:
+   "Rhythm and Sampler it is"; "numbering is a little too close to home again". ⚠ "rhythm"
+   is also the word on the PO-12, so the name search (O3, O6) covers the instruments' names
+   as well as the family's.
+2. **The second instrument is a sampler,** inspired by the PO-33 K.O! and its Street Fighter
+   edition, the PO-133 (O30). The owner: "we're committed to a sampler next ... I think
+   sampler will pair really nicely with the rhythm". It comes after patterns (D110 item 6),
+   so the two share one idea of a pattern. What it shares with Rhythm is its design pass's
+   first question; nothing is made generic before then (README rule 5).
+3. **Proposed, not ruled: a terminal host,** a third host beside the page and Rack, from the
+   same core, as a stretch part of the showpiece. The owner: "I would LOVE to do a linux /
+   omarchy TUI for this ... Then we have Web, Rack and TUI to show why this is such a
+   powerful idea." Whether it is part of the showpiece is the owner's to rule; recommended:
+   a stretch part, the gate does not wait for it.
+
 ## Open
 
 | ID | Question | Needs |
@@ -2370,4 +2388,4 @@ and its contributors can live before the largest piece of work is cut up.
 | O27 | ~~The clock in Rack as designed (D100)? Above all item 2 (the first beat at a guess), item 4 (`--` on a stopped clock) and item 5 (`ext` in place of `bpm`)~~ | **Answered 2026-11-25: D104** (accepted before hearing; the ear may still overrule). Was: The owner, in Rack, once Session 34 has built it: Clocked at ×1 into CLOCK, the menu's "one edge a beat". Recommended: accept **Built 2026-11-25 (Session 34)** as written: ready to play; its Handover in `PLAN.md` has the steps and its readings (⚠), above all the play key on a beat clock (read as edges) **D101 built 2026-11-25 (Session 35):** play waits for the next edge, a pause is a first edge, a rate change carries the beat; its Handover in `PLAN.md` has a two-minute check **D103 built 2026-11-25 (Session 38):** a pause only against a measured period, so a clock that slows to under half its tempo is measured on its second slow edge; its Handover in `PLAN.md` has a one-minute check |
 | O28 | ~~A sum that overflows gives a not-a-number whose bits no rule fixes: two sounds returned at 3e38 with an effect held make `∞ − ∞` in §18's mix, and Rust and WebAssembly both leave that NaN's sign open. So "the same bits on every host" (§11) does not hold for it. Found by Codex reading D105; older than it. Clamp what is returned (to ±10, say), make the mix's NaN a fixed one, or accept it as outside the contract?~~ | **Answered 2026-11-26: D109** (accepted as outside the contract; §11 says so). Was: The owner. Recommended: accept, and say so in §11: a returned sound of 3e38 is 3e39 V in Rack. D105's sessions keep the arithmetic's order, so they do not move it |
 | O29 | May Pocket Operations' patterns be shipped inside the instrument? A bookseller's listing says CC BY; the author's own page refused the fetch, so its licence line is unread (2026-11-26) | The owner reads the licence on the page, or the author answers the note drafted in Session 43. Recommended: ship nothing until one of them says yes; credit and link either way |
-| O30 | Which instrument is second? The owner leans to the one on the table, a PO-133. That is the PO-33 K.O! in its Street Fighter edition, a sampler (`libpo` treats the two as one); the EP-133 K.O. II is a different, larger machine | The owner, when patterns are done. Recommended: not yet; it changes no file's place (D110 item 4) |
+| O30 | ~~Which instrument is second? The owner leans to the one on the table, a PO-133. That is the PO-33 K.O! in its Street Fighter edition, a sampler (`libpo` treats the two as one); the EP-133 K.O. II is a different, larger machine~~ | **Answered 2026-11-26: D111** (a sampler, named Sampler). Was: The owner, when patterns are done. Recommended: not yet; it changes no file's place (D110 item 4) |
