@@ -2695,7 +2695,7 @@ rule, and D51 has the core decide what is lit.
    looks." This covers a key's lights, `loom/fern`, the Shift latch, the shared keys, the keys
    helper and the Rack panel at 27 HP in layout B, as `design/DESIGN.md` describes them built.
    D115 item 1's lights and D112 item 3's fern value stop being stand-ins on the page and in
-   Rack. ⚠ The words do not say he saw the panel with cables in, which issue 101 asked for; the
+   Rack. ⚠ The words do not say the panel was seen with cables in, which issue 101 asked for; the
    terminal's screens (D117) are not covered: they were not built then.
 2. **How far one press of a shortcut moves (issue 111): the steps the page and Rack already
    use, as defaults.** Kenny: "I don't really know. I think we should choose smart defaults
