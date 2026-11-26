@@ -448,7 +448,7 @@ have steps (`keys-write-a-beat`'s kick and hat, `fx-repeat-punch`'s sounds 2 and
 item 3. `sounds=1` stays on all sixteen: the grid is still sounds, so a key still goes
 white as its own sound fires.
 
-## The views worked again for D120 (2026-11-26; issue 101; in `designed/` until the build)
+## The views worked again for D120 (2026-11-26; issue 101; in `designed/` until the build, which moved them up unchanged)
 
 A view changed by a decision, as Session 20's were (D120, answering O32; D112 item 1, D119
 item 7): worked from `ENGINE.md` §14's changed table and committed in `fixtures/designed/`

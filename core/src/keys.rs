@@ -283,6 +283,12 @@ impl Engine {
         if k.down(KEY_BPM) {
             field = (((1u32 << k.volume) - 1) & 0xFFFF) as u16;
         } else if k.down(KEY_SOUND) {
+            // D120 (D119 item 7): the sounds in use, any of their sixteen steps on. Was none (D51).
+            for (t, on) in self.pat.on.iter().enumerate() {
+                if *on != 0 {
+                    field |= 1 << t;
+                }
+            }
             bar = 1 << sel;
             sounds = true;
         } else if k.down(KEY_PATTERN) {
@@ -294,9 +300,13 @@ impl Engine {
             }
         } else {
             // Since Session 20 (D82): the chosen sound's steps, as the hardware lights them
-            // in both modes (D71); no stitch, no bar, and still sounds, so each key goes white
-            // as its own sound fires. Until then the field was dark here (D37).
+            // in both modes (D71). Until then the field was dark here (D37). Since D120
+            // (D112 item 1) the stitch too, as with write on; until then none (D82 item 3).
+            // No bar, and still sounds: a tap fires its own sound.
             field = self.pat.on[sel];
+            for t in (0..TRACKS).filter(|t| *t != sel) {
+                stitch |= self.pat.on[t];
+            }
             sounds = true;
         }
 

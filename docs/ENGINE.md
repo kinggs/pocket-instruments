@@ -1160,6 +1160,18 @@ first; a rule test for each changed row and one that the other three rows did no
 view it came from; `rack/test/jacks.cpp` holding the Rack module's choice of light for
 each case of the table above; the self-test; and screenshots for the owner's eye (#9).
 
+**Built in the core (issue 101, 2026-11-26).** The two rows in `Engine::view`
+(`core/src/keys.rs`). Proven: the 24 view lines worked first, moved up from `designed/`
+unchanged, were given by the core at the first run on all three harnesses (720 report lines:
+every rate, block size, source and the snapshot run), and only `field` and `stitch` moved;
+every trace line and all 420 render files the same bytes as before; rule tests
+`write_off_the_field_is_the_chosen_sound_s_steps_the_stitch_every_other_sound_s_and_the_grid_is_sounds`,
+`field_stitch_and_bar_are_the_same_with_write_off_as_with_write_on` and
+`sound_held_a_sound_is_in_use_while_any_of_its_sixteen_steps_is_on`, and the sound row's
+expectation in two older tests changed with a note; two faults planted (the chosen sound in
+its own stitch; "in use" read within the length), each built and caught by a named test.
+`pi_process` is not touched: `pi_view` gained one pass over sixteen words in two rows.
+
 ## 15. Snapshot version 2 (ABI 5; designed in Session 9; D55; built in Session 11)
 
 388 bytes. Bytes 0 to 311 are version 1's (§8) with version 2 and payload size 372. Then:
