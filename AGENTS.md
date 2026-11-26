@@ -151,7 +151,7 @@ The rest of the first machine's notes are in `docs/history/PLAN.md`, "Machine st
 
 ## The maintainer's alone
 
-Issues labelled `owner` are not an agent's to close. They need:
+Issues labelled `maintainer` are not an agent's to close. They need:
 
 - **Ears:** whether a sound or an effect is right.
 - **Looks:** the panel, the page, the weave. Every look is a stand-in until the maintainer rules.

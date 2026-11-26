@@ -7,7 +7,7 @@ request that follows the rules below gets merged soonest.
 
 ## The short version
 
-1. Pick an issue, or open one. Issues labelled `owner` need the maintainer's ears, eyes or
+1. Pick an issue, or open one. Issues labelled `maintainer` need the maintainer's ears, eyes or
    ruling: do not take those. `good first issue` marks a small one.
 2. Fork the repository and branch from `main`.
 3. Make small commits with plain English messages.

@@ -2787,8 +2787,9 @@ three, Kenny chose the first, and the last without "team", each for its own kind
    old rows included; a new entry or row says "Kenny". The frozen `BRIEF-v0.1.md`, `REVIEW.md`
    and `docs/history/` are not touched; `docs/README.md`'s glossary says what "the owner"
    means there.
-6. **The GitHub label `owner` stays until Kenny rules on it** ⚠: renamed to `maintainer`, or
-   kept. `AGENTS.md` and `CONTRIBUTING.md` still name it as it is.
+6. **The GitHub label `owner` is renamed `maintainer`** (Kenny, the same day). Its issues keep
+   it. `if-the-ear-asks` now reads "Only if Kenny's ear asks for it". An "`owner` issue" in
+   an entry before this one is a `maintainer` issue now.
 
 Not chosen: first person ("I"), for item 3's reason; "the maintainer team", since one person
 maintains the project; rewriting past entries, which this file's first line forbids.
