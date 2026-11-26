@@ -295,6 +295,7 @@ check sets `PI_RHYTHM_TEST_IGNORE_FOCUS=1`, a test aid and not an option, to hol
 its events. A player's focus does not move, so this is not a fault of the host.
 
 ⚠ Not checked by anyone yet: holds and an effect played by hand; the look and the sound judged
-(issue 8's last box, Kenny's); a five-minute run of `pi-rhythm` itself through the speakers
-(R81 measured the same engine and library in a probe, silent); `pi-rhythm` built with the
+(issue 8's last box, Kenny's); five minutes of `pi-rhythm` playing a beat through the speakers (it ran
+five minutes on the Scarlett stopped, so silent: no xrun, ERR 0 on its node and the device in
+`pw-top`; R81 measured the engine playing, at gain 0); `pi-rhythm` built with the
 `pipewire` feature (it builds; it was not run).
