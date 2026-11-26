@@ -22,6 +22,7 @@ The owner's brief for it: dark, high contrast, easy to read with weak eyes.
 | `loom/frames.html` | Three frames of the display |
 | `loom/tokens.html` | The colours and type, as swatches |
 | `directions/` | The three directions the owner chose between. A and C were not taken |
+| `tui/` | A first look for the terminal host, five boards: a mock-up, not ruled (`tui/README.md`) |
 | `panel.svg` | The static Rack panel, flat, in mm. Made by `make_panel.py` |
 | `make_panel.py` | Draws `panel.svg`, prints the widget positions, and (`--check`) holds every jack's label, plate and stitches clear of its neighbour's |
 | `rack-face-unlit-100.png` | The Rhythm module as Rack draws it, from Rack's own screenshot mode at 100% zoom (360 px wide: what a player sees without zooming). Nothing lit: no module runs in that mode. Taken in Session 18, with the two jack rows; again in Session 24, with FX SEND's and FX RETURN's stitches |

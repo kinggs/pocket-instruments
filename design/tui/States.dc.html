@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Loom key states in terminal cells</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; padding: 40px 48px; background: #14131F; display: flex; flex-direction: column; gap: 28px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; font-size: 23.333px; line-height: 28px; color: #F2E8D0">
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 16px; line-height: 24px">grid key, truecolor: Loom's tokens as they are</div>
+<div style="display: flex; gap: 18px">
+<sc-for list="{{ colour }}" as="k" hint-placeholder-count="9">
+<div style="width: 104px; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="height: 84px; display: flex; align-items: center">
+<div style="position: relative; width: 70px; height: 56px; box-sizing: border-box; border-style: solid; border-width: 14px 7px; border-color: {{k.frame}}; background: {{k.field}}; color: {{k.ink}}; text-align: center">q<span style="position: absolute; right: 10px; top: 10px; width: 8px; height: 8px; background: {{k.stitch}}"></span><span style="position: absolute; left: -7px; right: -7px; bottom: -14px; height: 14px; background: {{k.bar}}"></span><span style="position: absolute; left: -7px; top: -14px; width: 14px; height: 14px; background: {{k.dash}}; box-shadow: 28px 0 0 {{k.dash}}, 56px 0 0 {{k.dash}}, 0 56px 0 {{k.dash}}, 28px 56px 0 {{k.dash}}, 56px 56px 0 {{k.dash}}"></span></div>
+</div>
+<div style="font-size: 15px; line-height: 20px; font-weight: 500; color: #C9C2DD; text-align: center">{{k.name}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px; background: #000000; margin: 0 -48px; padding: 16px 48px">
+<div style="font-size: 16px; line-height: 24px">the same with no colour: only normal, bold and reverse</div>
+<div style="display: flex; gap: 18px">
+<sc-for list="{{ mono }}" as="k" hint-placeholder-count="9">
+<div style="width: 104px; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="height: 84px; display: flex; align-items: center">
+<div style="position: relative; width: 70px; height: 56px; box-sizing: border-box; border-style: solid; border-width: 14px 7px; border-color: {{k.frame}}; background: {{k.field}}; color: {{k.ink}}; text-align: center">q<span style="position: absolute; right: 10px; top: 10px; width: 8px; height: 8px; background: {{k.stitch}}"></span><span style="position: absolute; left: -7px; right: -7px; bottom: -14px; height: 14px; background: {{k.bar}}"></span><span style="position: absolute; left: -7px; top: -14px; width: 14px; height: 14px; background: {{k.dash}}; box-shadow: 28px 0 0 {{k.dash}}, 56px 0 0 {{k.dash}}, 0 56px 0 {{k.dash}}, 28px 56px 0 {{k.dash}}, 56px 56px 0 {{k.dash}}"></span></div>
+</div>
+<div style="font-size: 15px; line-height: 20px; font-weight: 500; color: #C9C2DD; text-align: center">{{k.name}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; gap: 48px">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 16px; line-height: 24px">function key</div>
+<div style="display: flex; gap: 18px">
+<sc-for list="{{ fkeys }}" as="f" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="width: 112px; height: 140px; box-sizing: border-box; border-style: solid; border-width: {{f.bw}}; border-color: {{f.bc}}; background: {{f.face}}; color: {{f.ink}}; padding: 0 7px; display: flex; flex-direction: column; justify-content: center"><div><span style="background: {{f.capBg}}; color: {{f.capInk}}; padding: 0 7px; margin-left: -7px">{{f.cap}}</span></div><div>{{f.word}}</div></div>
+<div style="font-size: 15px; line-height: 20px; font-weight: 500; color: #C9C2DD; text-align: center">{{f.name}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 16px; line-height: 24px">a key is 5 by 3 cells</div>
+<div style="display: flex; gap: 28px; align-items: center">
+<div style="white-space: pre; color: #F0B429; background: #0B0A12; padding: 14px">▄▄▄▄▄
+▌ q▪▐
+▀▀▀▀▀</div>
+<div style="font-size: 15px; line-height: 28px; font-weight: 500; color: #C9C2DD">
+<div>the frame, as lower halves</div>
+<div>frame on field: legend, stitch</div>
+<div>upper halves; the bar goes here</div>
+</div>
+</div>
+<div style="font-size: 15px; line-height: 20px; font-weight: 500; color: #C9C2DD">The legend is the key you press. A cell has two colours, so the dark line between a lit field and the frame is gone: the frame is told from the field by lightness.</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+renderVals() {
+const none = 'transparent';
+const mk = (p) => [
+{ name: 'off', frame: p.tile, field: p.tile, ink: p.ecru },
+{ name: 'step', frame: p.ecru, field: p.ecru, ink: p.bg },
+{ name: 'playing', frame: p.ochre, field: p.tile, ink: p.ecru },
+{ name: 'step + playing', frame: p.ochre, field: p.ecru, ink: p.bg },
+{ name: 'pressed', frame: p.bg, field: p.white, ink: p.bg },
+{ name: 'other sound', frame: p.tile, field: p.tile, ink: p.ecru, stitch: p.ecru },
+{ name: 'chosen', frame: p.tile, field: p.tile, ink: p.ecru, bar: p.madder },
+{ name: 'fired', frame: p.white, field: p.white, ink: p.bg },
+{ name: 'queued', frame: p.tile, field: p.tile, ink: p.ecru, dash: p.ecru },
+].map((k) => ({ stitch: none, bar: none, dash: none, ...k }));
+const colour = mk({ bg: '#14131F', tile: '#2B2942', ecru: '#F2E8D0', white: '#FFFFFF', ochre: '#F0B429', madder: '#F0654A' });
+const mono = mk({ bg: '#000000', tile: none, ecru: '#B4B4B4', white: '#FFFFFF', ochre: '#FFFFFF', madder: '#B4B4B4' });
+const g = '#14131F', tile = '#2B2942', ecru = '#F2E8D0', madder = '#F0654A', lilac = '#C9C2DD';
+const fkeys = [
+{ name: 'idle', cap: '7', word: 'sound', bw: '14px 0 0 0', bc: madder, face: tile, ink: ecru, capBg: none, capInk: lilac },
+{ name: 'pressed', cap: '7', word: 'sound', bw: '14px', bc: g, face: '#FFFFFF', ink: g, capBg: none, capInk: g },
+{ name: 'held or armed', cap: '7', word: 'sound', bw: '14px 0 0 0', bc: madder, face: madder, ink: g, capBg: none, capInk: g },
+{ name: 'locked', cap: '7', word: 'sound', bw: '14px 0 0 0', bc: madder, face: madder, ink: g, capBg: g, capInk: madder },
+{ name: 'idle', cap: 'o', word: 'play', bw: '14px 0 0 0', bc: ecru, face: tile, ink: ecru, capBg: none, capInk: lilac },
+{ name: 'running', cap: 'o', word: 'play', bw: '14px 0 0 0', bc: ecru, face: ecru, ink: g, capBg: none, capInk: g },
+];
+return { colour, mono, fkeys };
+}
+}
+</script>
+</body>
+</html>
