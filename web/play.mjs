@@ -19,7 +19,8 @@
 //     and when both lift, nothing stays held;
 //   - a reload brings the beat back: the page loads the kept snapshot (result 0) and saves
 //     the same bytes;
-//   - Ctrl+click latches (D60, D61; added 2026-11-23): Ctrl+click sound, click key 16:
+//   - ~~Ctrl+click~~ Shift+click latches (D60, D61; added 2026-11-23; Shift since D113, issue
+//     101: the gestures below are the same with Shift in place of Ctrl): Shift+click sound, click key 16:
 //     sound held and lit as latched, then key 16 chosen and nothing held or lit; Ctrl+click
 //     bpm, two slider moves leave it held, Ctrl+click it again: the tempo is B's 170 bpm,
 //     not a preset; Ctrl+click function, click pattern: cleared; a right-click: nothing;
@@ -41,7 +42,7 @@
 //     touch: its five views are the fixture's; fx-shuffle (format 3, effect 13; added in
 //     Session 28) by its edits: its four views and its trace are the fixture's;
 //   - fx + key 11 by the computer keys: fx down, then the key, heard 11, and up in reverse;
-//   - D78 by a mouse: Ctrl+click fx lights it and sends nothing; a click on key 2 sends fx
+//   - D78 by a mouse (Shift since D113): Shift+click fx lights it and sends nothing; a click on key 2 sends fx
 //     down then the key and is heard as effect 2; its release sends the key up then fx; a bar
 //     with nothing clicked replays the lane (2 heard) and changes nothing; a second click
 //     punches 3; Ctrl+click sound and a key still lets sound go, and fx stays latched;
@@ -60,6 +61,27 @@
 //     saved is byte for byte one the wasm host loaded and got straight-sixteenths' trace from
 //     (a "# straight-sixteenths ... snapshot <hex>" label in the Node report), and is what
 //     the browser kept.
+// Added for issue 101 (D113, D116, D119, D120), written before the page's code changed:
+//   - D113: Ctrl+click on sound is a plain press now: held while the button is down, nothing
+//     latched after; Shift+7 then q latches sound by the computer keys and chooses sound 5.
+//   - D120, the core: in every drawing a grid key shows a core exactly while ENGINE.md §14's
+//     host rule says (track n's `fires` moved within half a step at the view's tempo), in
+//     every row, write on or off; it is fern exactly while `heard` is not 0 and fx sounds
+//     names the sound; and a firing never whitens a face (white is `held` alone). Seen: a
+//     core with write on, one with write off, and a fern core.
+//   - D120, the twill: in every drawing the key `heard` − 1 shows the twill and no other key
+//     does; seen at least once.
+//   - D120, the source marks: in every drawing a key shows a dash exactly while sound is
+//     held or latched and `sampled` names it; the page shows no ring and no disc (it sends no
+//     ROUTE); seen at least once, with sound latched.
+//   - D112 item 3: the fx key's band, the fx block and the lane's ticks are drawn in fern.
+//   - D116, D119 item 3 (⚠ the step of one press is the build's reading, not ruled): space
+//     sends the play key down and up; `,` and `.` send TEMPO one bpm down and up; `<` and `>`
+//     SWING one down and up; `-` and `=` move the volume one down and up (the view says so);
+//     `t` `g` `y` `h` send PARAM 4096 up or down from where the hand is; `m` brings the sounds
+//     sheet into view; esc lets every latch go, fx's too.
+//   - D116 item 3, D119 item 6: `?` opens the keys helper and esc closes it; a click on the
+//     `?` mark in the display's top right corner opens it too.
 // Each line fails once on a planted fault (PLAN.md, Session 12's Handover).
 //
 // SPDX-License-Identifier: MIT
