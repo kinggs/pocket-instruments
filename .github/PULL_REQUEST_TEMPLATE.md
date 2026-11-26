@@ -6,6 +6,13 @@ Closes #
 
 Kind: design / build / bug fix / documents
 
+## Try it
+
+<!-- If this changes the page: its preview, published by .github/workflows/pages.yml a minute
+     or two after each push (none for a pull request from a fork). Put this pull request's
+     number in place of <n>. Otherwise write "Nothing to play". -->
+https://kinggs.github.io/pocket-instruments/pr-<n>/web/rhythm.html
+
 ## How it was checked
 
 <!-- Paste the last three lines of `make test`. It passed if it exited 0. -->
