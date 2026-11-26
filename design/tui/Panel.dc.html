@@ -13,16 +13,7 @@
 body{margin:0}
 </style>
 </helmet>
-<div style="width: 1452px; height: 920px; box-sizing: border-box; padding: 48px; background: #07060C; display: flex; gap: 60px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; font-size: 13px; color: #F2E8D0">
-
-<div style="width: 610px; display: flex; flex-direction: column; gap: 20px">
-<div style="position: relative; width: 610px; height: 643px; background: #14131F">
-<sc-for list="{{ a }}" as="i" hint-placeholder-count="1">
-<div style="position: absolute; left: {{i.l}}px; top: {{i.t}}px; width: {{i.w}}px; height: {{i.h}}px; box-sizing: border-box; background: {{i.bg}}; border: {{i.bd}}; border-radius: {{i.r}}; color: {{i.c}}; line-height: {{i.h}}px; text-align: center; white-space: pre">{{i.txt}}</div>
-</sc-for>
-</div>
-<div style="font-size: 16px; line-height: 24px; font-weight: 500; color: #C9C2DD"><span style="font-weight: 800; color: #F2E8D0">24 HP, the width it is now.</span> One row fits, at our own minimum: 0.5 mm from a plate to the next jack's stitches, 1.9 mm more between groups. The display narrows to 88 mm, so the weave drops to three beats: a change in the core.</div>
-</div>
+<div style="width: 782px; height: 900px; box-sizing: border-box; padding: 48px; background: #07060C; display: flex; gap: 60px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; font-size: 13px; color: #F2E8D0">
 
 <div style="width: 686px; display: flex; flex-direction: column; gap: 20px">
 <div style="position: relative; width: 686px; height: 643px; background: #14131F">
@@ -30,12 +21,12 @@ body{margin:0}
 <div style="position: absolute; left: {{i.l}}px; top: {{i.t}}px; width: {{i.w}}px; height: {{i.h}}px; box-sizing: border-box; background: {{i.bg}}; border: {{i.bd}}; border-radius: {{i.r}}; color: {{i.c}}; line-height: {{i.h}}px; text-align: center; white-space: pre">{{i.txt}}</div>
 </sc-for>
 </div>
-<div style="font-size: 16px; line-height: 24px; font-weight: 500; color: #C9C2DD"><span style="font-weight: 800; color: #F2E8D0">27 HP, three wider.</span> The display is 103 mm, so the weave keeps its 78 cells and the core is untouched; the tempo's column narrows from about 30 mm to 20. The four groups stand 7 mm apart.</div>
+<div style="font-size: 16px; line-height: 24px; font-weight: 500; color: #C9C2DD"><span style="font-weight: 800; color: #F2E8D0">Ruled: 27 HP, three wider.</span> The display is 103 mm, so the weave keeps its 78 cells and the core is untouched; the tempo's column narrows from about 30 mm to 20. The four groups stand 7 mm apart. The ? in the display's corner opens the keys helper.</div>
 </div>
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1452,"height":920}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":782,"height":900}}'>
 class Component extends DCLogic {
 renderVals() {
 const S = 5, none = 'transparent';
@@ -58,6 +49,7 @@ const dw = W - 34, cells = dw > 100 ? 78 : 62;
 box(17, 7.35, dw, 24.3, glass);
 box(19.5, 12, cells, 15, tile); box(19.5 + cells - 26, 12, 2, 15, '#F0B429');
 text(19.5 + cells + (dw - cells - 2.5) / 2, 18, 20, '120 bpm');
+box(17 + dw - 5.5, 8.6, 4.2, 4.2, tile, { txt: '?' });
 for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) box(dx + 11 + 12 * c - 5.85, 44 + 12 * r - 5.85 + dy, 11.7, 11.7, tile);
 [60, 70].forEach((x, n) => { box(dx + x - 0.3, 38 + dy, 0.6, 43, lilac); box(dx + x - 2.5, (n ? 64 : 52) + dy, 5, 3, ecru); });
 [[83.47, '#F0654A'], [97, '#F0B429'], [110.53, '#8FAAF7']].forEach(([x, c]) => { box(dx + x - 6.465, 38 + dy, 12.93, 23.7, tile); box(dx + x - 6.465, 38 + dy, 12.93, 1.67, c); });
@@ -77,7 +69,7 @@ text((first + x) / 2, 101.8, 30, name);
 });
 return items;
 };
-return { a: build(121.92, 1.87), b: build(137.16, 6.95) };
+return { b: build(137.16, 6.95) };
 }
 }
 </script>

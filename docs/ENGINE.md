@@ -933,8 +933,9 @@ function on an engine (§8). It moves nothing: not the generation, not a counter
 
 **⚠ Decided 2026-11-26 and not designed here yet (D112; O32):** every light on a key is to
 mean the same with write on or off, a sounding key is to show a core and not a white face,
-and effect *n* heard is to light key *n*. This section and §17's "The view" still describe
-what is built. They change with O32's answer, in a design of its own; build nothing of D112
+effect *n* heard is to light key *n*, and while sound is held a key's field is to be lit
+when that sound has a step (D119 item 7). This section and §17's "The view" still describe
+what is built. They change with O32's answer, the first part of issue 101; build nothing of D112
 from this section until then.
 
 | Offset | Size | Field |

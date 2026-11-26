@@ -3,7 +3,7 @@
 **Status:** pictures of intent. The owner and a design session drew these in Claude Design
 on 2026-11-26. **None was rendered and checked by the session that drew it:** they are
 drawings of what is meant, not measured pictures. What the owner ruled from them is D112,
-D113 and D114 in `docs/DECISIONS.md`; the rest is proposed (D115, D116, D117). The design
+D113, D114 and D119 in `docs/DECISIONS.md`; the rest is proposed (D115, D116, D117). The design
 text is in `../DESIGN.md`: "A key's lights", "The keys and the helper", "Loom in a
 terminal" and "Layout B". Where a board and that text disagree, the text is the later
 reading.
@@ -20,7 +20,7 @@ Three of the boards are about every host.
 | `Keyboard.dc.html` | The keyboard map for every host, and how holding and the Shift latch work | 1200 by 760 |
 | `Lights.dc.html` | A key's lights from the outside in, on a Rack or page key, with no colour, and in terminal cells; the source marks | 1592 by 860 |
 | `Helper.dc.html` | The keys helper at phone size | 390 by 844 |
-| `Panel.dc.html` | The Rack panel in layout B at 24 HP and at 27 HP, at 5 px a mm | 1452 by 920 |
+| `Panel.dc.html` | The Rack panel in layout B at 27 HP, the width the owner ruled (D119), with the `?` in the display's corner, at 5 px a mm. Refreshed from the canvas after the ruling; the 24 HP drawing it replaced is in this file's history and its numbers are in `../DESIGN.md` | 782 by 900 |
 | `canvas.json` | The canvas's own index: each board's title, size and place | |
 
 ## These do not open as pictures
@@ -41,6 +41,7 @@ position. The colours are Loom's tokens, and `#6FD6A0` is `loom/fern`.
 - `Lights.dc.html` on the canvas carries a stray block of text pasted from another task. It
   is not part of the design and is left out; nothing of the drawing differs.
 - The other seven files are the canvas's bytes.
+- `Panel.dc.html`'s own title still reads "at 24 and 27 HP"; it draws 27 HP only.
 
 ## Known to be out of step
 

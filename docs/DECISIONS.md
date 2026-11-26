@@ -2456,6 +2456,7 @@ else on another (D116).
    GATES, FX SEND, FX RETURN). An output still sits beside the input that answers it, and
    each group still reads left to right as it is patched (D76).
 2. **The owner is open to a wider module.** Whether it stays 24 HP or goes to 27 is O34.
+   (Annotated 2026-11-26: 27 HP, D119 item 1.)
 3. **Port numbers do not change** (D76 item 2, `docs/RACK-RULES.md`): a patch keeps its
    cables; only the picture moves.
 
@@ -2519,6 +2520,9 @@ Why one map: a player who learns it on one host has it on the others (D22, D28).
 ⚠ Not checked: each new key against what Rack and a browser already do with it; `?`, `<`
 and `>` are Shift with another key, on a US layout, while Shift is now the latch (D113).
 
+(Annotated 2026-11-26: items 2 and 3 are decided by D119 items 3 and 6, but for the
+terminal's `:` and Ctrl+Q.)
+
 ### D117 — The terminal host's screen: 80 by 24, and a pocket size of 48 by 10
 **2026-11-26 · proposed (the design session) · extends D111 item 3, which D118 item 3 rules: the terminal host is part of the showpiece · nothing built; a terminal host still needs its design pass (issue 8)**
 
@@ -2556,6 +2560,42 @@ and `>` are Shift with another key, on a US layout, while Shift is now the latch
    (P8, P9) asks of the terminal host is not yet written: the host's design pass (issue #8)
    says it.
 
+### D119 — The owner's seven rulings on the design session: 27 HP, the jack names, the keys, the effects view, effects in a terminal, the `?` mark, a sound in use
+**2026-11-26 · decided (owner, in the design session, each chosen from options put to him; as the design session reported) · answers O31, O33, O34, O35 and O36 · decides D116 items 2 and 3 for the page and Rack · changes `ENGINE.md` §14's sound-held row (item 7), to be designed in issue 101 · nothing built**
+
+1. **The panel is 27 HP** (O34). The weave keeps its 78 cells and the core's weave is
+   untouched. ⚠ Layout B's spacing is still arithmetic: it has not been through
+   `make_panel.py --check`.
+2. **The jacks are named by a group's name over a short word** (O35). SOUNDS: TRIG, OUT,
+   IN. SLIDER A: OUT, IN. SLIDER B: OUT, IN. FX: GATES, SEND, RETURN. Panel lettering only;
+   port numbers in code do not change.
+3. **All the single-key shortcuts, the same on every host** (O36): `t` `g` and `y` `h` for
+   sliders A and B, `space` play, `,` and `.` tempo, `<` and `>` swing, `-` and `=` volume,
+   `m` the sounds sheet, `?` the helper, `esc` drops every latch. ⚠ The ruling as reported
+   does not name the terminal's `:` and Ctrl+Q (D116 item 2): they stay proposed, for the
+   terminal host's issue. ⚠ Still unchecked: each key against what Rack and a browser
+   already do with it, and how far a slider moves for one press.
+4. **Shift-latching fx shows the effects view** (O31). Latched, fx is down only while a
+   grid key is down (D78), so it never wipes. A plain hold still clears, as the hardware
+   (D66 item 2). The engine's rule does not change. ⚠ Touch never latches (D23), so a phone
+   has no safe way in; not asked.
+5. **In a terminal with no key-up, with fx latched, a tap on a grid key starts that
+   effect, a second tap stops it, and a tap on another key switches** (O33). Where the
+   terminal reports key-up, a real hold works as on the other hosts.
+6. **The helper's tap target is a small `?` in the top right corner of the display glass,**
+   on the page and on the Rack panel. The terminal's footer already shows it.
+7. **New: while sound is held, a key's field is lit when that sound has at least one step
+   in the pattern ("in use").** The field still means something is written here. This
+   changes `ENGINE.md` §14's row for sound held, where the field is none (D51).
+
+**How the work is cut.** The owner: "I feel like we're moving into issues that are too
+granular. I want one good design pass (fixing / deciding the designs here, and then into a
+single analysis and implementation of that design issue). And then one issue to implement
+the TUI end-to-end." So issues 87 to 97 are closed into two: issue 101 for the hosts that
+exist, its analysis first (what the view must carry, O32), and issue 8 for the terminal
+host. ⚠ `CONTRIBUTING.md` still asks for a design pull request before a build one; inside
+issue 101 the `ENGINE.md` change and its decision merge before the code.
+
 ## Open
 
 | ID | Question | Needs |
@@ -2590,9 +2630,9 @@ and `>` are Shift with another key, on a US layout, while Shift is now the latch
 | O28 | ~~A sum that overflows gives a not-a-number whose bits no rule fixes: two sounds returned at 3e38 with an effect held make `∞ − ∞` in §18's mix, and Rust and WebAssembly both leave that NaN's sign open. So "the same bits on every host" (§11) does not hold for it. Found by Codex reading D105; older than it. Clamp what is returned (to ±10, say), make the mix's NaN a fixed one, or accept it as outside the contract?~~ | **Answered 2026-11-26: D109** (accepted as outside the contract; §11 says so). Was: The owner. Recommended: accept, and say so in §11: a returned sound of 3e38 is 3e39 V in Rack. D105's sessions keep the arithmetic's order, so they do not move it |
 | O29 | May Pocket Operations' patterns be shipped inside the instrument? A bookseller's listing says CC BY; the author's own page refused the fetch, so its licence line is unread (2026-11-26) | The owner reads the licence on the page, or the author answers the note drafted in Session 43. Recommended: ship nothing until one of them says yes; credit and link either way |
 | O30 | ~~Which instrument is second? The owner leans to the one on the table, a PO-133. That is the PO-33 K.O! in its Street Fighter edition, a sampler (`libpo` treats the two as one); the EP-133 K.O. II is a different, larger machine~~ | **Answered 2026-11-26: D111** (a sampler, named Sampler). Was: The owner, when patterns are done. Recommended: not yet; it changes no file's place (D110 item 4) |
-| O31 | Looking at the effects wipes them. Holding fx alone while playing empties each step that passes (D66 item 2), so a player who holds fx to see the effects on the keys (D112 item 2) clears the lane as they look. Say that the Shift latch is the safe way in (D78: latched, fx is down only while a grid key is), or give the view another way in? | The owner. Recommended: the latch, said in the helper and the footer, until playing it says otherwise. Issue 90 |
-| O32 | What must the view carry for D112's lights: the core with write on, the fern core, the twill and the source marks? The design session logged it as new view bits, an ABI change with fixtures. ⚠ The logging session's reading of `ENGINE.md` §14: `fires` (bytes 32 to 47), `heard` (55), fx sounds (58) and `sampled` (18) are already there, and a firing is hidden with write on only by the host rule that reads flag 4; what the view lacks is which sounds come back by a cable and which effects are Rack's, and both are the Rack module's own knowledge. So it may be a change to §14's host rule and no new byte. D51 says the core decides what is lit | A design pass on §14 and §17, with the views worked by hand first. Issue 92 |
-| O33 | Effects in a terminal that reports no key-up. An effect is heard only while its key is down (D66 item 3), and a plain terminal cannot say when a key comes up (D117 item 4). Suggested by the design session, not drawn and not ruled: with fx latched, a tap starts the effect and a second tap stops it | The owner, with the terminal host's design pass. Issue 91 |
-| O34 | Layout B (D114): 24 HP or 27 HP? By arithmetic from `design/make_panel.py`'s own clearances one row of ten fits at 24 HP, but the display narrows to about 88 mm and the weave cannot keep its 78 cells without a change in the core (§16). At 27 HP the display is about 103 mm, the weave keeps 78 cells and the groups stand about 7 mm apart. The tempo's column narrows to about 20 mm either way. ⚠ Nothing was run through `make_panel.py --check` | The owner. Recommended by the design session: 27 HP. `design/DESIGN.md`, "Layout B". Issue 87 |
-| O35 | Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way | The owner. Issue 88 |
-| O36 | The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed? | The owner, one by one. ⚠ First check each against what Rack and a browser already do with it. Issue 89 |
+| O31 | ~~Looking at the effects wipes them. Holding fx alone while playing empties each step that passes (D66 item 2), so a player who holds fx to see the effects on the keys (D112 item 2) clears the lane as they look. Say that the Shift latch is the safe way in (D78: latched, fx is down only while a grid key is), or give the view another way in?~~ | **Answered 2026-11-26: D119 item 4.** Was: The owner. Recommended: the latch, said in the helper and the footer, until playing it says otherwise |
+| O32 | What must the view carry for D112's lights: the core with write on, the fern core, the twill and the source marks? The design session logged it as new view bits, an ABI change with fixtures. ⚠ The logging session's reading of `ENGINE.md` §14: `fires` (bytes 32 to 47), `heard` (55), fx sounds (58) and `sampled` (18) are already there, and a firing is hidden with write on only by the host rule that reads flag 4; what the view lacks is which sounds come back by a cable and which effects are Rack's, and both are the Rack module's own knowledge. So it may be a change to §14's host rule and no new byte. D51 says the core decides what is lit | A design pass on §14 and §17, with the views worked by hand first. Issue 101, as its first part (D119). D119 item 7 adds the field while sound is held |
+| O33 | ~~Effects in a terminal that reports no key-up. An effect is heard only while its key is down (D66 item 3), and a plain terminal cannot say when a key comes up (D117 item 4). Suggested by the design session, not drawn and not ruled: with fx latched, a tap starts the effect and a second tap stops it~~ | **Answered 2026-11-26: D119 item 5.** Was: The owner, with the terminal host's design pass |
+| O34 | ~~Layout B (D114): 24 HP or 27 HP? By arithmetic from `design/make_panel.py`'s own clearances one row of ten fits at 24 HP, but the display narrows to about 88 mm and the weave cannot keep its 78 cells without a change in the core (§16). At 27 HP the display is about 103 mm, the weave keeps 78 cells and the groups stand about 7 mm apart. The tempo's column narrows to about 20 mm either way. ⚠ Nothing was run through `make_panel.py --check`~~ | **Answered 2026-11-26: D119 item 1.** Was: The owner. Recommended by the design session: 27 HP. `design/DESIGN.md`, "Layout B" |
+| O35 | ~~Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way~~ | **Answered 2026-11-26: D119 item 2.** Was: The owner |
+| O36 | ~~The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed?~~ | **Answered 2026-11-26: D119 item 3.** Was: The owner, one by one. ⚠ First check each against what Rack and a browser already do with it |

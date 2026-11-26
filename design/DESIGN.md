@@ -12,6 +12,11 @@ keys and the helper", "Loom in a terminal" and "Layout B" say what was drawn. Ol
 they overrule are struck through, not removed. The page and the Rack module still draw the
 older look.
 
+**Ruled the same day (D119):** 27 HP, the jack names, every single-key shortcut, the
+effects view by the Shift latch, effects by taps in a terminal with no key-up, a `?` in
+the display's corner for the helper, and a lit field for a sound in use while sound is
+held. Still not built: issue 101 for the page and Rack, issue 8 for the terminal.
+
 The idea in one line: a pattern is a cloth. The grid is a tight woven swatch, the dividers are
 stitches, the sliders are shuttles on a thread, and the display weaves as the pattern plays.
 
@@ -29,7 +34,7 @@ The owner's brief for it: dark, high contrast, easy to read with weak eyes.
 | `loom/frames.html` | Three frames of the display |
 | `loom/tokens.html` | The colours and type, as swatches |
 | `directions/` | The three directions the owner chose between. A and C were not taken |
-| `tui/` | The design session of 2026-11-26, eight Claude Design boards kept as their source: the terminal host (`Main`, `Sound`, `Pocket`, `States`), the keys (`Keyboard`, `Helper`), a key's lights on every host (`Lights`) and Rack's layout B (`Panel`). **Pictures of intent:** none was rendered and checked by the session that drew it, and none opens from this folder as the `loom/` pictures do (`tui/README.md` says what each is and why) |
+| `tui/` | The design session of 2026-11-26, eight Claude Design boards kept as their source: the terminal host (`Main`, `Sound`, `Pocket`, `States`), the keys (`Keyboard`, `Helper`), a key's lights on every host (`Lights`) and Rack's layout B at 27 HP (`Panel`). **Pictures of intent:** none was rendered and checked by the session that drew it, and none opens from this folder as the `loom/` pictures do (`tui/README.md` says what each is and why) |
 | `panel.svg` | The static Rack panel, flat, in mm. Made by `make_panel.py` |
 | `make_panel.py` | Draws `panel.svg`, prints the widget positions, and (`--check`) holds every jack's label, plate and stitches clear of its neighbour's |
 | `rack-face-unlit-100.png` | The Rhythm module as Rack draws it, from Rack's own screenshot mode at 100% zoom (360 px wide: what a player sees without zooming). Nothing lit: no module runs in that mode. Taken in Session 18, with the two jack rows; again in Session 24, with FX SEND's and FX RETURN's stitches |
@@ -149,7 +154,8 @@ cells. ⚠ Every size below is read off that board, which nobody has seen render
 - When the bar shows is not redrawn: as built, only while sound or pattern is held or
   latched (the next section). The ruling's words would let it show always.
 - The page has no cable and no Rack effect, so only the dash can show there.
-- What the view carries for the core, the twill and the marks: O32.
+- What the view carries for the core, the twill and the marks: O32, the first part of
+  issue 101.
 
 ## Key states
 
@@ -226,7 +232,8 @@ it.
 
 While a function key is held the grid changes meaning, in either mode (D51; the core
 decides it, `ENGINE.md` §14): **sound held**, the grid is sounds and the bar marks the chosen
-one, fields off; **bpm held**, the fields of keys 1 to *n* are lit, *n* being the master
+one, ~~fields off~~ (D119 item 7, not built: a key's field is lit when that sound has at least
+one step in the pattern, "in use"); **bpm held**, the fields of keys 1 to *n* are lit, *n* being the master
 volume; **pattern held**, the bar is on key 1. The frame runs throughout.
 
 This follows what a search found about the hardware (`WORKFLOW.md`, question 3: R26, R27),
@@ -427,10 +434,11 @@ lower row, y 116.3 (triggers and sound):
   draft of that had a stitched box round the outputs with a plate under AUDIO only; it left
   two outputs on the dark body, against R33, so it went.
 
-### Layout B: one row of jacks (D114, 2026-11-26; decided, not drawn by `make_panel.py`, not built)
+### Layout B: one row of jacks, at 27 HP (D114, D119; 2026-11-26; decided, not drawn by `make_panel.py`, not built)
 
-The owner ruled the layout; the width is not ruled (O34) and the labels are not (O35).
-`tui/Panel.dc.html` draws it at both widths. ⚠ Every number here is the design session's
+The owner ruled the layout (D114), then the width, 27 HP, and the labels (D119 items 1 and
+2). ~~The width is not ruled (O34) and the labels are not (O35).~~ `tui/Panel.dc.html` now
+draws 27 HP only, with the `?`; the 24 HP column below is kept as what was not chosen. ⚠ Every number here is the design session's
 arithmetic from `make_panel.py`'s own clearances. **None of it has been through
 `make_panel.py --check`,** and the board was not seen rendered.
 
@@ -457,7 +465,7 @@ RESET  |                                   |
   clear that is 11.3 mm from an output to an input and 11.2 mm between two outputs (two
   outputs may share a plate).
 
-| | 24 HP (121.92 mm, as now) | 27 HP (137.16 mm) |
+| | 24 HP (121.92 mm, as now): not chosen | 27 HP (137.16 mm): ruled |
 |---|---|---|
 | Extra between groups | 1.87 mm | 6.95 mm |
 | From the first and last jack's edge to the panel's | 2.0 mm | 2.0 mm |
@@ -466,13 +474,21 @@ RESET  |                                   |
 | The weave | Cannot keep its 78 cells. The board draws 62 and says three beats: a change in the core (`ENGINE.md` §16) | Keeps 78 cells; the core is untouched |
 | The tempo's column | about 20 mm (about 30 now) | about 20 mm |
 
-The design session recommends 27 HP. Not chosen: the ten jacks in a column down the right
+~~The design session recommends 27 HP.~~ Ruled: 27 HP (D119 item 1). Not chosen: 24 HP,
+which costs the weave its 78 cells; and the ten jacks in a column down the right
 (about 29 HP, and cables hang over the labels below: R36).
 
-**The labels, not ruled (O35).** The board puts a group's name over a short word: SOUNDS
+**The labels, ruled (D119 item 2).** A group's name over a short word: SOUNDS
 over TRIG, OUT, IN; SLIDER A over OUT, IN; SLIDER B over OUT, IN; FX over GATES, SEND,
-RETURN. That renames TRIGGERS, VOICES and RETURN on the panel. Port numbers in code do not
-change either way (`docs/RACK-RULES.md`).
+RETURN. That renames TRIGGERS, VOICES and RETURN on the panel. It is panel lettering only:
+port numbers in code do not change (`docs/RACK-RULES.md`). ⚠ Not ruled: whether the names
+in code, the tooltips and the menu follow the panel.
+
+**The `?` mark (D119 item 6).** A small `?` in the top right corner of the display glass
+opens the keys helper, on the page and on the Rack panel. On the board ⚠: 4.2 mm square,
+tile with an ecru `?`, 1.3 mm in from the glass's right edge and 1.25 mm down from its top.
+⚠ Not checked: whether 4.2 mm is enough to click at 100% zoom, and its size on the phone,
+where nothing else is under 16 px.
 
 ⚠ Not drawn on the board, for the redraw to settle: where the wordmark goes (it has no
 place in a full bottom row; the band between the keys and the group names is free); whether
@@ -527,7 +543,7 @@ the function keys side by side.
   function keys sit on the right: the top three 81 px wide, the bottom four 60 px, all
   151 px tall.
 
-## The keys and the helper (D113 decided; D116 proposed; 2026-11-26; not built)
+## The keys and the helper (D113 and D119 decided; D116's terminal keys proposed; 2026-11-26; not built)
 
 One map on every host: the page, Rack and a terminal. `tui/Keyboard.dc.html` draws it on a
 keyboard and `tui/Helper.dc.html` draws the helper at phone size.
@@ -538,31 +554,39 @@ keyboard and `tui/Helper.dc.html` draws the helper at phone size.
 | `7` `8` `9` | sound, pattern, bpm | built |
 | `u` `i` `o` `p` | function, fx, play, write | built |
 | Shift + a function key, or Shift + click | latch it (D113) | decided, not built; Ctrl+click until then |
-| `t` `g` | slider A up, down | proposed ⚠ |
-| `y` `h` | slider B up, down | proposed ⚠ |
-| `space` | play, stop | proposed ⚠ |
-| `,` `.` | tempo down, up | proposed ⚠ |
-| `<` `>` | swing less, more | proposed ⚠ |
-| `-` `=` | volume down, up | proposed ⚠ |
-| `m` | the sounds sheet | proposed ⚠ |
-| `?` | the keys helper | proposed ⚠ |
-| `esc` | lets every latch go | proposed ⚠ |
+| `t` `g` | slider A up, down | decided (D119 item 3), not built |
+| `y` `h` | slider B up, down | decided (D119 item 3), not built |
+| `space` | play, stop | decided (D119 item 3), not built |
+| `,` `.` | tempo down, up | decided (D119 item 3), not built |
+| `<` `>` | swing less, more | decided (D119 item 3), not built |
+| `-` `=` | volume down, up | decided (D119 item 3), not built |
+| `m` | the sounds sheet | decided (D119 item 3), not built |
+| `?` | the keys helper | decided (D119 item 3), not built |
+| `esc` | lets every latch go | decided (D119 item 3), not built |
 | `:` | in a terminal: a command line (save, open, export, quit) | proposed ⚠ |
 | Ctrl+Q | in a terminal: quit | proposed ⚠ |
 
 The keyboard reads left to right as the panel does: the grid, the sliders, the function
-keys. The proposed keys are not ruled one by one (O36).
+keys. ~~The proposed keys are not ruled one by one (O36).~~ The owner ruled all of them but
+the terminal's two, which the ruling as reported does not name (D119 item 3).
 
 **The helper** is one sheet with three parts: the map; "two keys at once" (hold the first
 and press the second, or Shift to latch; fx stays latched until Shift-pressed again, the
 others let go after the next key; `esc` lets everything go); and the one-key shortcuts. It
-opens by `?` or by a tap. ⚠ Where the tap's target sits on the page and on the Rack panel
-is not designed; suggested, a `?` in the display's corner. Drawn at 390 by 844 with nothing
+opens by `?` or by a tap. ~~⚠ Where the tap's target sits on the page and on the Rack panel
+is not designed; suggested, a `?` in the display's corner.~~ The tap's target is a small `?`
+in the top right corner of the display glass, on the page and on the Rack panel (D119 item
+6; "Layout B" has its size on the board). The terminal's footer already shows `?`.
+
+**Looking at the effects (D119 item 4).** Shift-latch fx: latched, fx is down only while a
+grid key is down, so the lane is never wiped. A plain hold of fx still clears each step
+that passes, as the hardware. The helper says so. ⚠ Touch never latches (D23), so a phone
+has no safe way in. Drawn at 390 by 844 with nothing
 under 16 px.
 
 ⚠ Not checked, for the build:
 
-- Each proposed key against what Rack and a browser already do with it.
+- Each new key against what Rack and a browser already do with it.
 - `?`, `<` and `>` are Shift with `/`, `,` and `.` on a US layout, while Shift is the
   latch. They are not function keys, so nothing collides on that layout; other layouts were
   not looked at. The page reads physical keys (`CODES`), so it does not care.
@@ -615,7 +639,9 @@ at one row a key with one light a key (the field, the frame as the two side cell
 stitch), the sliders one cell wide, the seven function keys as a list, a footer.
 
 **Holds (D117 item 4).** The kitty keyboard protocol reports key-up; a plain terminal does
-not, so there a plain tap latches. How an effect is played without key-up is O33.
+not, so there a plain tap latches. With no key-up and fx latched, a tap on a grid key
+starts that effect, a second tap stops it, and a tap on another key switches; where the
+terminal reports key-up, a real hold works as on the other hosts (D119 item 5).
 
 ⚠ What the boards do not yet agree on, or leave out:
 
@@ -710,9 +736,8 @@ not, so there a plain tap latches. How an effect is played without key-up is O33
   normal zoom.
 - ⚠ **The design session of 2026-11-26 (D112 to D117) is drawn and not built.** Its boards
   (`tui/`) were not rendered and checked by the session that drew them, and are kept as
-  Claude Design source, not as pictures that open (issue 98). To build: the view for
-  the new lights (O32, issue 92), then the lights on the page (issue 93) and in
-  Rack (issue 94); the Shift latch and the shared keys (issue 96); the helper
-  (issue 97); layout B (issue 95, after O34 and O35). For the owner: O31,
-  O33, O34, O35, O36.
+  Claude Design source, not as pictures that open (issue 98). To build, in two issues
+  (D119): issue 101 for the page and Rack (first its analysis of what the view carries,
+  O32; then the lights, the Shift latch and the keys, the helper with its `?`, and layout B
+  at 27 HP through `make_panel.py --check`), and issue 8 for the terminal host.
 - O3 (the name) and O7 (a lawyer's view of the mock-up) are as open as they were.
