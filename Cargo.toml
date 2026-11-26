@@ -1,4 +1,4 @@
-# One crate for now (README rule 5). The workspace exists so target/ and the profiles sit
+# One crate for now (CONTRIBUTING.md: nothing generic until a second instrument needs it). The workspace exists so target/ and the profiles sit
 # at the top of the folder, beside rust-toolchain.toml.
 [workspace]
 members = ["core"]

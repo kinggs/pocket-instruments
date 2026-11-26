@@ -1,5 +1,5 @@
 # The Rack plugin. `make install` builds the Rust core, then the C++, then puts the plugin in
-# Rack's user folder: P3's one step. The Rack SDK lives outside the repo (PLAN.md, Machine state).
+# Rack's user folder: P3's one step. The Rack SDK lives outside the repo (docs/history/PLAN.md, Machine state).
 RACK_DIR ?= $(HOME)/.local/opt/Rack-SDK-2.6.6
 
 # The maths flags, shared with rack/test/jacks.cpp (math.mk says why). compile.mk appends
@@ -77,7 +77,7 @@ build/rhythm-fixtures.inc: rhythm.jq $(wildcard ../fixtures/*.json)
 	mv $@.tmp $@
 build/src/Rhythm.cpp.o: build/rhythm-fixtures.inc
 
-# The build stamp: the commit, and when pocket-instruments/ holds changes not committed,
+# The build stamp: the commit, and when the repository holds changes not committed,
 # "-dirty" and the minute it was built. Rack's log says it at load and each module's menu
 # shows it, so a restarted Rack can be checked against `git log`. stamp.inc is replaced only
 # when the stamp changes, so a clean tree does not rebuild; outside git it says "unknown".

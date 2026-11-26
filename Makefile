@@ -1,5 +1,5 @@
 # Pocket Instruments. `make build` is P1's one command; `make test` is P2.
-# The repo's `make verify` runs `make test` here when cargo is on the PATH.
+# CI runs `make test` on every pull request and every push to main (.github/workflows/test.yml).
 
 NATIVE := target/release/libpi_core.a
 WASM   := target/wasm32-unknown-unknown/release/pi_core.wasm

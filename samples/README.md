@@ -5,7 +5,7 @@ Sonic Pi's bundled samples (R31), which are public domain under CC0. The files a
 byte as Sonic Pi ships them (commit on its `dev` branch, fetched 2026-11-19), names unchanged.
 
 **To hear them:** open `index.html` in this folder. On the live site:
-`https://<owner>.github.io/sidequests/pocket-instruments/samples/`
+`https://kinggs.github.io/pocket-instruments/samples/`
 
 Chosen without ears: by measuring length, pitch and brightness against each role, preferring
 short electronic sounds. The owner's ear overrides any row; a swap is a new file, a new row
@@ -49,4 +49,4 @@ were not opened one by one. No credit is required; the authors are listed becaus
 ## Not from here
 
 Nothing in this folder comes from Teenage Engineering's hardware or from a recording of it
-(README rule 6).
+(`CONTRIBUTING.md`: no Teenage Engineering material).

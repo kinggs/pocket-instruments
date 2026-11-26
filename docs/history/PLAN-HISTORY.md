@@ -1,3 +1,7 @@
+> **Frozen, 2026-11-26.** This file stopped changing when the project moved to its own
+> repository. Paths in it are as they were then: the documents now live in `docs/`. The live
+> backlog is the repository's issues. Nothing below this note has been changed.
+
 # Pocket Instruments — the sessions that are done
 
 The record behind `PLAN.md`: every finished session's list as it was ticked, and every

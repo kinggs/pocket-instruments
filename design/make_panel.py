@@ -4,9 +4,9 @@
 # ///
 """Draw the static Rack panel for the Loom design as a flat SVG, in millimetres.
 
-    uv run pocket-instruments/design/make_panel.py              writes panel.svg beside this file
-    uv run pocket-instruments/design/make_panel.py --positions  prints the widget positions
-    uv run pocket-instruments/design/make_panel.py --check      no label, plate or stitch touches its neighbour
+    uv run design/make_panel.py              writes panel.svg beside this file
+    uv run design/make_panel.py --positions  prints the widget positions
+    uv run design/make_panel.py --check      no label, plate or stitch touches its neighbour
 
 The panel holds only what never changes: the body, the display's frame, the stitched
 dividers, the slider threads, a pale plate under each output, the stitches round the

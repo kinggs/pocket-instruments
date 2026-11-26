@@ -60,7 +60,7 @@ const server = createServer((req, res) => {
 });
 await new Promise((r) => server.listen(serveOnly ? Number(process.argv[3] || 8417) : 0, "127.0.0.1", r));
 if (serveOnly) {
-  console.log(`Serving pocket-instruments/ until Ctrl+C. Listen at http://127.0.0.1:${server.address().port}/web/listen.html`);
+  console.log(`Serving the repository until Ctrl+C. Listen at http://127.0.0.1:${server.address().port}/web/listen.html`);
   await new Promise(() => {});
 }
 const url = `http://127.0.0.1:${server.address().port}/web/listen.html?auto`;

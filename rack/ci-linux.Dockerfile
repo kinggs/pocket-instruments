@@ -1,6 +1,6 @@
 # CI's Linux image: Ubuntu 16.04 with what ci-linux-setup.sh installs, so the Linux job
 # pulls it instead of running apt on every push (PLAN.md Session 15, D65 item 4).
-# The workflow builds it, with pocket-instruments/ as the context, whenever this file,
+# The workflow builds it, with the repository root as the context, whenever this file,
 # ci-linux-setup.sh or rust-toolchain.toml changes: the image's tag is a hash of the three.
 #
 # Ubuntu 16.04 is pinned by digest (read from Docker Hub on 2026-11-23): Rack allows glibc

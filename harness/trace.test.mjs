@@ -2,8 +2,8 @@
 // rates and three block sizes. fixtures/README.md says how a harness runs one; the Rust
 // tests (core/src/tests/fixtures.rs) and harness.cpp do the same and write the same report.
 //
-// Skips when the .wasm has not been built, so the repo's `node --test` passes on a machine
-// with no Rust. `make test` in pocket-instruments sets PI_REQUIRE_WASM so a skip is a failure.
+// Skips when the .wasm has not been built, so `node --test harness/` passes on a machine
+// with no Rust. `make test` sets PI_REQUIRE_WASM so a skip is a failure.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -13,7 +13,7 @@ const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const WASM = here("../target/wasm32-unknown-unknown/release/pi_core.wasm");
 const FIXTURES = here("../fixtures/");
 const built = existsSync(WASM);
-const skip = built || process.env.PI_REQUIRE_WASM ? false : "pi_core.wasm is not built (make -C pocket-instruments build)";
+const skip = built || process.env.PI_REQUIRE_WASM ? false : "pi_core.wasm is not built (make build)";
 
 const RATES = [44100, 48000, 96000];
 const BLOCKS = [1, 128, 512];

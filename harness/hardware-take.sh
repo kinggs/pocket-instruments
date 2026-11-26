@@ -11,7 +11,7 @@
 set -euo pipefail
 
 dir="${PI_TAKES:-$HOME/Music/pocket-instruments-hardware}"
-case "$dir/" in "$(cd "$(dirname "$0")/../.." && pwd)"/*) echo "PI_TAKES is inside the repo: refused" >&2; exit 1 ;; esac
+case "$dir/" in "$(cd "$(dirname "$0")/.." && pwd)"/*) echo "PI_TAKES is inside the repo: refused" >&2; exit 1 ;; esac
 mkdir -p "$dir"
 
 # The Scarlett's source, by name, so the webcam's microphone is never the one recorded.
