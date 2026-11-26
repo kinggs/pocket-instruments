@@ -962,11 +962,11 @@ first row that applies:
 
 | When | field | stitch | bar | grid is sounds |
 |---|---|---|---|---|
-| bpm held | keys 1 to `volume` | none | none | no |
+| bpm held | keys 1 to `volume` | none | ~~none~~ the chosen sound (D121) | no |
 | sound held | ~~none~~ the sounds in use (D120; D119 item 7) | none | the chosen sound | yes |
 | pattern held | none | none | key 1 (the one pattern) | no |
-| write on | the chosen sound's steps | steps of any other sound | none | no |
-| write off | the chosen sound's steps (D82; was none) | ~~none~~ steps of any other sound (D120; D112 item 1) | none | yes |
+| write on | the chosen sound's steps | steps of any other sound | ~~none~~ the chosen sound (D121) | no |
+| write off | the chosen sound's steps (D82; was none) | ~~none~~ steps of any other sound (D120; D112 item 1) | ~~none~~ the chosen sound (D121) | yes |
 
 **The write-off row, changed 2026-11-23 (D71, D72 item 3, D82; built in Session 20).** It
 was `none | none | none | yes`: D37 guessed from a search that the hardware's fields are dark
@@ -1108,6 +1108,11 @@ table change what they put in field and stitch (above, marked D120).
 | pattern held | none | none | key 1 | no |
 | write on | the chosen sound's steps | steps of any other sound | none | no |
 | write off | the chosen sound's steps | **steps of any other sound** | none | yes |
+
+**Changed 2026-11-26 (D121; not built): the bar is the chosen sound in the bpm, write on and
+write off rows too,** so it shows in every row but pattern held, where it stays on key 1. The
+table above is D120's; the bar column now reads: bpm held, the chosen sound; sound held, the
+chosen sound; pattern held, key 1; write on, the chosen sound; write off, the chosen sound.
 
 "In use" counts every step, whatever the length (D120 item 5). Flag 4 keeps its meaning
 (a grid key fires its own sound) and no longer gates a light.

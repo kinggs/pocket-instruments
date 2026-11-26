@@ -486,6 +486,34 @@ D120 leaves alone: `keys-bpm-family` and `keeps-what-it-was-written-with` do not
 When the build moves these six files over the ones beside this file, `designed/` is empty
 again.
 
+## The views worked again for D121 (2026-11-26; issue 101; in `designed/` until the build)
+
+A view changed by the owner's decision (D121): the bar is the chosen sound's key in the bpm,
+write on and write off rows, as it already was with sound held; pattern held keeps key 1.
+Worked by the same model as D120's (above), extended by the bar column, from the documents and
+not the core. It first reproduced every committed line's bar where the row does not change
+(sound held, pattern held), then gave the rest; each was read against the fixture by eye.
+Only `bar=` moves, on 43 lines in 8 fixtures; nothing else on any line, no `expect`, no trace.
+
+| Fixture | View `at` | Row | Was | Now | Why |
+|---|---|---|---|---|---|
+| `fx-repeat-holds` | 1, 5, 23 | write off | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `fx-repeat-punch` | 4, 7, 14, 23 | write off | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `fx-repeat-swing` | 2, 15 | write off | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `fx-shuffle` | 2, 4, 18, 23 | write off | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `keeps-what-it-was-written-with` | 0, 1, 2, 4, 8 | write on | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `keys-bpm-family` | 0, 1, 2, 3, 8, 9, 11 | write on | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `keys-bpm-family` | 4, 5, 6, 7 | bpm | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `keys-tap-and-choose` | 1, 4, 12, 15 | write off | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `keys-tap-and-choose` | 7, 10 | write off | `bar=0000` | `bar=0008` | sound 4 chosen |
+| `keys-write-a-beat` | 0, 1 | write on | `bar=0000` | `bar=0001` | sound 1 chosen |
+| `keys-write-a-beat` | 6 | write on | `bar=0000` | `bar=0004` | sound 3 chosen |
+| `keys-write-a-beat` | 8 | write on | `bar=0000` | `bar=0002` | sound 2 chosen |
+| `keys-write-a-beat` | 11, 15, 27, 31 | write off | `bar=0000` | `bar=0002` | sound 2 chosen |
+
+When the build moves these eight files over the ones beside this file, `designed/` is empty
+again.
+
 ## Format 4 (2026-11-23: the sliders, D75; built in Session 21)
 
 Format 3, and:
