@@ -1182,6 +1182,13 @@ expectation in two older tests changed with a note; two faults planted (the chos
 its own stitch; "in use" read within the length), each built and caught by a named test.
 `pi_process` is not touched: `pi_view` gained one pass over sixteen words in two rows.
 
+**Drawn (issue 101, 2026-11-26).** The page (`web/rhythm.html`) and the Rack module
+(`rack/src/Rhythm.cpp`, through `pi::keyLights` in `rack/src/jacks.hpp`) draw every light by
+the host table above. Nothing in this section changed. `make play` reads each light back off
+the page in every drawing; `rack/test/jacks.cpp` holds the module's choice for each case of
+the table and of the source marks; the Rack self-test passes at three rates. ⚠ Under
+effect 13 a key's fern follows its own sound (D120 item 5), as both hosts draw it.
+
 ## 15. Snapshot version 2 (ABI 5; designed in Session 9; D55; built in Session 11)
 
 388 bytes. Bytes 0 to 311 are version 1's (§8) with version 2 and payload size 372. Then:

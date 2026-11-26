@@ -20,6 +20,11 @@ endif
 PI_LIB := ../target/$(RUST_TARGET)/release/libpi_core.a
 
 FLAGS += -I../core/include -Ibuild
+# A scratch build for Rack's screenshot mode fills the face by hand (Rhythm.cpp, PI_FACE_SHOT):
+# `make PI_FACE_SHOT=1 install RACK_USER_DIR=<scratch>`. Never shipped.
+ifdef PI_FACE_SHOT
+FLAGS += -DPI_FACE_SHOT=$(PI_FACE_SHOT)
+endif
 SOURCES += $(wildcard src/*.cpp)
 # After our objects, so the linker takes from the archive only what they ask for.
 OBJECTS += $(PI_LIB)

@@ -30,10 +30,13 @@
 // hands it the inputs and scales what comes out (jacks.hpp), and asks for the loop's
 // eighteen or fifty channels only while a jack that needs them is in use.
 //
-// A mouse holds a key while the button is down; Ctrl+click (Cmd on a Mac) latches sound,
-// pattern, bpm or function until the next press of any key ends, or a second Ctrl+click
-// (D60, D61). Ctrl+click on fx latches it until it is Ctrl+clicked again, and while latched
-// fx is down only while a grid key is (D78). Right-click keeps Rack's own parameter menu (R47). The computer keys of D57 item 5
+// A mouse holds a key while the button is down; Shift+click or Shift+key (Ctrl+click until
+// D113) latches sound, pattern, bpm or function until the next press of any key ends, or a
+// second Shift (D60, D61, D113). Shift on fx latches it until it is Shifted again, and while
+// latched fx is down only while a grid key is (D78). esc lets every latch go. The one-key
+// shortcuts (D119 item 3) and the keys helper, opened by ? or the ? in the display's corner
+// (D116, D119 item 6), play while the pointer is over the module. A key's lights are D120's
+// (ENGINE.md §14 and §17, designed 2026-11-26; pi::keyLights). Right-click keeps Rack's own parameter menu (R47). The computer keys of D57 item 5
 // play while the pointer is over the module. A double-click on a slider puts it back where it
 // started, from the view (D63). The sliders are the hand's (ENGINE.md §20, D75): a cap moves
 // by itself only while bpm is held or after a load, and a thin second mark on each slider
@@ -158,7 +161,7 @@ struct Rhythm : Module {
     enum InputId { CLOCK_INPUT, RESET_INPUT, RETURN_INPUT, FX_RETURN_INPUT, A_INPUT, B_INPUT, INPUTS_LEN };
     enum OutputId { TRIGGERS_OUTPUT, VOICES_OUTPUT, AUDIO_OUTPUT, FX_GATES_OUTPUT, FX_SEND_OUTPUT, A_OUTPUT, B_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
-    enum Holder : uint8_t { MOUSE = 1, KEYBOARD = 2, LATCH = 4 };
+    enum Holder : uint8_t { MOUSE = 1, KEYBOARD = 2, LATCH = 4, SPACE = 8 }; // SPACE: play held by the space bar
 
     // ---- Shared between threads: atomics, and the handoff.hpp schemes. ----
     std::atomic<int> fixtureWanted{-1};  // -1: the instrument; otherwise the self-test's fixture
@@ -175,6 +178,9 @@ struct Rhythm : Module {
     // Rack's; of those, the ones in place of the dry). All Ours at first. In the patch.
     std::atomic<uint32_t> fxRack{0}, fxInPlace{0};
     std::atomic<int> loopWanted{LOOP_NONE}; // a loop self-test (selftest.sh), or none
+    // D120: the ROUTE masks last sent (sounds, effects, A, B, inserts), for the source marks the
+    // drawing thread draws. Written only when one changes.
+    std::atomic<uint32_t> routeShown[5];
     std::atomic<bool> sliderHeld[2];     // a pointer is on the slider: its cap does not follow
     std::atomic<bool> freshWanted{false}; // Rack's Initialize: an empty beat
     std::atomic<uint32_t> passed{0}, failed{0}, aborted{0}, viewsHeld{0}, viewsNot{0}, dropped{0}, published{0},
@@ -190,7 +196,7 @@ struct Rhythm : Module {
 
     // ---- Rack's other threads only. ----
     uint8_t holders[23] = {};    // who holds each key down (Holder bits)
-    uint32_t latched = 0;        // keys latched by a Ctrl+click (D61); fx stays until the next one (D78)
+    uint32_t latched = 0;        // keys latched by Shift (D61, D113); fx stays until the next one (D78)
     std::vector<uint8_t> pendingLoad; // the last snapshot a patch gave, until a save holds it
     uint32_t loadsAsked = 0;
 
@@ -257,6 +263,7 @@ struct Rhythm : Module {
             q->smoothEnabled = false;
             sliderHeld[s] = false;
         }
+        for (std::atomic<uint32_t> &r : routeShown) r = 0;
         configInput(CLOCK_INPUT, "Clock");
         configInput(RESET_INPUT, "Reset");
         configInput(RETURN_INPUT, "Return (sixteen channels: each takes its sound's place in the mix)");
@@ -360,7 +367,7 @@ struct Rhythm : Module {
         set(k, who, on);
         if (!on && k < 16 && fxLatched && !gridHeld()) set(PI_KEY_FX, LATCH, false);
         // D60: a press that ends finishes the gesture, and every latched key lets go. But fx:
-        // its latch stays until it is Ctrl+clicked again (D78).
+        // its latch stays until it is Shifted again (D78, D113).
         if (!on && (before & who) && who != LATCH && (latched & ~(1u << PI_KEY_FX)))
             for (int j = 0; j < 23; j++)
                 if ((latched >> j & 1) && j != int(PI_KEY_FX)) unlatch(j);
@@ -368,6 +375,11 @@ struct Rhythm : Module {
     void unlatch(int k) {
         latched &= ~(1u << k);
         set(k, LATCH, false);
+    }
+    // esc (D119 item 3): every latch lets go, fx's too.
+    void letGo() {
+        for (int j = 0; j < 23; j++)
+            if (latched >> j & 1) unlatch(j);
     }
     void toggleLatch(int k) {
         if (latched >> k & 1) unlatch(k);
@@ -400,6 +412,7 @@ struct Rhythm : Module {
         viewNow = true;
         mustPublish = true;
         for (uint32_t &r : routeSent) r = 0; // a new engine routes nothing (§19): say it again
+        for (std::atomic<uint32_t> &r : routeShown) r.store(0, std::memory_order_relaxed);
         jacks.clearSend();                   // and FX SEND's gains are all 0 (ABI 11)
         for (uint32_t t = 0; t < PI_TRACKS; t++) outputs[FX_SEND_OUTPUT].setVoltage(0.f, t);
     }
@@ -874,6 +887,7 @@ struct Rhythm : Module {
             if (route[a] != routeSent[a] && n < PI_EVENTS_MIN + 36) {
                 cmds[n++] = pi_cmd{0, PI_CMD_ROUTE, a, 0, 0, route[a]};
                 routeSent[a] = route[a];
+                routeShown[a].store(route[a], std::memory_order_relaxed);
             }
         float io[PI_AUDIO_LOOP_SLIDERS];
         if (channels != PI_AUDIO_BOTH) {
@@ -1103,8 +1117,11 @@ namespace {
 const NVGcolor GROUND = nvgRGB(0x14, 0x13, 0x1F), TILE = nvgRGB(0x2B, 0x29, 0x42), DISPLAY = nvgRGB(0x0B, 0x0A, 0x12),
                TABLE = nvgRGB(0x07, 0x06, 0x0C), ECRU = nvgRGB(0xF2, 0xE8, 0xD0), WHITE = nvgRGB(0xFF, 0xFF, 0xFF),
                OCHRE = nvgRGB(0xF0, 0xB4, 0x29), MADDER = nvgRGB(0xF0, 0x65, 0x4A), SKY = nvgRGB(0x8F, 0xAA, 0xF7),
-               LILAC = nvgRGB(0xC9, 0xC2, 0xDD), THREAD = nvgRGB(0x6E, 0x6A, 0x92);
-// design/DESIGN.md, "Function key": the band, and latched, the face.
+               LILAC = nvgRGB(0xC9, 0xC2, 0xDD), THREAD = nvgRGB(0x6E, 0x6A, 0x92),
+               FERN = nvgRGB(0x6F, 0xD6, 0xA0); // the effects (D112 item 3; a proposed value)
+// design/DESIGN.md, "Function key": the band, and latched, the face. fx's band is fern
+// (D112 item 3); its latched face stays ecru, as the other four's.
+const NVGcolor FN_BAND[7] = {MADDER, OCHRE, SKY, ECRU, FERN, ECRU, ECRU};
 const NVGcolor FN_COLOUR[7] = {MADDER, OCHRE, SKY, ECRU, ECRU, ECRU, ECRU};
 
 void fillRect(NVGcontext *vg, float x, float y, float w, float h, NVGcolor c) {
@@ -1137,30 +1154,76 @@ bool text(NVGcontext *vg, float x, float y, float sizeMm, NVGcolor c, int align,
 
 } // namespace
 
-// What the drawing thread knows: the latest view, and the whites it is holding (§14).
+// What the drawing thread knows: the latest view, and the cores it is holding (§14, D120).
 struct Face {
     uint8_t v[PI_VIEW_SIZE] = {};
     bool have = false;
     uint8_t lastFires[PI_TRACKS] = {};
-    double whiteUntil[PI_TRACKS] = {};
+    double coreUntil[PI_TRACKS] = {};
 
     void take(Rhythm *m) {
         const View *nv = m ? m->viewOut.take() : nullptr;
         if (!nv) return;
         double now = system::getTime();
-        // A firing holds the white for half a step at the view's tempo, 40 to 120 ms; since ABI
-        // 15 at the tempo the edges play while the view has one (ext, §14; jacks.hpp).
+        // A firing lights the core for half a step at the view's tempo, 40 to 120 ms; since ABI
+        // 15 at the tempo the edges play while the view has one (ext, §14; jacks.hpp). In every
+        // row, write on or off (D120; until then a white face, only while the grid was sounds).
         uint32_t mbpm = std::max<uint32_t>(1, pi::whiteMbpm(nv->b));
         double hold = std::min(0.120, std::max(0.040, 7500.0 / mbpm));
-        bool sounds = nv->b[PI_VIEW_FLAGS] & PI_VIEW_FLAG_SOUNDS;
         for (uint32_t t = 0; t < PI_TRACKS; t++) {
             uint8_t f = nv->b[PI_VIEW_FIRES + t];
-            if (have && f != lastFires[t] && sounds) whiteUntil[t] = now + hold;
+            if (have && f != lastFires[t]) coreUntil[t] = now + hold;
             lastFires[t] = f;
         }
         std::memcpy(v, nv->b, PI_VIEW_SIZE);
         have = true;
     }
+#ifdef PI_FACE_SHOT
+    // For Rack's screenshot mode only (design/DESIGN.md, "What is in this folder"): there the
+    // module is null and nothing is lit, so a scratch build fills the face by hand. Never shipped.
+    // 1: playing on step 5, write off, sound 1's steps lit with the stitch, effect 6 punched
+    // (fx and key 6 down: the twill, fern cores on 1 and 6, a white core on 10, the effect marks:
+    // Rack's beside ours on 4, in its place on 2), the lane on steps 5 to 8.
+    // 2: stopped, sound held: the sounds in use, the bar, a dash on each sample, a ring where
+    // RETURN takes the sound, cores on 1 and 4.
+    pi::Routes shotRoutes{};
+    void shot() {
+        std::memset(v, 0, sizeof v);
+        auto put16 = [&](unsigned at, uint32_t x) { v[at] = uint8_t(x); v[at + 1] = uint8_t(x >> 8); };
+        auto held32 = [&](uint32_t x) { for (int i = 0; i < 4; i++) v[PI_VIEW_HELD + i] = uint8_t(x >> 8 * i); };
+        uint32_t mbpm = 120000;
+        for (int i = 0; i < 4; i++) v[PI_VIEW_TEMPO + i] = uint8_t(mbpm >> 8 * i);
+        v[PI_VIEW_VOLUME] = 16;
+        v[PI_VIEW_LENGTH] = 16;
+        put16(PI_VIEW_A, 32768);
+        put16(PI_VIEW_B, 32768);
+        put16(PI_VIEW_HIT_A, 32768);
+        put16(PI_VIEW_HIT_B, 32768);
+        if (PI_FACE_SHOT == 1) {
+            v[PI_VIEW_FLAGS] = PI_VIEW_FLAG_PLAYING | PI_VIEW_FLAG_STEP | PI_VIEW_FLAG_SOUNDS;
+            v[PI_VIEW_STEP] = 4;
+            put16(PI_VIEW_FIELD, 0x1111);
+            put16(PI_VIEW_STITCH, 0x4454);
+            put16(PI_VIEW_BAR, 0x0001);
+            held32(1u << 5 | 1u << PI_KEY_FX);
+            v[PI_VIEW_HEARD] = 6;
+            put16(PI_VIEW_FX_STEPS, 0x00F0);
+            put16(PI_VIEW_FX_SOUNDS, 0xFFFF & ~(1u << 9));
+            shotRoutes = pi::Routes{0u, 1u << 3 | 1u << 1, 1u << 1};
+            for (int t : {0, 5, 9}) coreUntil[t] = 1e18;
+        } else {
+            v[PI_VIEW_FLAGS] = PI_VIEW_FLAG_SOUNDS;
+            put16(PI_VIEW_FIELD, 1u << 0 | 1u << 1 | 1u << 5 | 1u << 8);
+            put16(PI_VIEW_BAR, 0x0001);
+            put16(PI_VIEW_SAMPLED, 1u << 2 | 1u << 3 | 1u << 8);
+            held32(1u << PI_KEY_SOUND);
+            put16(PI_VIEW_FX_SOUNDS, 0xFFFF);
+            shotRoutes = pi::Routes{1u << 8 | 1u << 11, 0u, 0u};
+            for (int t : {0, 3}) coreUntil[t] = 1e18;
+        }
+        have = true;
+    }
+#endif
     bool held(int k) const { return have && (u32(v, PI_VIEW_HELD) >> k & 1); }
     bool flag(uint32_t f) const { return have && (v[PI_VIEW_FLAGS] & f); }
 };
@@ -1172,8 +1235,10 @@ struct RhythmKey : app::ParamWidget {
     bool latchClick = false;
 
     void onButton(const ButtonEvent &e) override {
-        // D61: Ctrl+click (Cmd on a Mac; Rack reads both as RACK_MOD_CTRL) latches the five.
-        if (rm && e.button == GLFW_MOUSE_BUTTON_LEFT && e.action == GLFW_PRESS && (e.mods & RACK_MOD_MASK) == RACK_MOD_CTRL &&
+        // D61, D113: Shift+click latches the five (Ctrl+click until D113). ⚠ Whether Rack gives
+        // Shift+click on a parameter a meaning of its own was not found (R47 was read for Ctrl);
+        // the click is consumed here either way.
+        if (rm && e.button == GLFW_MOUSE_BUTTON_LEFT && e.action == GLFW_PRESS && (e.mods & RACK_MOD_MASK) == RACK_MOD_SHIFT &&
             (LATCHING >> k & 1)) {
             rm->toggleLatch(k);
             latchClick = true;
@@ -1204,40 +1269,86 @@ struct RhythmKey : app::ParamWidget {
         else drawFunction(vg, w, h, pressed);
     }
 
-    // design/DESIGN.md, "Key states": field, frame, white, stitch and bar.
-    void drawGrid(NVGcontext *vg, float w, float h, bool pressed) {
+    // design/DESIGN.md, "A key's lights" (D112, D115; D120): frame, twill, field, core,
+    // stitch, bar and source mark, from the outside in, each from pi::keyLights. ⚠ Sizes read
+    // off a board nobody saw rendered: frame and twill each an eighth of the key, the core two
+    // fifths with a 0.37 mm dark line.
+    void drawGrid(NVGcontext *vg, float w, float h, bool) {
         const uint8_t *v = face ? face->v : nullptr;
         bool have = face && face->have;
-        bool field = have && (u16(v, PI_VIEW_FIELD) >> k & 1);
-        bool stitch = have && (u16(v, PI_VIEW_STITCH) >> k & 1);
-        bool bar = have && (u16(v, PI_VIEW_BAR) >> k & 1);
-        bool sounds = face && face->flag(PI_VIEW_FLAG_SOUNDS);
-        bool fired = sounds && system::getTime() < face->whiteUntil[k];
-        bool play = face && face->flag(PI_VIEW_FLAG_PLAYING) && face->flag(PI_VIEW_FLAG_STEP) && v[PI_VIEW_STEP] == k;
-        float frame = w / 8.f; // an eighth of the key
-        bool lit = field || fired || pressed;
-        if (pressed) { // white pulled in by the frame
-            fillRect(vg, 0, 0, w, h, GROUND);
-            fillRect(vg, frame, frame, w - 2 * frame, h - 2 * frame, WHITE);
-        } else fillRect(vg, 0, 0, w, h, fired ? WHITE : field ? ECRU : TILE);
-        if (play && !pressed) {
-            band(vg, 0, 0, w, h, frame, OCHRE);
-            if (field && !fired) band(vg, frame, frame, w - 2 * frame, h - 2 * frame, mm2px(0.66f), GROUND);
+        pi::Lights l{};
+        if (have) {
+            pi::Routes r{rm ? rm->routeShown[PI_ROUTE_SOUNDS].load(std::memory_order_relaxed) : 0u,
+                         rm ? rm->routeShown[PI_ROUTE_FX].load(std::memory_order_relaxed) : 0u,
+                         rm ? rm->routeShown[PI_ROUTE_FX_INSERT].load(std::memory_order_relaxed) : 0u};
+#ifdef PI_FACE_SHOT
+            if (!rm) r = face->shotRoutes;
+#endif
+            l = pi::keyLights(v, k, system::getTime() < face->coreUntil[k], rm && (rm->latched >> PI_KEY_FX & 1), r);
         }
-        if (stitch) {
-            float s = mm2px(1.83f), in = mm2px(1.33f);
-            fillRect(vg, w - in - s, in, s, s, lit ? GROUND : ECRU);
+        float f = w / 8.f; // the frame: an eighth of the key; the twill as wide again
+        NVGcolor faceC = l.pressed ? WHITE : l.field ? ECRU : TILE;
+        bool lit = l.field || l.pressed;
+        fillRect(vg, 0, 0, w, h, l.pressed ? GROUND : TILE);
+        if (l.frame && !l.pressed) band(vg, 0, 0, w, h, f, OCHRE);
+        if (l.twill) { // hatched at 45°, fern and ground, so it reads the same lit or dark
+            nvgSave(vg);
+            nvgScissor(vg, f, f, w - 2 * f, h - 2 * f);
+            fillRect(vg, f, f, w - 2 * f, h - 2 * f, FERN);
+            float p = mm2px(0.8f);
+            nvgBeginPath(vg);
+            for (float t = -h; t < w; t += p) {
+                nvgMoveTo(vg, t, h);
+                nvgLineTo(vg, t + p / 2, h);
+                nvgLineTo(vg, t + p / 2 + h, 0);
+                nvgLineTo(vg, t + h, 0);
+                nvgClosePath(vg);
+            }
+            nvgFillColor(vg, GROUND);
+            nvgFill(vg);
+            nvgRestore(vg);
+            fillRect(vg, 2 * f, 2 * f, w - 4 * f, h - 4 * f, faceC);
+        } else {
+            fillRect(vg, f, f, w - 2 * f, h - 2 * f, faceC);
+            if (l.frame && l.field && !l.pressed) band(vg, f, f, w - 2 * f, h - 2 * f, mm2px(0.66f), GROUND);
         }
-        if (bar) fillRect(vg, 0, h - mm2px(1.6f), w, mm2px(1.6f), face->held(PI_KEY_PATTERN) ? OCHRE : MADDER);
+        float in = f + mm2px(0.3f);
+        if (l.stitch) {
+            float st = mm2px(1.4f);
+            fillRect(vg, w - in - st, in, st, st, lit ? GROUND : ECRU);
+        }
+        if (l.bar) fillRect(vg, f, h - f - mm2px(1.0f), w - 2 * f, mm2px(1.0f), face->held(PI_KEY_PATTERN) ? OCHRE : MADDER);
+        if (l.mark != pi::MARK_NONE) { // D112 item 4: a dash, a ring or a disc, top left
+            NVGcolor c = lit ? GROUND : ECRU;
+            float r = mm2px(0.75f), cx = in + r, cy = in + r;
+            if (l.mark == pi::MARK_DASH) fillRect(vg, in, in + r - mm2px(0.25f), mm2px(1.8f), mm2px(0.5f), c);
+            else {
+                nvgBeginPath(vg);
+                nvgCircle(vg, cx, cy, l.mark == pi::MARK_RING ? r - mm2px(0.175f) : r);
+                if (l.mark == pi::MARK_RING) {
+                    nvgStrokeColor(vg, c);
+                    nvgStrokeWidth(vg, mm2px(0.35f));
+                    nvgStroke(vg);
+                } else {
+                    nvgFillColor(vg, c);
+                    nvgFill(vg);
+                }
+            }
+        }
+        if (l.core) { // two fifths of the key, a dark line round it; fern through the effect
+            float c = w * 0.4f, line = mm2px(0.37f);
+            fillRect(vg, (w - c) / 2, (h - c) / 2, c, c, GROUND);
+            fillRect(vg, (w - c) / 2 + line, (h - c) / 2 + line, c - 2 * line, c - 2 * line, l.fern ? FERN : WHITE);
+        }
         char num[12];
         std::snprintf(num, sizeof num, "%d", k + 1);
-        text(vg, w / 2, h / 2, 3.8f, lit ? GROUND : ECRU, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE, num);
+        text(vg, w / 2, h / 2, 3.8f, lit || l.core ? GROUND : ECRU, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE, num);
     }
 
     // "Function key": idle, a band across the top; pressed, white pulled in; latched, the face lit.
     void drawFunction(NVGcontext *vg, float w, float h, bool pressed) {
         int i = k - 16;
-        bool ctrlLatched = rm && (rm->latched >> k & 1);
+        bool ctrlLatched = rm && (rm->latched >> k & 1); // latched (by Shift since D113)
         bool on = (k == int(PI_KEY_PLAY) && face && face->flag(PI_VIEW_FLAG_PLAYING)) ||
                   (k == int(PI_KEY_WRITE) && face && face->flag(PI_VIEW_FLAG_WRITE));
         float frame = mm2px(11.7f) / 8.f, bandH = mm2px(1.67f);
@@ -1251,7 +1362,7 @@ struct RhythmKey : app::ParamWidget {
             fillRect(vg, 0, 0, w, h, FN_COLOUR[i]);
         } else {
             fillRect(vg, 0, 0, w, h, TILE);
-            fillRect(vg, 0, 0, w, bandH, FN_COLOUR[i]);
+            fillRect(vg, 0, 0, w, bandH, FN_BAND[i]);
             label = ECRU;
         }
         // The word runs up the key, read from the right.
@@ -1341,6 +1452,17 @@ struct RhythmPort : app::PortWidget {
 struct RhythmDisplay : widget::Widget {
     Rhythm *rm = nullptr;
     const Face *face = nullptr;
+    widget::Widget *helper = nullptr; // the keys helper the ? opens
+
+    Rect helpMark() const { return Rect(Vec(box.size.x - mm2px(1.3f + 4.2f), mm2px(1.25f)), mm2px(Vec(4.2f, 4.2f))); }
+    void onButton(const ButtonEvent &e) override {
+        if (helper && e.button == GLFW_MOUSE_BUTTON_LEFT && e.action == GLFW_PRESS && helpMark().contains(e.pos)) {
+            helper->visible = true;
+            e.consume(this);
+            return;
+        }
+        Widget::onButton(e);
+    }
     uint8_t wove[PI_VIEW_SIZE] = {}; // the view the cells below were woven from
     uint32_t woveFlags = ~0u;
     uint8_t cells[PI_WEAVE_CELLS] = {};
@@ -1392,7 +1514,7 @@ struct RhythmDisplay : widget::Widget {
         uint16_t lane = have ? u16(v, PI_VIEW_FX_STEPS) : 0;
         float tickH = mm2px(0.67f), tickY = base - mm2px(2.67f) - mm2px(0.6f) - tickH;
         for (int n = 0; n < 16; n++)
-            if (lane >> n & 1) fillRect(vg, px + n * (mw + markGap), tickY, mw, tickH, MADDER);
+            if (lane >> n & 1) fillRect(vg, px + n * (mw + markGap), tickY, mw, tickH, FERN); // madder until D112 item 3
         // The right column: tempo and bpm on top; the write mark and the step number below.
         // Since ABI 15 (ENGINE.md §14, designed 2026-11-25; jacks.hpp, pi::tempoShown): on edges
         // "ext" in bpm's place, size and colour, and the edges' tempo, or "--" with none (D100
@@ -1418,10 +1540,15 @@ struct RhythmDisplay : widget::Widget {
         // (whether or not write is on). ⚠ Its place, and madder, are a stand-in (design/DESIGN.md).
         if (have && v[PI_VIEW_HEARD]) {
             float fxLow = low - bh - mm2px(0.8f);
-            fillRect(vg, rx - right, fxLow - bh + mm2px(0.9f), bw, bh, MADDER);
+            fillRect(vg, rx - right, fxLow - bh + mm2px(0.9f), bw, bh, FERN); // madder until D112 item 3
             std::snprintf(s, sizeof s, "fx %u", unsigned(v[PI_VIEW_HEARD]));
             text(vg, rx - right + bw / 2, fxLow, 2.67f, GROUND, NVG_ALIGN_CENTER | NVG_ALIGN_BASELINE, s);
         }
+        // D119 item 6: the keys helper's ?, 4.2 mm square, 1.3 mm in from the glass's right edge
+        // and 1.25 mm down from its top (design/DESIGN.md, "Layout B"; ⚠ the board's numbers).
+        Rect q = helpMark();
+        fillRect(vg, q.pos.x, q.pos.y, q.size.x, q.size.y, TILE);
+        text(vg, q.pos.x + q.size.x / 2, q.pos.y + q.size.y / 2, 3.0f, ECRU, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE, "?");
         // A self-test: its name and its count where the weave is, and a light. Otherwise the weave.
         int fx = rm ? rm->fixtureWanted.load() : -1;
         // (With no view yet, or in Rack's module browser, the view is all zeros: a bare loom.)
@@ -1436,9 +1563,67 @@ struct RhythmDisplay : widget::Widget {
     }
 };
 
+// The keys helper (D116 item 3, D119 items 3 and 6; the canvas's "keys helper" board): one sheet
+// over the panel, opened by ? or the display's ?, closed by esc or a click on it. ⚠ Its layout
+// on the panel is the build's: the board drew it at phone size.
+struct RhythmHelper : widget::Widget {
+    void onButton(const ButtonEvent &e) override {
+        if (e.action == GLFW_PRESS) visible = false;
+        e.consume(this);
+    }
+    void draw(const DrawArgs &args) override {
+        NVGcontext *vg = args.vg;
+        const float m = mm2px(1.f);
+        auto at = [&](float x) { return x * m; };
+        fillRect(vg, 0, 0, box.size.x, box.size.y, GROUND);
+        const int L = NVG_ALIGN_LEFT | NVG_ALIGN_BASELINE, C = NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE;
+        text(vg, at(8), at(14), 5.f, ECRU, L, "keys");
+        fillRect(vg, at(112), at(7), at(18), at(9), TILE);
+        text(vg, at(121), at(11.5f), 3.2f, ECRU, C, "esc");
+        const char *grid = "1234qwerasdfzxcv";
+        for (int i = 0; i < 16; i++) {
+            float x = at(8 + 9 * (i % 4)), y = at(20 + 9 * (i / 4));
+            fillRect(vg, x, y, at(8), at(8), ECRU);
+            char c[2] = {grid[i], 0};
+            text(vg, x + at(4), y + at(4), 4.f, GROUND, C, c);
+        }
+        const char *sl[4] = {"t", "y", "g", "h"};
+        text(vg, at(50), at(23), 3.2f, ECRU, C, "A");
+        text(vg, at(59), at(23), 3.2f, ECRU, C, "B");
+        for (int i = 0; i < 4; i++) {
+            float x = at(46 + 9 * (i % 2)), y = at(29 + 9 * (i / 2));
+            fillRect(vg, x, y, at(8), at(8), TILE);
+            fillRect(vg, x, y, at(8), at(1), LILAC);
+            text(vg, x + at(4), y + at(4.5f), 4.f, ECRU, C, sl[i]);
+        }
+        const char *fk[7] = {"7", "8", "9", "u", "i", "o", "p"};
+        for (int i = 0; i < 7; i++) {
+            bool top = i < 3;
+            float w = top ? 19.f : 14.f, x = at(70 + (top ? i * 20.f : (i - 3) * 15.f)), y = at(top ? 20 : 34);
+            fillRect(vg, x, y, at(w), at(12), TILE);
+            fillRect(vg, x, y, at(w), at(1.2f), FN_BAND[i]);
+            text(vg, x + at(1.5f), y + at(6), 4.f, ECRU, L, fk[i]);
+            text(vg, x + at(1.5f), y + at(10.5f), 2.6f, ECRU, L, FN_NAMES[i]);
+        }
+        const char *lines[5] = {"Two keys at once. Hold the first, press the second: 7 q chooses sound 5.",
+                                "Shift + key or Shift + click latches it, so one hand or a mouse can do it.",
+                                "fx stays latched until you do it again; the others let go after the next key.",
+                                "esc lets everything go.", ""};
+        for (int i = 0; i < 4; i++) text(vg, at(8), at(62 + 6 * i), 2.8f, i == 0 ? ECRU : LILAC, L, lines[i]);
+        const char *keys[8][2] = {{"space", "play, stop"}, {", .", "tempo down, up"}, {"< >", "swing less, more"}, {"- =", "volume down, up"},
+                                  {"t g", "slider A up, down"}, {"y h", "slider B up, down"}, {"m", "this module's menu"}, {"?", "this helper"}};
+        for (int i = 0; i < 8; i++) {
+            float x = at(i < 4 ? 8 : 72), y = at(92 + 7 * (i % 4));
+            text(vg, x, y, 3.f, ECRU, L, keys[i][0]);
+            text(vg, x + at(16), y, 3.f, LILAC, L, keys[i][1]);
+        }
+    }
+};
+
 struct RhythmWidget : ModuleWidget {
     Face face;
     std::vector<RhythmKey *> keys;
+    RhythmHelper *helper = nullptr;
 
     RhythmWidget(Rhythm *module) {
         setModule(module);
@@ -1448,39 +1633,49 @@ struct RhythmWidget : ModuleWidget {
         addChild(createWidget<ThemedScrew>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
         addChild(createWidget<ThemedScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-        // design/DESIGN.md's positions table, in mm from the top left.
-        RhythmDisplay *d = createWidget<RhythmDisplay>(mm2px(Vec(61.f - 111.3f / 2, 19.5f - 24.3f / 2)));
-        d->box.size = mm2px(Vec(111.3f, 24.3f));
+        // design/DESIGN.md's positions table, in mm from the top left: layout B at 27 HP
+        // (D114, D119; design/make_panel.py --positions). Until issue 101, 24 HP, the display at
+        // 61 and two rows of jacks under the keys. Port numbers do not change (RACK-RULES.md).
+        const float DX = 7.62f, DY = 6.f;
+        RhythmDisplay *d = createWidget<RhythmDisplay>(mm2px(Vec(68.58f - 103.16f / 2, 19.5f - 24.3f / 2)));
+        d->box.size = mm2px(Vec(103.16f, 24.3f));
         d->rm = module;
         d->face = &face;
         addChild(d);
-        for (int k = 0; k < 16; k++) addKey(k, 11.f + 12.f * (k % 4), 44.f + 12.f * (k / 4), 11.7f, 11.7f);
+        for (int k = 0; k < 16; k++) addKey(k, 11.f + DX + 12.f * (k % 4), 44.f + DY + 12.f * (k / 4), 11.7f, 11.7f);
         const float fx[7] = {83.47f, 97.f, 110.53f, 81.78f, 91.93f, 102.08f, 112.23f};
-        for (int i = 0; i < 7; i++) addKey(16 + i, fx[i], i < 3 ? 49.85f : 74.15f, i < 3 ? 12.93f : 9.55f, 23.7f);
+        for (int i = 0; i < 7; i++) addKey(16 + i, fx[i] + DX, (i < 3 ? 49.85f : 74.15f) + DY, i < 3 ? 12.93f : 9.55f, 23.7f);
         for (int s = 0; s < 2; s++) {
             // By its corner: a new widget's size is infinite, so centring it first gives NaN.
-            RhythmSlider *sl = createParam<RhythmSlider>(mm2px(Vec((s ? 70.f : 60.f) - 2.5f, 59.5f - 21.5f)), module, Rhythm::SLIDER_A + s);
+            RhythmSlider *sl = createParam<RhythmSlider>(mm2px(Vec((s ? 70.f : 60.f) + DX - 2.5f, 59.5f + DY - 21.5f)), module, Rhythm::SLIDER_A + s);
             sl->box.size = mm2px(Vec(5.f, 43.f));
             sl->rm = module;
             sl->face = &face;
             sl->which = s;
             addParam(sl);
         }
-        // Two rows, grouped by what they carry (D76; design/make_panel.py --positions).
-        const float UP = 97.5f, LOW = 116.3f;
-        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(12.4f, UP)), module, Rhythm::CLOCK_INPUT));
-        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(25.4f, UP)), module, Rhythm::RESET_INPUT));
-        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(40.f, UP)), module, Rhythm::A_OUTPUT));
-        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(51.67f, UP)), module, Rhythm::A_INPUT));
-        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(63.33f, UP)), module, Rhythm::B_OUTPUT));
-        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(75.f, UP)), module, Rhythm::B_INPUT));
-        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(90.f, UP)), module, Rhythm::FX_GATES_OUTPUT));
-        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(12.4f, LOW)), module, Rhythm::TRIGGERS_OUTPUT));
-        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(25.4f, LOW)), module, Rhythm::VOICES_OUTPUT));
-        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(38.4f, LOW)), module, Rhythm::RETURN_INPUT));
-        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(84.f, LOW)), module, Rhythm::FX_SEND_OUTPUT));
-        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(96.f, LOW)), module, Rhythm::FX_RETURN_INPUT));
-        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(109.67f, LOW)), module, Rhythm::AUDIO_OUTPUT));
+        // CLOCK over RESET left of the display, AUDIO right of it, and the ten sixteen-channel
+        // jacks in one row of four groups (SOUNDS, SLIDER A, SLIDER B, FX).
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(9.5f, 13.5f)), module, Rhythm::CLOCK_INPUT));
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(9.5f, 27.5f)), module, Rhythm::RESET_INPUT));
+        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(126.58f, 21.f)), module, Rhythm::AUDIO_OUTPUT));
+        const float ROW = 116.3f;
+        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(10.6f, ROW)), module, Rhythm::TRIGGERS_OUTPUT));
+        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(21.8f, ROW)), module, Rhythm::VOICES_OUTPUT));
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(33.1f, ROW)), module, Rhythm::RETURN_INPUT));
+        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(49.35f, ROW)), module, Rhythm::A_OUTPUT));
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(60.65f, ROW)), module, Rhythm::A_INPUT));
+        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(76.91f, ROW)), module, Rhythm::B_OUTPUT));
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(88.21f, ROW)), module, Rhythm::B_INPUT));
+        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(104.46f, ROW)), module, Rhythm::FX_GATES_OUTPUT));
+        addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(115.66f, ROW)), module, Rhythm::FX_SEND_OUTPUT));
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(126.96f, ROW)), module, Rhythm::FX_RETURN_INPUT));
+        // The helper last, so it lies over everything; hidden until asked for.
+        helper = createWidget<RhythmHelper>(Vec(0, 0));
+        helper->box.size = box.size;
+        helper->visible = false;
+        addChild(helper);
+        d->helper = helper;
     }
 
     void addKey(int k, float cx, float cy, float w, float h) {
@@ -1496,27 +1691,107 @@ struct RhythmWidget : ModuleWidget {
     void step() override {
         Rhythm *m = getModule<Rhythm>();
         face.take(m);
+#ifdef PI_FACE_SHOT
+        if (!m && !face.have) face.shot();
+#endif
         // A computer key let go while the pointer was elsewhere: its release never came here.
         if (m)
             for (int k = 0; k < 23; k++)
                 if ((m->holders[k] & Rhythm::KEYBOARD) && glfwGetKey(APP->window->win, KEYS[k]) != GLFW_PRESS)
                     m->hold(k, Rhythm::KEYBOARD, false);
+        if (m && (m->holders[PI_KEY_PLAY] & Rhythm::SPACE) && glfwGetKey(APP->window->win, GLFW_KEY_SPACE) != GLFW_PRESS)
+            m->hold(PI_KEY_PLAY, Rhythm::SPACE, false);
         ModuleWidget::step();
     }
 
-    // D57 item 5: the computer keys, while the pointer is over the module. Real holds, no latch.
+    // D57 item 5: the computer keys, while the pointer is over the module. Real holds; Shift
+    // with a function key latches it (D113); the one-key shortcuts and the helper (D119 items 3
+    // and 6). GLFW's key codes are places on a US keyboard, as KEYS are. ⚠ Each key was not
+    // checked against everything Rack itself does with it; Rack's own module keys found are
+    // with Ctrl (and Delete, Backspace), which these leave alone.
     void onHoverKey(const HoverKeyEvent &e) override {
         Rhythm *m = getModule<Rhythm>();
+        int mods = e.mods & RACK_MOD_MASK;
+        bool press = e.action == GLFW_PRESS;
+        if (m && helper && helper->visible) {
+            if (press && (e.key == GLFW_KEY_ESCAPE || (e.key == GLFW_KEY_SLASH && mods == RACK_MOD_SHIFT))) helper->visible = false;
+            e.consume(this); // the sheet is over the keys: nothing under it plays
+            return;
+        }
         int k = -1;
         for (int i = 0; m && i < 23; i++)
             if (KEYS[i] == e.key) k = i;
-        if (k >= 0 && (e.action == GLFW_RELEASE || (e.mods & RACK_MOD_MASK) == 0)) {
+        if (k >= 0 && press && mods == RACK_MOD_SHIFT && (LATCHING >> k & 1)) {
+            m->toggleLatch(k);
+            e.consume(this);
+            return;
+        }
+        if (k >= 0 && (e.action == GLFW_RELEASE || mods == 0)) {
             if (e.action == GLFW_PRESS) m->hold(k, Rhythm::KEYBOARD, true);
             else if (e.action == GLFW_RELEASE) m->hold(k, Rhythm::KEYBOARD, false);
             e.consume(this); // a repeat is consumed and does nothing
             return;
         }
+        if (m && (mods == 0 || mods == RACK_MOD_SHIFT) && shortcut(m, e.key, e.action, mods == RACK_MOD_SHIFT)) {
+            e.consume(this);
+            return;
+        }
         ModuleWidget::onHoverKey(e);
+    }
+
+    // ⚠ How far one press moves is the build's reading, not ruled, as on the page: a slider
+    // 4096 (a sixteenth), the tempo one bpm, the swing one, the volume one.
+    bool shortcut(Rhythm *m, int key, int action, bool shift) {
+        bool press = action == GLFW_PRESS, again = press || action == GLFW_REPEAT;
+        const uint8_t *v = face.have ? face.v : nullptr;
+        auto nudge = [&](int which, int d) {
+            if (!again) return;
+            ParamQuantity *q = m->paramQuantities[Rhythm::SLIDER_A + which];
+            q->setValue(clamp(q->getValue() + float(d), 0.f, 65535.f));
+        };
+        auto edit = [&](uint8_t type, uint32_t value) { m->menu.push(pi_cmd{0, type, 0, 0, 0, value}); };
+        switch (key) {
+        case GLFW_KEY_T: nudge(0, 4096); return true;
+        case GLFW_KEY_G: nudge(0, -4096); return true;
+        case GLFW_KEY_Y: nudge(1, 4096); return true;
+        case GLFW_KEY_H: nudge(1, -4096); return true;
+        case GLFW_KEY_SPACE: // play held while the bar is down, as a finger on the key
+            if (press) m->hold(PI_KEY_PLAY, Rhythm::SPACE, true);
+            else if (action == GLFW_RELEASE) m->hold(PI_KEY_PLAY, Rhythm::SPACE, false);
+            return true;
+        case GLFW_KEY_COMMA:
+        case GLFW_KEY_PERIOD: {
+            if (!again || !v) return true;
+            int d = key == GLFW_KEY_PERIOD ? 1 : -1;
+            if (shift) edit(PI_CMD_SWING, uint32_t(clamp(int(v[PI_VIEW_SWING]) + d, 0, int(PI_SWING_MAX))));
+            else edit(PI_CMD_TEMPO, uint32_t(clamp(int(pi::viewU32(v, PI_VIEW_TEMPO)) + 1000 * d, 60000, 240000)));
+            return true;
+        }
+        case GLFW_KEY_MINUS:
+        case GLFW_KEY_EQUAL: {
+            // The volume has no edit: bpm held and a key (ENGINE.md §13), sent as one gesture.
+            // Not while bpm, or the key it would press, is held by a hand.
+            if (!again || !v) return true;
+            int n = int(v[PI_VIEW_VOLUME]) + (key == GLFW_KEY_EQUAL ? 1 : -1);
+            if (n < 1 || n > 16 || m->holders[PI_KEY_BPM] || m->holders[n - 1]) return true;
+            m->menu.push(pi_cmd{0, PI_CMD_KEY_DOWN, PI_KEY_BPM, 0, 0, 0});
+            m->menu.push(pi_cmd{0, PI_CMD_KEY_DOWN, uint8_t(n - 1), 0, 0, 0});
+            m->menu.push(pi_cmd{0, PI_CMD_KEY_UP, uint8_t(n - 1), 0, 0, 0});
+            m->menu.push(pi_cmd{0, PI_CMD_KEY_UP, PI_KEY_BPM, 0, 0, 0});
+            return true;
+        }
+        case GLFW_KEY_M: // the sounds sheet: in Rack, the module's menu, where the Sounds are
+            if (press) createContextMenu();
+            return true;
+        case GLFW_KEY_SLASH:
+            if (!shift) return false;
+            if (press && helper) helper->visible = true;
+            return true;
+        case GLFW_KEY_ESCAPE:
+            if (press) m->letGo();
+            return true;
+        default: return false;
+        }
     }
 
     void appendContextMenu(Menu *menu) override {
