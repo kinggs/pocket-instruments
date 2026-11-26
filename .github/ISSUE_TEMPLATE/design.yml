@@ -1,0 +1,52 @@
+name: Design
+description: A design question or proposal that needs a ruling before anything is built.
+labels: ["design"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Design comes before build here. The answer to this issue lands as a change to
+        docs/ENGINE.md and a decision in docs/DECISIONS.md, in its own pull request.
+        One person maintains this project, so a ruling may be slow.
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+      description: What needs deciding, in a sentence or two.
+    validations:
+      required: true
+  - type: textarea
+    id: now
+    attributes:
+      label: What the documents say now
+      description: Name the sections and decisions (for example docs/ENGINE.md section 11, D105). Say so if they are silent.
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options
+      description: Each option, with what it costs and what it rules out.
+    validations:
+      required: true
+  - type: textarea
+    id: recommended
+    attributes:
+      label: Recommended
+      description: The option you would choose, and why. Leave empty if you have none.
+    validations:
+      required: false
+  - type: textarea
+    id: unverified
+    attributes:
+      label: Unverified
+      description: Facts above that you have not checked, marked ⚠. Sources and licences for anything new.
+    validations:
+      required: false
+  - type: textarea
+    id: blocks
+    attributes:
+      label: What waits on this
+      description: Issues or pull requests that cannot go on until this is ruled.
+    validations:
+      required: false

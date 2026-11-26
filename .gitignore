@@ -1,0 +1,10 @@
+# What the builds write. rack/.gitignore names the Rack plugin's own outputs too.
+target/
+rack/build/
+rack/dist/
+rack/dep/
+# CI unpacks the Rack SDK here (.github/workflows/rack.yml); a local copy may sit here too.
+sdk/
+build.log
+node_modules/
+.DS_Store

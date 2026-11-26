@@ -1,92 +1,161 @@
 # Pocket Instruments
 
-**Status (2026-11-24):** it plays, on a phone (`web/rhythm.html`) and in VCV Rack (the
-Rhythm module). Sixteen sounds, each built in code or a public-domain sample; the hardware's
-workflow for writing a beat; effects punched in and recorded as they are played, with four
-repeats that hold the nearest note behind them and eight sound effects, tuned to the
-owner's PO-12 by measurement; sliders that are the hand's, with steps that keep what
-they were written with; a display that weaves. In Rack, thirteen jacks: every sound's
-trigger, audio and slider voltages go out and come back, and each of the sixteen effects
-has its own channel on FX SEND and FX RETURN, Ours or a Rack module's, beside the dry or in
-place of it. The engine is at ABI 15 with snapshot version 4 (since Session 32, effect 1 plays
-the sounds at a quarter of the rate, as the PO-12 does: not yet heard by the owner; since
-Session 34, CLOCK in can count one edge a beat, and the display shows the tempo the edges play); CI builds the plugin for all four
-Rack platforms. Proofs P1, P2, P3 and P7 passed; P4, P5 and P6 are part-run and wait for an
-iPhone and other machines (`PROOFS.md`).
+[![test](https://github.com/kinggs/pocket-instruments/actions/workflows/test.yml/badge.svg)](https://github.com/kinggs/pocket-instruments/actions/workflows/test.yml)
+[![rack](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml/badge.svg)](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml)
 
-Not finished: most of what was built on 2026-11-23 has not been seen or heard by the owner,
-and every look in it is a stand-in until then; two of the sixteen effects (15 and 16) are not
-designed. Built on 2026-11-24 and not yet heard: effects 13 (a note plays as the sound twelve
-keys on) and 14 (the bus fed back), read beside the PO-12 by the same script (D93; Sessions 27
-and 28). Built on 2026-11-24: FX SEND and FX RETURN as sixteen channels, a channel an
-effect, with what comes back always in the mix (D87, D88; Session 24; played by the owner);
-then, not yet heard, a repeat that holds the nearest note behind it, effects 1 to 8 retuned
-to the PO-12's measurements and read beside it by the same script, and effect 4, a delay of
-one echo (D90, D91; Sessions 25 and 26). What is next is
-`PLAN.md`, "Next, in order". How it got here, session by session, is `PLAN.md`'s "Done so
-far" and `PLAN-HISTORY.md`. Started 2026-11-18.
+Small calculator-format musical instruments, free and open source, that play in a browser and
+as VCV Rack modules from one shared engine.
 
-Small calculator-format musical instruments, free and open source, playable as VCV Rack modules
-and in a browser, from one shared engine. An affectionate, credited homage to Teenage
-Engineering's Pocket Operators. Not affiliated with Teenage Engineering.
+**Play it now:** <https://kinggs.github.io/pocket-instruments/web/rhythm.html> (made for a phone;
+a desktop browser works too).
 
-Also inspired by the Surge Synth Team's Surge XT modules for VCV Rack: how they show
-modulation on a control, and how their modules connect to their neighbours. No code or
-artwork of theirs is used; their MIT helper library will be, with thanks (D40, D41). Not
-affiliated with them either.
+**In VCV Rack:** ⚠ the plugin is not in the VCV Library, and there is no release yet. CI builds
+it for Linux, Windows and both Macs when the core or the plugin changes. To try it, open the latest green run of the
+[rack workflow](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml), sign in
+to GitHub, and download the artifact for your platform. These are unsigned test builds for
+loading by hand. Or build it yourself (below).
 
-This folder is an incubator. Once the proofs in `PROOFS.md` pass, it moves out of sidequests
-into its own repository.
-(Decided 2026-11-26, D110: it moves now, before the proofs pass, to
-`kinggs/pocket-instruments`. Sessions 44 and 45 in `PLAN.md`.)
+## Status
 
-## Where things are
+One instrument so far: **Rhythm**, a sixteen-step drum machine. It is an early build.
 
-| File | What it holds | How it changes |
-|---|---|---|
-| `BRIEF-v0.1.md` | The original brief, as written with ChatGPT | Frozen. Never edited |
-| `REVIEW.md` | The critical review of the brief: findings, evidence, what to change | A new review is a new section, dated |
-| `DECISIONS.md` | Every decision, its state and why | Append only. A decision is superseded, not rewritten |
-| `PROOFS.md` | What must be proven, the pass bar, the result | Pass bar written before the experiment; result after |
-| `REFERENCES.md` | Outside facts we rely on, with source and date checked | Re-check before relying on an old entry |
-| `LEARNINGS.md` | Dated notebook: what surprised us, what broke, why | Append only |
-| `ENGINE.md` | The engine interface: time, the clock, commands, events, the snapshot | Changed by a decision; the header and fixtures change with it |
-| `core/include/pi_engine.h` | The same contract in C, for both hosts | Follows `ENGINE.md` |
-| `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies. Its tests are in `core/src/tests/` | Built from `ENGINE.md`; a disagreement is settled there first |
-| `fixtures/` | Test vectors and the traces they must produce (`fixtures/README.md`); `snapshots-v1.txt` to `snapshots-v3.txt`, the old snapshots that must still load; `designed/`, fixtures worked by hand for a core not built yet, which no harness reads; `weave-views.txt`, the set of views every harness weaves (§16) | A trace is never edited to make a build pass |
-| `harness/` | The same fixtures through the `.wasm` in Node and through C++ on the static library; `bench.cpp`, what a frame of `pi_process` costs, the loop layouts too, and since Session 40 `rack` and `rack lp`, a frame a call as the Rack module calls (`make bench`, pinned to one CPU), and `pairs.sh`, two builds read in ten interleaved rounds (`make pairs`); the ThreadSanitizer harness (`race.cpp`, P6); the render comparison (`compare.mjs`, P7); the four-target check (`targets.sh`, P5); `fuzz.cpp`, the differential fuzz that holds this build to an older library seed by seed (`make fuzz OLD=<libpi_core.a>`, seeds 1 to 400, `SEEDS=` for more; D102 item 4; since Session 40 a third library, this build with its debug assertions on, runs the same seeds and must give the same lines, and `--stats` counts the frames that met each short way), and `fuzz-firstdiff.py`, the first differing record of two `--dump`s; `efficiency-candidates/`, the three attempts at the core's cost a frame (D102) | Follows `fixtures/README.md`; the fuzz is run by a change that must move no byte |
-| `rack/` | The Rack plugin: the Rhythm module, the instrument (`src/Rhythm.cpp`; its jacks' volts in and out in `src/jacks.hpp`, tested by `test/jacks.cpp`; the mix is the core's since Session 18), and the Probe, which plays the format 1 fixtures and checks itself (P3). `handoff.hpp` is how a host moves things between its threads. `math.mk` holds the maths flags the plugin and its test share. `check-dist.sh` holds a finished `.vcvplugin` to Rack's rules (P5); `ci-linux.sh` is CI's Linux build, in the image `ci-linux.Dockerfile` and `ci-linux-setup.sh` make | `make install`; `make selftest` runs Rack headless (the Probe on format 1; the Rhythm module on formats 2, 3 and 4, through its own cables held to a second engine, and D78's latch); `make sound` is a patch to hear it. CI (`.github/workflows/pocket-instruments-rack.yml`) builds all four platforms on every push that touches the core or `rack/` |
-| `web/` | `rhythm.html`, the instrument on a phone (Loom); the bare page and worklet on the raw `.wasm` (P4); `listen.html`: all sixteen voices beside the starter samples. `pi_core.wasm` is committed so Pages can serve it | `make web` after the core changes; `make play`, `make p4` and `make listen` run both desktop browsers |
-| `Makefile` | `make build`: both targets. `make test`: the three harnesses compared, the weave's cells the same from all three, the Rack module's jacks held to the core (`rack/test/jacks.cpp`), the render comparison, the race harness. The repo's `make verify` runs it. `make targets`, `make p4`, `make listen`, `make play`: the slower checks | |
-| `rust-toolchain.toml`, `mise.toml` | The Rust this folder builds with. `mise install` once | The two must name one version; `make check-toolchain` fails if not |
-| `VOICES.md` | The sixteen sounds: role, recipe, what the sliders do, and what each was built as | Until each voice passes by ear |
-| `samples/` | The starter drum pack: sixteen CC0 files, their origins, a page to hear them, and `raw/` + `tracks.txt`, the pack as the engine reads it (D50) | A swap is a new file, a new manifest row and a line in `tracks.txt`, then `python3 samples/make-raw.py` |
-| `WORKFLOW.md` | What each press does, in our words; the owner ticks each row on the hardware | Until P8 |
-| `RACK-RULES.md` | What any module of ours for VCV Rack is held to: the panel, the voltages, the code | Re-read VCV's manual (R33 to R35) before leaning on an old line |
-| `design/DESIGN.md` | The look (Loom): tokens, key states, the panel in mm, the phone layout. `design/fonts/` holds JetBrains Mono ExtraBold and its licence (OFL), for the panel and the Rack module | Changed by a decision; `design/panel.svg` is redrawn by its script |
-| `PLAN.md` | What a session needs: the rules, the machine, the lists not yet done, the latest two Handover notes. Its top says what else to read, and how little | Each session ticks its boxes and writes its Handover |
-| `PLAN-HISTORY.md` | Every finished session's list and every older Handover note, word for word | A finishing session moves its list and the note before last here. Not read at the start of a session |
+What plays today, on the page and in the Rack module:
 
-## Rules of this folder
+- **Sixteen sounds**, one a key. Each is synthesised in code, or played from a public-domain
+  sample if you choose that for a key.
+- **Writing a beat** the way the hardware does: choose a sound, write its steps, play, set
+  the tempo, swing and volume, clear the pattern. Recording live is not built yet.
+- **Punch-in effects** (effects you hold a key to apply while the beat plays), recorded as
+  you play them. Fourteen of the sixteen are built: a
+  quarter-rate effect, distortion, bit crush, delay, four filters, four repeats, note shuffle
+  and feedback. Effects 15 and 16 are not designed yet.
+- **Two sliders** (pitch and length for the drums). A step keeps the slider values it was
+  written with.
+- **A display that weaves.** The screen draws the beat as cloth on a loom, growing as the
+  beat plays.
+- **In Rack, thirteen jacks.** Every sound's trigger, audio and slider voltages go out and come
+  back in. Each effect has its own channel on two jacks, FX SEND (out) and FX RETURN (back
+  in), so any effect can be ours or a Rack module's.
 
-1. **The brief is frozen.** Disagree with it in `REVIEW.md`; change course in `DECISIONS.md`.
-   Why: the record of what we first thought, and why it changed, must survive.
-2. **Facts, intentions and guesses stay distinct.** A fact has a source in `REFERENCES.md`.
-   ⚠ marks anything unverified.
-3. **A proof has a pass bar before it runs.** Why: a bar written afterwards always passes.
-4. **A failed proof is a result.** Write it up; do not quietly change the experiment.
-5. **Nothing generic until a second instrument needs it.** Why: the brief's own top risk is
-   building a framework before one fun instrument.
-6. **No Teenage Engineering material enters this repo.** No samples, firmware, photographs,
-   traced artwork or logos. Why: `REVIEW.md` §IP.
+What does not yet:
 
-## How it differs from the other sidequests
+- **One pattern only.** Sixteen patterns, copy and chains are the next piece of work.
+- Much of the effect tuning is a first value, measured against one PO-12 and not yet judged by
+  ear. The look is a stand-in until the maintainer (called the owner in the documents) rules
+  on it.
+- Not every proof has passed. A proof is a test with a pass bar set in advance. The iPhone and
+  other-machine checks are part-run, and the feel (P8) and the look (P9) are open
+  ([docs/PROOFS.md](docs/PROOFS.md)).
 
-It is not a one-file web app. The repo rules on one file per app, no build step, version bumps,
-Firebase and `shared/DESIGN.md` do not apply here. These still do: commit direct to `main`,
-small commits, no secrets, `make verify` before a push. There is no `index.html` at this level,
-so the smoke test skips the folder and the landing page does not list it.
+## Why this exists
 
-## Starting a session
+I love Teenage Engineering's pocket operators. This project comes from that, and from four
+things I wanted:
 
-"Read `pocket-instruments/PLAN.md` and do Session N."
+- **Pocket operators inside Rack.** A drum machine whose every sound, trigger and effect is a
+  jack, so it patches into everything else.
+- **Several of them, connected.** More than one instrument, playing together, in Rack and on the
+  web. Today there is one.
+- **A place to learn and practise.** The workflow stays close to the hardware: the same key
+  names, the same combinations, the same order of doing things. What you learn here carries over
+  to the real thing.
+- **A road to the real thing.** Plain links to Teenage Engineering, no affiliate links.
+
+**Buy the real ones:** <https://teenage.engineering/products/po>
+
+## What it is not
+
+- **Not affiliated with or endorsed by Teenage Engineering.** Their names appear here only to
+  describe what inspired this.
+- **None of their material is in this repository.** No samples, firmware, artwork, photographs
+  or logos.
+- **Not a lookalike.** The look is our own, and is meant never to be mistaken for the original
+  at a glance.
+- **Never commercial.** Nothing here is sold.
+
+## Why MIT
+
+Anyone should be able to take this with no strings, Teenage Engineering included. A copyleft
+licence would have let us copy code from GPL modules we admire. We do not need to. The
+maintainer's reason: "the fun thing about modular is that I never want to lift their filters. I will just plug
+a cable from us into their filter." In Rack, integration is a cable, not shared code.
+
+## Inspirations and connected projects
+
+[CREDITS.md](CREDITS.md) has the full list, with licences and what exactly is in the repository.
+
+| Project | What we take |
+|---|---|
+| [Teenage Engineering's pocket operators](https://teenage.engineering/products/po) | The idea and the workflow. No material of theirs |
+| [VCV Rack](https://vcvrack.com/) | The host the plugin is built for |
+| [Surge XT for Rack](https://github.com/surge-synthesizer/surge-rack) (Surge Synth Team) | Ideas: how modulation shows on a control, how modules connect to neighbours. No code, no artwork |
+| [sst-rackhelpers](https://github.com/surge-synthesizer/sst-rackhelpers) (Surge Synth Team, MIT) | A helper library for connecting to neighbouring modules. Decided, not adopted yet |
+| [stmlib](https://github.com/pichenettes/stmlib) (Émilie Gillet, MIT) | Code: the effects' filter, ported to Rust, with her notice in `core/stmlib-plaits-MIT.txt` |
+| [Plaits](https://github.com/pichenettes/eurorack) (Émilie Gillet, MIT) | An idea: effect 1 once ported its sample-rate reducer. That code is no longer in the core |
+| [MindMeld MixMaster](https://github.com/MarcBoule/MindMeldModular) | Nothing taken. A mixer we want to patch into well. Today that takes VCV Split and sixteen cables |
+| [Sonic Pi's bundled samples](https://github.com/sonic-pi-net/sonic-pi/blob/dev/etc/samples/README.md) (CC0, from [Freesound](https://freesound.org/) authors) | The sixteen starter samples. Each one's author and origin is in [samples/README.md](samples/README.md) |
+| [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) (OFL 1.1) | The typeface, with its licence in `design/fonts/` |
+| [Pocket Operations](https://shittyrecording.studio/) (Paul Wenzel) | A pattern book we admire. Nothing of it is in the repository. ⚠ Its licence is unread; a note to the author is drafted, not known to be sent |
+| [VCSL](https://github.com/sgossner/VCSL) (Versilian Studios, CC0) | Samples to audition for the starter pack. Nothing used yet |
+| [libpo](https://github.com/ericlewis/libpo) (Eric Lewis, MIT) | Being read. Nothing used yet |
+
+## How the repository is laid out
+
+By host at the top. It is built for several instruments, and nothing is made generic until a
+second instrument needs it.
+
+| Folder | What it holds |
+|---|---|
+| `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies |
+| `rack/` | One VCV Rack plugin (slug `PocketInstruments`), a module an instrument: Rhythm, plus Probe, a test module |
+| `web/` | One site, a page an instrument: `rhythm.html` |
+| `harness/` | The same fixtures run through Rust, C++ and the `.wasm`, and compared |
+| `fixtures/` | Test inputs and the exact output (the trace) each must produce |
+| `samples/` | The starter drum pack and its origins |
+| `design/` | The look: tokens, the panel, the font |
+| `docs/` | The design documents: `ENGINE.md` (the contract), `DECISIONS.md`, `REFERENCES.md`, `PROOFS.md`, `WORKFLOW.md`, `VOICES.md`, `LEARNINGS.md`, `RACK-RULES.md`. [docs/README.md](docs/README.md) maps them and explains the words and codes they use |
+| `docs/history/` | `PLAN.md` and `PLAN-HISTORY.md`, frozen as they stood on 2026-11-26. The live backlog is the [issues](https://github.com/kinggs/pocket-instruments/issues) |
+
+The root `index.html` is a small landing page. GitHub Pages serves the `main` branch as it is.
+
+## Build and test
+
+| For | You need |
+|---|---|
+| `make build`, `make test` | [mise](https://mise.jdx.dev/) (it installs the pinned Rust), make, a C++ compiler, binutils and a recent Node (⚠ the lowest version that works is not tested; v26 works). clang++ adds the ThreadSanitizer run |
+| `make play`, `make p4`, `make listen` | `chromium` and `firefox` on the PATH |
+| The Rack plugin | The Rack SDK 2.6.6 from <https://vcvrack.com/downloads>, kept outside the repository, and `jq` |
+
+```sh
+mise install     # once: the Rust this repository pins
+make build       # the core, as a static library and as a .wasm
+make test        # the fixtures through all three harnesses, compared byte for byte
+make web         # after the core changes: copy the new .wasm into web/
+```
+
+`make test` takes about 40 seconds on the maintainer's laptop. It passed if it exited 0.
+
+The Rack plugin:
+
+```sh
+make -C rack install RACK_DIR=/path/to/Rack-SDK   # builds the core and the plugin, installs it in Rack
+```
+
+To play the page from a clone, run `make hear` and open
+`http://127.0.0.1:8417/web/rhythm.html`. Any static file server on the repository root works
+too.
+
+## Contributing
+
+Work goes through pull requests: CI must pass, and merges are squashed.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the rules. The short version: design comes before a build
+(a change to `docs/ENGINE.md` and a decision in `docs/DECISIONS.md`), and a build decides
+nothing. Agents are welcome contributors. [AGENTS.md](AGENTS.md) has the map, the commands and
+how to work an issue, for people and agents alike. The
+backlog is the [issues](https://github.com/kinggs/pocket-instruments/issues). The reasons behind
+everything are in [docs/](docs/).
+
+## Licence
+
+[MIT](LICENSE). Copyright (c) 2026 Kenny Inggs and the Pocket Instruments contributors.
+Third-party notices are in [CREDITS.md](CREDITS.md).
