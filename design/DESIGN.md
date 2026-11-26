@@ -73,7 +73,7 @@ Fonts and fall back to the system monospace offline.
 | `loom/ochre` | `#F0B429` | The playhead frame; the pattern key |
 | `loom/madder` | `#F0654A` | The sound key |
 | `loom/sky` | `#8FAAF7` | The bpm key |
-| `loom/fern` | `#6FD6A0` | The effects (D112 item 3, 2026-11-26; a proposed value ⚠, not built): the fx key's band, the display's fx block, the lane's ticks, the twill and the fern core on a key |
+| `loom/fern` | `#6FD6A0` | The effects (D112 item 3, 2026-11-26; a proposed value ⚠, built on the page, not yet in Rack (issue 101)): the fx key's band, the display's fx block, the lane's ticks, the twill and the fern core on a key |
 | `loom/lilac` | `#C9C2DD` | Secondary lettering |
 | `loom/thread` | `#6E6A92` | Unlit threads and step marks. Never lettering |
 
@@ -117,7 +117,7 @@ below). As built, and as `loom/states.html` shows, it has these:
 No state depends on hue. Every state differs from every other by shape or by lightness, and
 `loom/states.html` shows them in greyscale to prove it.
 
-### A key's lights, from the outside in (D112 decided; D115 proposed; 2026-11-26; not built)
+### A key's lights, from the outside in (D112 decided; D115 proposed; 2026-11-26; built on the page, not yet in Rack (issue 101))
 
 `tui/Lights.dc.html` draws them on a Rack or page key, with no colour, and in terminal
 cells. ⚠ Every size below is read off that board, which nobody has seen rendered.
@@ -143,6 +143,16 @@ cells. ⚠ Every size below is read off that board, which nobody has seen render
   tap does and the display's write mark.
 - On a Rack key of 11.7 mm, by the board's proportions ⚠: frame 1.46 mm, twill 1.46 mm,
   field 5.85 mm, core 4.6 mm with a line of about 0.37 mm.
+
+**Built on the page (issue 101, 2026-11-26).** `web/rhythm.html` draws every light above from
+the view by `ENGINE.md` §14's host rule (D120), with write on and off; the frame an eighth of
+an 88 px key (7 px), the twill as wide again, hatched at 45° in 4 px stripes, the core two
+fifths of the key with a 3 px dark line, the stitch 11 px and the bar 8 px inside the frame,
+the dash 15 by 4 px. `make play` reads each back off the page in every drawing.
+`design/page-lights-playing.png` and its `-grey` twin (playing, write off, effect 6 punched),
+`design/page-sound-held.png` and `-grey` (the sounds in use, the bar, the dashes, two cores),
+`design/page-helper.png`: taken by `node web/shot.mjs design`, for the owner's eye. ⚠ The
+numeral sits on the core where both are lit (dark on the core), as the board draws it.
 
 **The source mark (D112 item 4).** Shown only while sound or fx is held or latched.
 
@@ -176,16 +186,16 @@ Grid key:
 | other sound | as it was | as it was | one stitch in the top right corner, ecru on dark, dark on ecru | Another sound has a step here |
 | chosen | as it was | as it was | a bar along the bottom, in the held key's colour | The selected sound, or pattern |
 | ~~fired~~ | ~~white, full size~~ | ~~as it was~~ | | ~~This key's sound has just played~~ (D112 item 1: "sounding" below) |
-| sounding | as it was | as it was | a core in the middle, white, a dark line round it | This key's sound is sounding, write on or off (D112; not built) |
-| sounding, through the effect | as it was | as it was | the same core, fern | And the effect being heard takes this sound (D112; not built) |
-| effect heard | as it was | as it was | the twill band inside the frame | Effect *n* is heard, punched or replayed (D112 item 2; not built) |
+| sounding | as it was | as it was | a core in the middle, white, a dark line round it | This key's sound is sounding, write on or off (D112; built on the page, not yet in Rack (issue 101)) |
+| sounding, through the effect | as it was | as it was | the same core, fern | And the effect being heard takes this sound (D112; built on the page, not yet in Rack (issue 101)) |
+| effect heard | as it was | as it was | the twill band inside the frame | Effect *n* is heard, punched or replayed (D112 item 2; built on the page, not yet in Rack (issue 101)) |
 | queued | dark | broken ecru frame | | This pattern plays next. Chaining is "later" in `WORKFLOW.md` |
 
 Function key:
 
 | State | Looks like |
 |---|---|
-| idle | Dark, with a band across the top: madder, ochre or sky for sound, pattern and bpm, ecru for the other four (fx: fern, D112 item 3; not built) |
+| idle | Dark, with a band across the top: madder, ochre or sky for sound, pattern and bpm, ecru for the other four (fx: fern, D112 item 3; built on the page, not yet in Rack (issue 101)) |
 | pressed | White, pulled in, no band |
 | latched | The whole face lit: in its own colour for the top three, ecru for the rest. Dark label |
 
@@ -196,13 +206,13 @@ latches sound, pattern, bpm, function or fx until a press of any key ends (D60, 
 Session 19 fx keeps its latch until it is ~~Ctrl+clicked~~ again, and is down only while a
 grid key is (D78), on the page as in Rack.
 
-**The latch is Shift (D113, 2026-11-26; not built):** Shift+click and Shift+key, on the
+**The latch is Shift (D113, 2026-11-26; built on the page, not yet in Rack (issue 101)):** Shift+click and Shift+key, on the
 page, in Rack and in a terminal. What a latch does is as above. Until it is built both
 hosts still latch by Ctrl+click.
 
 ### ~~What the grid shows, by mode~~ What the grid shows (D37, accepted by D38; write off changed by D71, D72 and D82; the by-mode reading ended by D112)
 
-**Since 2026-11-26 (D112 item 1; not built) there is one column.** The table below it is
+**Since 2026-11-26 (D112 item 1; built on the page, not yet in Rack (issue 101)) there is one column.** The table below it is
 what is built today.
 
 | | Write on or off |
@@ -237,7 +247,7 @@ it.
 
 While a function key is held the grid changes meaning, in either mode (D51; the core
 decides it, `ENGINE.md` §14): **sound held**, the grid is sounds and the bar marks the chosen
-one, ~~fields off~~ (D119 item 7, not built: a key's field is lit when that sound has at least
+one, ~~fields off~~ (D119 item 7, built on the page, not yet in Rack (issue 101): a key's field is lit when that sound has at least
 one step in the pattern, "in use"); **bpm held**, the fields of keys 1 to *n* are lit, *n* being the master
 volume; **pattern held**, the bar is on key 1. The frame runs throughout.
 
@@ -262,8 +272,8 @@ Drawn in Session 19 on the page and in Rack, from the same view bytes. ~~No key 
 effect (D66 item 3)~~ (superseded by D112 item 2: effect *n* heard lights key *n*'s twill),
 and there is no picture of a machine and no spark (D81 item 3).
 
-**The colour, changed 2026-11-26 (D112 item 3; not built):** the block and the ticks are
-fern, the effects' own dye, where "madder" stands below. Built, they are still madder.
+**The colour, changed 2026-11-26 (D112 item 3; built on the page, not yet in Rack (issue 101)):** the block and the ticks are
+fern, the effects' own dye, where "madder" stands below. In Rack they are still madder.
 
 - **The effect heard** (byte 55): a solid madder block the size of the write mark, with `fx`
   and the number in it in ground (`fx 3`, `fx 11`). It sits just above the write mark's place
@@ -548,7 +558,7 @@ the function keys side by side.
   function keys sit on the right: the top three 81 px wide, the bottom four 60 px, all
   151 px tall.
 
-## The keys and the helper (D113 and D119 decided; D116's terminal keys proposed; 2026-11-26; not built)
+## The keys and the helper (D113 and D119 decided; D116's terminal keys proposed; 2026-11-26; built on the page, not yet in Rack (issue 101))
 
 One map on every host: the page, Rack and a terminal. `tui/Keyboard.dc.html` draws it on a
 keyboard and `tui/Helper.dc.html` draws the helper at phone size.
@@ -558,16 +568,16 @@ keyboard and `tui/Helper.dc.html` draws the helper at phone size.
 | `1234` / `qwer` / `asdf` / `zxcv` | the grid, keys 1 to 16 | built (D28) |
 | `7` `8` `9` | sound, pattern, bpm | built |
 | `u` `i` `o` `p` | function, fx, play, write | built |
-| Shift + a function key, or Shift + click | latch it (D113) | decided, not built; Ctrl+click until then |
-| `t` `g` | slider A up, down | decided (D119 item 3), not built |
-| `y` `h` | slider B up, down | decided (D119 item 3), not built |
-| `space` | play, stop | decided (D119 item 3), not built |
-| `,` `.` | tempo down, up | decided (D119 item 3), not built |
-| `<` `>` | swing less, more | decided (D119 item 3), not built |
-| `-` `=` | volume down, up | decided (D119 item 3), not built |
-| `m` | the sounds sheet | decided (D119 item 3), not built |
-| `?` | the keys helper | decided (D119 item 3), not built |
-| `esc` | lets every latch go | decided (D119 item 3), not built |
+| Shift + a function key, or Shift + click | latch it (D113) | decided, built on the page, not yet in Rack (issue 101); Rack still Ctrl+click |
+| `t` `g` | slider A up, down | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| `y` `h` | slider B up, down | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| `space` | play, stop | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| `,` `.` | tempo down, up | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| `<` `>` | swing less, more | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| `-` `=` | volume down, up | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| `m` | the sounds sheet | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| `?` | the keys helper | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
+| `esc` | lets every latch go | decided (D119 item 3), built on the page, not yet in Rack (issue 101) |
 | `:` | in a terminal: a command line (save, open, export, quit) | proposed ⚠ |
 | Ctrl+Q | in a terminal: quit | proposed ⚠ |
 
