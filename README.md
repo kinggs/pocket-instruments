@@ -7,7 +7,8 @@ Small calculator-format musical instruments, free and open source, that play in 
 as VCV Rack modules from one shared engine.
 
 **Play it now:** <https://kinggs.github.io/pocket-instruments/web/rhythm.html> (made for a phone;
-a desktop browser works too).
+a desktop browser works too). A pull request's version plays at `…/pr-<number>/web/rhythm.html`: the
+pull request carries the link.
 
 **In VCV Rack:** ⚠ the plugin is not in the VCV Library, and there is no release yet. CI builds
 it for Linux, Windows and both Macs when the core or the plugin changes. To try it, open the latest green run of the

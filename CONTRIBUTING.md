@@ -107,6 +107,7 @@ build a framework for the next one yet.
 | `make fuzz OLD=<an older libpi_core.a>` | Checks that this build and an older one give the same output on random input | When a change must move no byte |
 | `make play`, `make listen`, `make p4` | Run the pages in headless Chromium and Firefox (`chromium` and `firefox` on the PATH). They need `make test` first | When `web/` changed |
 | `make hear` | Serves the repository on `127.0.0.1:8417`; open `/web/rhythm.html` | To play your change in a browser |
+| A pull request's preview | `.github/workflows/pages.yml` puts the page at `https://kinggs.github.io/pocket-instruments/pr-<n>/web/rhythm.html` and comments the link. Not for pull requests from forks | To play it on a phone, which needs `https` for its audio |
 | `make -C rack install RACK_DIR=<Rack SDK>` | Builds the plugin and installs it in Rack. Needs the Rack SDK 2.6.6 and `jq` | When `rack/` or the core changed |
 | `make -C rack selftest RACK_APP=<Rack>` | Runs Rack headless at three sample rates | Before a Rack pull request |
 
