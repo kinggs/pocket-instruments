@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The keyboard map for Rhythm in a terminal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; padding: 40px 48px; background: #14131F; display: flex; flex-direction: column; gap: 32px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; font-size: 20px; line-height: 24px; color: #F2E8D0">
+
+<div style="display: flex; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+<div style="display: flex; gap: 6px; padding-left: {{r.indent}}px">
+<sc-for list="{{ r.keys }}" as="k" hint-placeholder-count="12">
+<div style="width: {{k.w}}px; height: 64px; box-sizing: border-box; border-top: 6px solid {{k.band}}; box-shadow: inset 0 0 0 1px {{k.line}}; background: {{k.bg}}; color: {{k.ink}}; padding: 2px 6px 6px; display: flex; flex-direction: column; justify-content: space-between"><div>{{k.cap}}</div><div style="font-size: 12px; line-height: 14px; font-weight: 500; white-space: pre">{{k.role}}</div></div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px; font-size: 16px; font-weight: 500; color: #C9C2DD">
+<div style="font-weight: 800; color: #F2E8D0">Left to right, as on the panel</div>
+<div style="display: flex; gap: 12px; align-items: center"><span style="width: 20px; height: 20px; background: #F2E8D0"></span>the grid</div>
+<div style="display: flex; gap: 12px; align-items: center"><span style="width: 20px; height: 20px; background: #2B2942; border-top: 6px solid #C9C2DD; box-sizing: border-box"></span>sliders A and B</div>
+<div style="display: flex; gap: 12px; align-items: center"><span style="width: 20px; height: 20px; background: #2B2942; border-top: 6px solid #F0654A; box-sizing: border-box"></span>function keys</div>
+<div style="display: flex; gap: 12px; align-items: center"><span style="width: 20px; height: 20px; background: #2B2942; border-top: 6px solid #6E6A92; box-sizing: border-box"></span>shortcuts</div>
+<div>The grid and function keys are the ones the phone page and Rack already use.</div>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; font-size: 16px; font-weight: 500; color: #C9C2DD">
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-weight: 800; color: #F2E8D0">Holding, in a terminal</div>
+<div><span style="font-weight: 800; color: #F2E8D0">tap</span> arms a function key until the next grid key. Works everywhere.</div>
+<div><span style="font-weight: 800; color: #F2E8D0">hold</span> is a real hold where the terminal reports key-up (the kitty keyboard protocol).</div>
+<div><span style="font-weight: 800; color: #F2E8D0">shift</span> with the key locks it until it is pressed again.</div>
+<div><span style="font-weight: 800; color: #F2E8D0">esc</span> lets everything go.</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-weight: 800; color: #F2E8D0">Sentences</div>
+<div><span style="font-weight: 800; color: #F2E8D0">7 q</span> choose sound 5, and hear it</div>
+<div><span style="font-weight: 800; color: #F2E8D0">9</span> next tempo: 80, 120, 140</div>
+<div><span style="font-weight: 800; color: #F2E8D0">9 f</span> volume 12</div>
+<div><span style="font-weight: 800; color: #F2E8D0">i 3</span> punch effect 3 while 3 is down</div>
+<div><span style="font-weight: 800; color: #F2E8D0">u 8</span> clear the pattern</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-weight: 800; color: #F2E8D0">One key each</div>
+<div><span style="font-weight: 800; color: #F2E8D0">, .</span> tempo down, up <span style="font-weight: 800; color: #F2E8D0">&lt; &gt;</span> swing</div>
+<div><span style="font-weight: 800; color: #F2E8D0">- =</span> volume down, up</div>
+<div><span style="font-weight: 800; color: #F2E8D0">m</span> the sounds sheet: sample, through fx</div>
+<div><span style="font-weight: 800; color: #F2E8D0">?</span> every key for this screen</div>
+<div><span style="font-weight: 800; color: #F2E8D0">:</span> save, open, export, quit</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+renderVals() {
+const g = '#14131F', tile = '#2B2942', ecru = '#F2E8D0', lilac = '#C9C2DD', thread = '#6E6A92';
+const none = 'transparent';
+const grid = (cap, n) => ({ cap, role: 'step ' + n, bg: ecru, ink: g, band: ecru, line: none });
+const fn = (cap, role, band) => ({ cap, role, bg: tile, ink: ecru, band, line: none });
+const idle = (cap) => ({ cap, role: '', bg: none, ink: lilac, band: none, line: thread });
+const w = (list) => list.map((k) => ({ w: 64, ...k }));
+const rows = [
+{ indent: 0, keys: w([fn('esc', 'let go', thread), grid('1', 1), grid('2', 2), grid('3', 3), grid('4', 4), idle('5'), idle('6'), fn('7', 'sound', '#F0654A'), fn('8', 'pattern', '#F0B429'), fn('9', 'bpm', '#8FAAF7'), idle('0'), fn('-', 'vol down', thread), fn('=', 'vol up', thread)]) },
+{ indent: 105, keys: w([grid('q', 5), grid('w', 6), grid('e', 7), grid('r', 8), fn('t', 'A up', lilac), fn('y', 'B up', lilac), fn('u', 'function', ecru), fn('i', 'fx', ecru), fn('o', 'play', ecru), fn('p', 'write', ecru), idle('['), idle(']')]) },
+{ indent: 122, keys: w([grid('a', 9), grid('s', 10), grid('d', 11), grid('f', 12), fn('g', 'A down', lilac), fn('h', 'B down', lilac), idle('j'), idle('k'), idle('l'), fn('; :', 'command', thread), idle("'")]) },
+{ indent: 157, keys: w([grid('z', 13), grid('x', 14), grid('c', 15), grid('v', 16), idle('b'), idle('n'), fn('m', 'sounds', thread), fn(', <', 'bpm, swing', thread), fn('. >', 'bpm, swing', thread), fn('/ ?', 'keys', thread)]) },
+{ indent: 262, keys: [{ w: 344, ...fn('space', 'play', ecru) }] },
+];
+return { rows };
+}
+}
+</script>
+</body>
+</html>
