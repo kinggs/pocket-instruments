@@ -134,3 +134,12 @@ sound: build/Sound.vcv
 build/Sound.vcv: patch/sound.json
 	@mkdir -p build
 	tar -C patch --transform 's/^sound.json$$/patch.json/' -c sound.json | zstd -q -f -o $@
+
+# The reference patch (patch/make-showcase.mjs writes showcase.json): one Rhythm module with
+# every kind of jack in use, and only Rack's own modules (Core and Fundamental). For trying it,
+# testing by hand, the showcase and screenshots. Open it in Rack and press play.
+.PHONY: showcase
+showcase: build/Showcase.vcv
+build/Showcase.vcv: patch/showcase.json
+	@mkdir -p build
+	tar -C patch --transform 's/^showcase.json$$/patch.json/' -c showcase.json | zstd -q -f -o $@
