@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The lights of a key, on every host</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1592px; height: 860px; box-sizing: border-box; padding: 48px; background: #14131F; display: flex; gap: 56px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; font-size: 16px; line-height: 24px; color: #F2E8D0">
+
+<div style="width: 336px; display: flex; flex-direction: column; gap: 24px">
+<div>one key, every light on</div>
+<div style="position: relative; width: 288px; height: 288px; box-sizing: border-box; padding: 36px; background: #F0B429">
+<div style="width: 216px; height: 216px; box-sizing: border-box; padding: 36px; background: repeating-linear-gradient(135deg, #6FD6A0 0 12px, #14131F 12px 24px)">
+<div style="width: 144px; height: 144px; background: #F2E8D0"></div>
+</div>
+<div style="position: absolute; left: 87px; top: 87px; width: 114px; height: 114px; box-sizing: border-box; border: 9px solid #14131F; background: #6FD6A0; color: #14131F; display: flex; align-items: center; justify-content: center; font-size: 64px; line-height: 64px">5</div>
+<div style="position: absolute; right: 42px; top: 42px; width: 24px; height: 24px; background: #14131F"></div>
+<div style="position: absolute; left: 36px; right: 36px; bottom: 36px; height: 24px; background: #F0654A"></div>
+<div style="position: absolute; left: 4px; top: 4px; width: 28px; height: 28px; background: #07060C; text-align: center; line-height: 28px">1</div>
+<div style="position: absolute; left: 40px; top: 130px; width: 28px; height: 28px; background: #07060C; text-align: center; line-height: 28px">2</div>
+<div style="position: absolute; left: 76px; top: 76px; width: 28px; height: 28px; background: #07060C; text-align: center; line-height: 28px">3</div>
+<div style="position: absolute; left: 164px; top: 164px; width: 28px; height: 28px; background: #07060C; text-align: center; line-height: 28px">4</div>
+<div style="position: absolute; right: 12px; top: 40px; width: 28px; height: 28px; background: #07060C; text-align: center; line-height: 28px">5</div>
+<div style="position: absolute; left: 130px; bottom: 34px; width: 28px; height: 28px; background: #07060C; text-align: center; line-height: 28px">6</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; font-weight: 500; color: #C9C2DD">
+<div><span style="font-weight: 800; color: #F2E8D0">1 frame</span> the playhead is here</div>
+<div><span style="font-weight: 800; color: #F2E8D0">2 twill</span> effect n is heard</div>
+<div><span style="font-weight: 800; color: #F2E8D0">3 field</span> the chosen sound has a step here</div>
+<div><span style="font-weight: 800; color: #F2E8D0">4 core</span> sound n is sounding: white, or fern when it goes through the effect</div>
+<div><span style="font-weight: 800; color: #F2E8D0">5 stitch</span> another sound has a step here</div>
+<div><span style="font-weight: 800; color: #F2E8D0">6 bar</span> the chosen sound or pattern</div>
+<div style="display: flex; gap: 12px; align-items: center"><span style="width: 24px; height: 24px; background: #6FD6A0"></span><span>loom/fern #6FD6A0, the effects' dye</span></div>
+</div>
+</div>
+
+<div style="width: 1104px; display: flex; flex-direction: column; gap: 22px">
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div>Rack and the page</div>
+<div style="display: flex; gap: 16px">
+<sc-for list="{{ colour }}" as="k" hint-placeholder-count="10">
+<div style="width: 96px; display: flex; flex-direction: column; gap: 8px">
+<div style="position: relative; width: 96px; height: 96px; box-sizing: border-box; padding: 12px; background: {{k.frame}}">
+<div style="width: 72px; height: 72px; box-sizing: border-box; padding: 12px; background: {{k.band}}"><div style="width: 48px; height: 48px; background: {{k.field}}"></div></div>
+<div style="position: absolute; left: 29px; top: 29px; width: 38px; height: 38px; box-sizing: border-box; border: 3px solid {{k.coreLine}}; background: {{k.core}}; color: {{k.ink}}; display: flex; align-items: center; justify-content: center; font-size: 22px">5</div>
+<span style="position: absolute; right: 14px; top: 14px; width: 8px; height: 8px; background: {{k.stitch}}"></span>
+<span style="position: absolute; left: 12px; right: 12px; bottom: 12px; height: 8px; background: {{k.bar}}"></span>
+</div>
+<div style="font-size: 15px; line-height: 20px; font-weight: 500; color: #C9C2DD; text-align: center; height: 40px">{{k.name}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; background: #000000; margin: 0 -16px; padding: 12px 16px">
+<div>the same with no colour</div>
+<div style="display: flex; gap: 16px">
+<sc-for list="{{ mono }}" as="k" hint-placeholder-count="10">
+<div style="position: relative; width: 96px; height: 96px; box-sizing: border-box; padding: 12px; background: {{k.frame}}">
+<div style="width: 72px; height: 72px; box-sizing: border-box; padding: 12px; background: {{k.band}}"><div style="width: 48px; height: 48px; background: {{k.field}}"></div></div>
+<div style="position: absolute; left: 29px; top: 29px; width: 38px; height: 38px; box-sizing: border-box; border: 3px solid {{k.coreLine}}; background: {{k.core}}; color: {{k.ink}}; display: flex; align-items: center; justify-content: center; font-size: 22px">5</div>
+<span style="position: absolute; right: 14px; top: 14px; width: 8px; height: 8px; background: {{k.stitch}}"></span>
+<span style="position: absolute; left: 12px; right: 12px; bottom: 12px; height: 8px; background: {{k.bar}}"></span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div>the terminal: a key is 5 by 3 cells</div>
+<div style="display: flex; gap: 16px">
+<sc-for list="{{ colour }}" as="k" hint-placeholder-count="10">
+<div style="width: 96px; height: 84px; display: flex; align-items: center; justify-content: center">
+<div style="position: relative; width: 70px; height: 56px; box-sizing: border-box; border-style: solid; border-width: 14px 7px; border-color: {{k.tframe}}; background: {{k.tfield}}">
+<span style="position: absolute; left: 7px; top: 0; width: 14px; height: 28px; background: {{k.tflank}}"></span>
+<span style="position: absolute; left: 35px; top: 0; width: 14px; height: 28px; background: {{k.tflank}}"></span>
+<span style="position: absolute; left: 21px; top: 0; width: 14px; height: 28px; background: {{k.core}}; color: {{k.ink}}; text-align: center; font-size: 23.333px; line-height: 28px">q</span>
+<span style="position: absolute; left: 38px; top: 10px; width: 8px; height: 8px; background: {{k.tstitch}}"></span>
+<span style="position: absolute; left: -7px; right: -7px; bottom: -14px; height: 14px; background: {{k.bar}}"></span>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div>where it comes from: shown only while sound is held (the first three) or fx is held (the last three)</div>
+<div style="display: flex; gap: 16px">
+<sc-for list="{{ sources }}" as="s" hint-placeholder-count="6">
+<div style="width: 168px; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="position: relative; width: 96px; height: 96px; background: #2B2942; display: flex; align-items: center; justify-content: center; font-size: 22px">5<span style="position: absolute; left: 14px; top: 14px; width: {{s.w}}px; height: {{s.h}}px; box-sizing: border-box; border: {{s.bd}}; border-radius: {{s.r}}; background: {{s.bg}}"></span></div>
+<div style="font-size: 15px; line-height: 20px; font-weight: 500; color: #C9C2DD; text-align: center">{{s.name}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="font-weight: 500; color: #C9C2DD">From the outside in: where the bar is, what is done to the sound, what is written, what is sounding. A light means the same with write on or off, and none is told by hue alone: the twill is hatched and the core has a dark line round it.</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1592,"height":860}}'>
+class Component extends DCLogic {
+renderVals() {
+const none = 'transparent';
+const moments = [
+{ name: 'off' },
+{ name: 'step', step: 1 },
+{ name: 'playhead', play: 1 },
+{ name: 'sounding', core: 'dry' },
+{ name: 'sounding, through the effect', core: 'wet' },
+{ name: 'effect heard', twill: 1 },
+{ name: 'other sound', stitch: 1 },
+{ name: 'chosen', bar: 1 },
+{ name: 'all at once', step: 1, play: 1, twill: 1, core: 'wet', stitch: 1 },
+{ name: 'pressed', pressed: 1 },
+];
+const mk = (p) => moments.map((m) => {
+const hatch = 'repeating-linear-gradient(135deg, ' + p.fern + ' 0 4px, ' + p.bg + ' 4px 8px)';
+const field = m.pressed ? p.white : m.step ? p.ecru : p.tile;
+const core = m.core === 'dry' ? p.white : m.core === 'wet' ? p.fern : none;
+const lit = m.step || m.pressed;
+return {
+name: m.name,
+frame: m.pressed ? p.bg : m.play ? p.ochre : p.tile,
+band: m.twill ? hatch : field,
+field,
+core,
+coreLine: m.core ? p.bg : none,
+ink: m.core || lit ? p.bg : p.ecru,
+stitch: m.stitch ? (lit ? p.bg : p.ecru) : none,
+bar: m.bar ? p.madder : none,
+tframe: m.pressed ? p.bg : m.play ? p.ochre : field,
+tfield: field,
+tflank: m.twill ? hatch : (m.core && lit ? p.bg : none),
+tstitch: m.stitch && !m.twill ? (lit ? p.bg : p.ecru) : none,
+};
+});
+const colour = mk({ bg: '#14131F', tile: '#2B2942', ecru: '#F2E8D0', white: '#FFFFFF', ochre: '#F0B429', madder: '#F0654A', fern: '#6FD6A0' });
+const mono = mk({ bg: '#000000', tile: '#2A2A2A', ecru: '#B4B4B4', white: '#FFFFFF', ochre: '#FFFFFF', madder: '#B4B4B4', fern: '#B4B4B4' });
+const e = '#F2E8D0';
+const sources = [
+{ name: 'sound: built in code', w: 0, h: 0, bd: '0', r: '0', bg: none },
+{ name: 'sound: a sample', w: 14, h: 4, bd: '0', r: '0', bg: e },
+{ name: 'sound: back in from a cable', w: 12, h: 12, bd: '3px solid ' + e, r: '50%', bg: none },
+{ name: 'effect: ours', w: 0, h: 0, bd: '0', r: '0', bg: none },
+{ name: 'effect: Rack beside ours', w: 12, h: 12, bd: '3px solid ' + e, r: '50%', bg: none },
+{ name: 'effect: Rack in its place', w: 12, h: 12, bd: '0', r: '50%', bg: e },
+];
+return { colour, mono, sources };
+}
+}
+</script>
+</body>
+</html>

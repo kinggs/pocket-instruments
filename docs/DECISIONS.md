@@ -425,6 +425,9 @@ report, not a check on the hardware. D30 gives every key a track, so every key c
 by D71, D72 item 3 and D82. The hardware lights the chosen sound's steps in both modes, and
 since Session 20 ours does too; the white for a firing, the frame and the bar are as above.)
 
+(Annotated 2026-11-26: D112 item 1 ends the by-mode reading. Every light means the same
+with write on or off; write changes what a tap does.)
+
 ### D38 — The owner accepts D37
 **2026-11-19 · decided (owner) · settles D37's proposal**
 
@@ -857,6 +860,9 @@ Why: one rule on both hosts (D22) without taking Rack's menu off five controls. 
 nearest precedent, the monome grid modules, latches with a modified click too. "For now":
 to be tried by hand at P8.
 
+(Annotated 2026-11-26: superseded by D113. The latch is Shift, because a terminal cannot
+carry Ctrl+key. D60's rules for what a latch does stand.)
+
 ### D62 — In Rack, the sounds go out and come back: a sixteen-channel RETURN
 **2026-11-23 · decided (owner: "we want to be able to route individual sound triggers to modules and then route the individual sounds back. Way more so than samples. It shows off the power of Rack. And is probably the main thing we want to be able to show off to Teenage Engineering"; "Yes please" to this proposal) · extends D33 · for Session 13**
 
@@ -983,6 +989,10 @@ this instrument's workflow); a lane a sound (sixteen lanes, and no evidence the 
 has them); two lanes, one for each kind of effect, so a repeat and a filter could share a
 step (attractive, and cheap to add later: the kinds are already separate in the core).
 `ENGINE.md` §17.
+
+(Annotated 2026-11-26: item 3's "No key lights for an effect" is superseded by D112 item 2.
+The rest stands. Item 2's "Held alone, fx empties each step that arrives" is why looking at
+the effects by holding fx wipes them: O31.)
 
 ### D67 — The first effects: four repeats in the sequencer, then seven on the bus
 **2026-11-23 · proposed (Session 15) · built in Sessions 16 and 17**
@@ -1252,6 +1262,10 @@ everything, and Rack 3 is to rework expanders (R60). The cost is height: the sec
 takes the band between the keys (to about 86 mm) and the jack labels, which the wordmark
 and stitching use now.
 
+(Annotated 2026-11-26: the two rows and item 1's positions are superseded by D114, one row
+along the bottom with CLOCK, RESET and AUDIO beside the display. The grouping by kind,
+item 3 and item 4 stand.)
+
 ### D77 — Session 17's four readings stand; the plugin ships the notice of the code it ports
 **2026-11-23 · decided (Fable, as the design's author; the owner can overrule) · settles Session 17's questions**
 
@@ -1425,6 +1439,9 @@ Why now and not with the owner: the owner asked for as much as can be built with
 (D79). Everything here is drawing in the two hosts; the core does not change, so a
 different look later costs a few lines in each.
 
+(Annotated 2026-11-26: the madder of items 1 and 2 is superseded by D112 item 3: the
+effects' own dye, `loom/fern`. The block and the tick themselves stand.)
+
 ### D82 — Session 19 verified; the grid with write off, exactly, for Session 20
 **2026-11-23 · decided (Fable; the owner is away and can overrule: D79) · completes D71 and D72 item 3**
 
@@ -1449,6 +1466,11 @@ and four ticks over the step marks.
 4. **A field key that fires goes white** for its half step and comes back lit, as any key
    does: the host's rule for white already says so.
 5. The other rows (bpm, sound, pattern held; write on) do not change.
+
+(Annotated 2026-11-26: item 1's question is answered by D112 item 3, a fifth dye. Items 2
+to 4 are superseded where D112 item 1 changes them: a firing shows as a core on its key in
+both modes and no longer whitens the whole face, and ⚠ by that ruling's words the stitch
+shows with write off too.)
 
 ### D83 — Session 20 verified; its three readings stand; the weave's first attempt begins
 **2026-11-23 · decided (Fable; the owner is away and can overrule: D79)**
@@ -2361,6 +2383,161 @@ says why that derives nothing from it.)
 (Annotated 2026-11-26: item 3 is ruled by D118 item 3: the terminal host is part of the
 showpiece.)
 
+### D112 — A key's lights mean the same with write on or off; effects light keys, in a dye of their own; where a sound comes from is a small mark
+**2026-11-26 · decided (owner, in a design session on a private Claude Design canvas) · carries out D110 item 8 · supersedes D37's and D82's by-mode reading where item 1 changes it, D66 item 3's "No key lights for an effect", and the madder of D81 items 1 and 2 and D82 item 1 · nothing built**
+
+How we got here: the owner and a design session drew, on one canvas, a terminal host, the
+lights of a key for every host, one keyboard map with a keys helper, and a new place for
+Rack's jacks (D112 to D117; the boards are in `design/tui/`). Nothing was written to a
+repository that day; a second session logged it from the first's hand-over. So the rulings
+below are as the design session reported them, in the owner's words only where quoted. On
+the problems the session listed (O31 to O35) the owner said: "Happy with your problems. Lets
+just log them and/or get a claude code session working on them". ⚠ marks a reading the
+logging session made.
+
+1. **Every light on a key means the same with write on or off.** Sound *n* sounding always
+   shows on key *n*, as a small core in the middle of the key and not the whole face. So:
+   - A firing shows with write on too. D83 had accepted the reading that with write on a
+     firing does not whiten a key; that reading ends.
+   - A key whose sound fires no longer goes white all over (D82 item 4, and `design/DESIGN.md`'s
+     "fired"). White over the whole face, pulled in, is a finger and nothing else.
+   - ⚠ The stitch then shows with write off as with write on. D82 item 3 had no stitch
+     with write off ("three kinds of light on a grid nobody is editing is one too many").
+     This follows from the ruling's words; the owner was not asked about the stitch alone.
+   - The rows for a held key (bpm, sound or pattern held: D51, `ENGINE.md` §14) are not
+     about write and stand.
+2. **Effects light keys.** Effect *n* being heard shows on key *n*. This supersedes one
+   sentence of D66 item 3, "No key lights for an effect"; the rest of D66 stands. The owner's
+   reason, as reported: we are no longer tethered to the hardware's single LED. The display
+   still says an effect with its block and the lane's ticks (D81).
+3. **Effects get a fifth dye of their own,** proposed as `loom/fern`, `#6FD6A0`: the fx
+   key's band, the display's fx block, the lane's ticks and the effect light on a key. Sound
+   stays madder. This settles the mistake D82 item 1 left for the owner's eye (D81 called
+   madder "the fx key's own colour"; it is the sound key's): the answer is neither madder
+   nor ecru. ⚠ The value is a proposal, and its contrast is by arithmetic only
+   (`design/DESIGN.md`, "Tokens").
+4. **Where a sound or an effect comes from is shown only while sound or fx is held or
+   latched,** as a small mark in the key's top left corner. Sounds: built in code, no mark;
+   a sample, a short dash; back in from a cable (RETURN), a ring. Effects: ours, no mark;
+   Rack's beside ours, a ring; Rack's in its place, a solid disc.
+
+How each light is drawn is D115, proposed. `ENGINE.md` §14 and §17 are not changed by this
+decision: what the view must carry for these lights is O32, and those sections change with
+its answer. Until then they describe what is built.
+
+Not chosen: keeping the hardware's rule that no key lights for an effect (D66 item 3, D22).
+The workflow is still the thing kept faithful; what a key can say is ours (D36, D110 item 8).
+
+### D113 — The latch is Shift, on every host
+**2026-11-26 · decided (owner, in the same design session; as reported) · supersedes D61's Ctrl+click · D60's rules and D78's rule for fx are kept · hosts only, the core does not change · nothing built**
+
+1. **Shift+click and Shift+key latch** sound, pattern, bpm, function or fx: on the page, in
+   Rack and in the terminal. Ctrl+click (D61) goes.
+2. **What a latch does is unchanged.** Sound, pattern, bpm and function let go after the
+   next key (D60, D61). fx stays latched until it is Shift-pressed again, and is down only
+   while a grid key is down (D78).
+3. **Why Shift:** a terminal cannot carry Ctrl+key. Ctrl+I is Tab, and Ctrl with a digit is
+   not sent. One rule on every host needs a modifier every host can read (D22).
+
+Until it is built the page and Rack still latch by Ctrl+click, and `docs/WORKFLOW.md`, the
+page's own help and `design/DESIGN.md`'s older lines still say so.
+
+⚠ Not checked, for the build: whether Rack gives Shift+click on a control a meaning of its
+own (R47 was read for Ctrl and for the right-click); and that in a terminal without the
+kitty keyboard protocol Shift+`7` arrives as `&` on one keyboard layout and as something
+else on another (D116).
+
+### D114 — Rack's jacks: CLOCK and RESET left of the display, AUDIO right of it, ten sixteen-channel jacks in one row along the bottom
+**2026-11-26 · decided (owner, in the same design session; as reported) · supersedes D76's two rows and item 1's positions · D76's grouping by kind, its item 3 and its item 4 stand · the width is not ruled (O34) · nothing built or drawn by `make_panel.py`**
+
+1. **"Layout B":** CLOCK over RESET at the left of the display, AUDIO at its right, and the
+   ten sixteen-channel jacks in one row along the bottom, in four groups: the sounds
+   (TRIGGERS, VOICES, RETURN), slider A (out, in), slider B (out, in), the effects (FX
+   GATES, FX SEND, FX RETURN). An output still sits beside the input that answers it, and
+   each group still reads left to right as it is patched (D76).
+2. **The owner is open to a wider module.** Whether it stays 24 HP or goes to 27 is O34.
+3. **Port numbers do not change** (D76 item 2, `docs/RACK-RULES.md`): a patch keeps its
+   cables; only the picture moves.
+
+Why, ⚠ as the logging session reads the boards (the hand-over gave no reason): one row
+keeps every cable below the keys and puts a patch's start and end beside the display. D76
+was "accepted for now", to be judged in use; this is the first change that judging made.
+
+Not chosen: the ten jacks in a column down the right side (about 29 HP, and the cables hang
+over the labels below them: R36).
+
+The arithmetic, both widths, the labels and what is not drawn are in `design/DESIGN.md`,
+"Layout B". ⚠ None of it has been through `make_panel.py --check`.
+
+### D115 — A key's lights, from the outside in; and Loom in a terminal's cells
+**2026-11-26 · proposed (the design session; drawn, not rendered and checked) · draws D112 · changes D36's "two lights to a key" · every look is a stand-in until the owner rules**
+
+1. **Six lights and a mark, from the outside in:**
+   - **frame**, the outer band, ochre: the step that is playing (as D36);
+   - **twill**, a hatched band inside the frame, fern stripes and ground stripes: effect
+     *n* is heard. Hatched so that it reads the same on a lit key and a dark one;
+   - **field**, the face, ecru: the chosen sound has a step here (as D36, D71);
+   - **core**, a patch in the middle with a dark line round it: sound *n* is sounding.
+     White; fern when that sound is going through the effect being heard;
+   - **stitch**, top right: another sound has a step here (as D36);
+   - **bar**, along the bottom: the chosen sound or pattern (as D36);
+   - **source mark**, top left: D112 item 4.
+   Pressed stays white, pulled in. From the outside in they answer: where the bar is, what
+   is done to the sound, what is written, what is sounding.
+2. **No state is told by hue alone** (D36): the twill is hatched, the core has its dark
+   line, and the marks differ by shape.
+3. **In a terminal a key is 5 by 3 cells.** The frame is half blocks above and below and
+   half-width sides; the field is the middle row's background; the core is the centre
+   cell; the twill is the two cells either side of it; the legend is the keyboard key you
+   press (`q`, not `5`).
+4. **One departure from Loom in a terminal:** a cell holds two colours, so the dark line
+   between a lit field and the frame is gone, and the two are told apart by lightness.
+5. **With no colour** (`NO_COLOR`): normal, bold and reverse only.
+
+Sizes, the states and what the boards leave out are in `design/DESIGN.md`, "A key's lights"
+and "Loom in a terminal". ⚠ Proposed, not ruled one by one: the owner ruled D112's four
+items, not each shape here.
+
+### D116 — One keyboard map and one keys helper, on every host
+**2026-11-26 · proposed (the design session) · builds on D28 and D113 · the single-key shortcuts are not ruled one by one (O36) · nothing built**
+
+1. **What exists stays:** the grid on `1234 / qwer / asdf / zxcv`, sound, pattern and bpm
+   on `7 8 9`, function, fx, play and write on `u i o p` (D28; `web/rhythm.html`'s `CODES`
+   and `rack/src/Rhythm.cpp`'s `KEYS`).
+2. **Proposed new, the same on every host ⚠:** `t` and `g` slider A up and down, `y` and
+   `h` slider B; `space` play; `,` and `.` tempo down and up; `<` and `>` swing less and
+   more; `-` and `=` volume down and up; `m` the sounds sheet; `?` the keys helper; `esc`
+   lets every latch go. In the terminal also `:` for a command line (save, open, export,
+   quit) and Ctrl+Q to quit.
+3. **The helper is one sheet:** the map, the rule for two keys at once (hold, or Shift to
+   latch: D113) and the one-key shortcuts. Opened by `?` or by a tap. ⚠ Where the tap's
+   target sits on the page and on the Rack panel is not designed; suggested, a `?` in the
+   display's corner.
+
+Why one map: a player who learns it on one host has it on the others (D22, D28).
+
+⚠ Not checked: each new key against what Rack and a browser already do with it; `?`, `<`
+and `>` are Shift with another key, on a US layout, while Shift is now the latch (D113).
+
+### D117 — The terminal host's screen: 80 by 24, and a pocket size of 48 by 10
+**2026-11-26 · proposed (the design session) · extends D111 item 3, which D118 item 3 rules: the terminal host is part of the showpiece · nothing built; a terminal host still needs its design pass (issue 8)**
+
+1. **80 by 24 fits exactly:** a status line; the weave in half-block cells, 78 wide in 8
+   rows; a row for the lane's ticks and a row of step marks; then the grid, the sliders
+   and the function keys in the panel's order, left to right; then a footer of hints that
+   changes with the mode.
+2. **While a function key is held the display lists what each key now means** (sound held:
+   the sixteen sounds by the key that chooses each).
+3. **A pocket layout, 48 by 10,** for small panes: one light a key.
+4. **Holds.** A plain terminal reports no key-up; the kitty keyboard protocol does. So a
+   terminal that cannot report key-up latches on a plain tap. Effects are the hard case:
+   O33.
+5. ⚠ **Not checked:** only foot 1.28 was found on the owner's machine; it is believed to
+   support the protocol and was not tested. tmux probably does not pass key-up through.
+   Sound out (PipeWire) was not looked at.
+
+`design/DESIGN.md`, "Loom in a terminal", has the rows.
+
 ### D118 — The owner's three rulings on the move: the editor's name kept, the support address kept, the terminal host in the showpiece
 **2026-11-26 · decided (owner, after the move) · settles the three questions the move's hand-over left · rules D111 item 3**
 
@@ -2413,3 +2590,9 @@ showpiece.)
 | O28 | ~~A sum that overflows gives a not-a-number whose bits no rule fixes: two sounds returned at 3e38 with an effect held make `∞ − ∞` in §18's mix, and Rust and WebAssembly both leave that NaN's sign open. So "the same bits on every host" (§11) does not hold for it. Found by Codex reading D105; older than it. Clamp what is returned (to ±10, say), make the mix's NaN a fixed one, or accept it as outside the contract?~~ | **Answered 2026-11-26: D109** (accepted as outside the contract; §11 says so). Was: The owner. Recommended: accept, and say so in §11: a returned sound of 3e38 is 3e39 V in Rack. D105's sessions keep the arithmetic's order, so they do not move it |
 | O29 | May Pocket Operations' patterns be shipped inside the instrument? A bookseller's listing says CC BY; the author's own page refused the fetch, so its licence line is unread (2026-11-26) | The owner reads the licence on the page, or the author answers the note drafted in Session 43. Recommended: ship nothing until one of them says yes; credit and link either way |
 | O30 | ~~Which instrument is second? The owner leans to the one on the table, a PO-133. That is the PO-33 K.O! in its Street Fighter edition, a sampler (`libpo` treats the two as one); the EP-133 K.O. II is a different, larger machine~~ | **Answered 2026-11-26: D111** (a sampler, named Sampler). Was: The owner, when patterns are done. Recommended: not yet; it changes no file's place (D110 item 4) |
+| O31 | Looking at the effects wipes them. Holding fx alone while playing empties each step that passes (D66 item 2), so a player who holds fx to see the effects on the keys (D112 item 2) clears the lane as they look. Say that the Shift latch is the safe way in (D78: latched, fx is down only while a grid key is), or give the view another way in? | The owner. Recommended: the latch, said in the helper and the footer, until playing it says otherwise. Issue 90 |
+| O32 | What must the view carry for D112's lights: the core with write on, the fern core, the twill and the source marks? The design session logged it as new view bits, an ABI change with fixtures. ⚠ The logging session's reading of `ENGINE.md` §14: `fires` (bytes 32 to 47), `heard` (55), fx sounds (58) and `sampled` (18) are already there, and a firing is hidden with write on only by the host rule that reads flag 4; what the view lacks is which sounds come back by a cable and which effects are Rack's, and both are the Rack module's own knowledge. So it may be a change to §14's host rule and no new byte. D51 says the core decides what is lit | A design pass on §14 and §17, with the views worked by hand first. Issue 92 |
+| O33 | Effects in a terminal that reports no key-up. An effect is heard only while its key is down (D66 item 3), and a plain terminal cannot say when a key comes up (D117 item 4). Suggested by the design session, not drawn and not ruled: with fx latched, a tap starts the effect and a second tap stops it | The owner, with the terminal host's design pass. Issue 91 |
+| O34 | Layout B (D114): 24 HP or 27 HP? By arithmetic from `design/make_panel.py`'s own clearances one row of ten fits at 24 HP, but the display narrows to about 88 mm and the weave cannot keep its 78 cells without a change in the core (§16). At 27 HP the display is about 103 mm, the weave keeps 78 cells and the groups stand about 7 mm apart. The tempo's column narrows to about 20 mm either way. ⚠ Nothing was run through `make_panel.py --check` | The owner. Recommended by the design session: 27 HP. `design/DESIGN.md`, "Layout B". Issue 87 |
+| O35 | Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way | The owner. Issue 88 |
+| O36 | The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed? | The owner, one by one. ⚠ First check each against what Rack and a browser already do with it. Issue 89 |

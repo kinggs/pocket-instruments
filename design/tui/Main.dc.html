@@ -8,7 +8,7 @@
 <body>
 <x-dc>
 <helmet>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&display=swap">
 <style>
 body{margin:0}
 </style>
@@ -138,7 +138,7 @@ body{margin:0}
 <sc-if value="{{ isSound }}" hint-placeholder-val="{{ false }}">
 <div style="height: 28px; padding: 0 14px; display: flex; gap: 28px; white-space: pre; color: #C9C2DD">
 <span><span style="color: #F2E8D0">1…v</span> choose a sound</span>
-<span><span style="color: #F2E8D0">shift+7</span> lock</span>
+<span><span style="color: #F2E8D0">shift+7</span> latch</span>
 <span><span style="color: #F2E8D0">esc</span> let go</span>
 <span><span style="color: #F2E8D0">?</span> keys</span>
 </div>
@@ -168,8 +168,8 @@ bar: isSound && i === 0 ? T.madder : 'transparent' };
 });
 const fk = (cap, word, colour, latched) => ({ cap, word, band: colour, face: latched ? colour : T.tile, ink: latched ? T.ground : T.ecru, capInk: latched ? T.ground : T.lilac });
 const top = [fk('7', 'sound', T.madder, isSound), fk('8', 'pattern', T.ochre, false), fk('9', 'bpm', T.sky, false)];
-const bottom = [fk('u', 'function', T.ecru, false), fk('i', 'fx', T.ecru, false), fk('o', 'play', T.ecru, true), fk('p', 'write', T.ecru, isWrite)];
-const marks = caps.map((_, i) => ({ h: i === play ? 28 : (i % 4 === 0 ? 14 : 7), c: i === play ? T.ochre : T.thread, tick: [5, 6, 7].includes(i) ? T.madder : 'transparent' }));
+const bottom = [fk('u', 'function', T.ecru, false), fk('i', 'fx', '#6FD6A0', false), fk('o', 'play', T.ecru, true), fk('p', 'write', T.ecru, isWrite)];
+const marks = caps.map((_, i) => ({ h: i === play ? 28 : (i % 4 === 0 ? 14 : 7), c: i === play ? T.ochre : T.thread, tick: [5, 6, 7].includes(i) ? '#6FD6A0' : 'transparent' }));
 const P = 14, cells = [];
 const put = (x, y, w, h, c) => cells.push({ x: x * P, y: y * P + 7, w: w * P, h: h * P, c });
 const edge = 52;

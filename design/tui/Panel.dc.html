@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Rack panel, layout B, at 24 and 27 HP</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1452px; height: 920px; box-sizing: border-box; padding: 48px; background: #07060C; display: flex; gap: 60px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; font-size: 13px; color: #F2E8D0">
+
+<div style="width: 610px; display: flex; flex-direction: column; gap: 20px">
+<div style="position: relative; width: 610px; height: 643px; background: #14131F">
+<sc-for list="{{ a }}" as="i" hint-placeholder-count="1">
+<div style="position: absolute; left: {{i.l}}px; top: {{i.t}}px; width: {{i.w}}px; height: {{i.h}}px; box-sizing: border-box; background: {{i.bg}}; border: {{i.bd}}; border-radius: {{i.r}}; color: {{i.c}}; line-height: {{i.h}}px; text-align: center; white-space: pre">{{i.txt}}</div>
+</sc-for>
+</div>
+<div style="font-size: 16px; line-height: 24px; font-weight: 500; color: #C9C2DD"><span style="font-weight: 800; color: #F2E8D0">24 HP, the width it is now.</span> One row fits, at our own minimum: 0.5 mm from a plate to the next jack's stitches, 1.9 mm more between groups. The display narrows to 88 mm, so the weave drops to three beats: a change in the core.</div>
+</div>
+
+<div style="width: 686px; display: flex; flex-direction: column; gap: 20px">
+<div style="position: relative; width: 686px; height: 643px; background: #14131F">
+<sc-for list="{{ b }}" as="i" hint-placeholder-count="1">
+<div style="position: absolute; left: {{i.l}}px; top: {{i.t}}px; width: {{i.w}}px; height: {{i.h}}px; box-sizing: border-box; background: {{i.bg}}; border: {{i.bd}}; border-radius: {{i.r}}; color: {{i.c}}; line-height: {{i.h}}px; text-align: center; white-space: pre">{{i.txt}}</div>
+</sc-for>
+</div>
+<div style="font-size: 16px; line-height: 24px; font-weight: 500; color: #C9C2DD"><span style="font-weight: 800; color: #F2E8D0">27 HP, three wider.</span> The display is 103 mm, so the weave keeps its 78 cells and the core is untouched; the tempo's column narrows from about 30 mm to 20. The four groups stand 7 mm apart.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1452,"height":920}}'>
+class Component extends DCLogic {
+renderVals() {
+const S = 5, none = 'transparent';
+const g = '#14131F', tile = '#2B2942', glass = '#0B0A12', hole = '#07060C', ecru = '#F2E8D0', thread = '#6E6A92', lilac = '#C9C2DD';
+const build = (W, gap) => {
+const items = [];
+const box = (x, y, w, h, bg, o) => items.push({ l: x * S, t: y * S, w: w * S, h: h * S, bg, bd: '0', r: '0', c: ecru, txt: '', ...(o || {}) });
+const text = (cx, y, w, txt, c) => box(cx - w / 2, y, w, 3, none, { txt, c: c || ecru });
+const jack = (cx, cy, out, poly, label, main) => {
+const half = main ? 6.9 : 5.6;
+if (out) box(cx - half, cy - 8.3, 2 * half, 14, ecru);
+if (main) box(cx - 6.2, cy - 7.6, 12.4, 12.6, none, { bd: '2px solid ' + g });
+text(cx, cy - 8.1, 12, label, out ? g : ecru);
+if (poly) box(cx - 5.2, cy - 5.2, 10.4, 10.4, none, { bd: '2.5px dashed ' + (out ? g : ecru), r: '50%' });
+box(cx - 4, cy - 4, 8, 8, out ? ecru : hole, { bd: (1.4 * S) + 'px solid ' + (out ? g : ecru), r: '50%' });
+};
+const dy = 6, dx = (W - 121.92) / 2;
+jack(9.5, 13.5, false, false, 'CLOCK'); jack(9.5, 27.5, false, false, 'RESET'); jack(W - 9.5, 21, true, false, 'AUDIO', true);
+const dw = W - 34, cells = dw > 100 ? 78 : 62;
+box(17, 7.35, dw, 24.3, glass);
+box(19.5, 12, cells, 15, tile); box(19.5 + cells - 26, 12, 2, 15, '#F0B429');
+text(19.5 + cells + (dw - cells - 2.5) / 2, 18, 20, '120 bpm');
+for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) box(dx + 11 + 12 * c - 5.85, 44 + 12 * r - 5.85 + dy, 11.7, 11.7, tile);
+[60, 70].forEach((x, n) => { box(dx + x - 0.3, 38 + dy, 0.6, 43, lilac); box(dx + x - 2.5, (n ? 64 : 52) + dy, 5, 3, ecru); });
+[[83.47, '#F0654A'], [97, '#F0B429'], [110.53, '#8FAAF7']].forEach(([x, c]) => { box(dx + x - 6.465, 38 + dy, 12.93, 23.7, tile); box(dx + x - 6.465, 38 + dy, 12.93, 1.67, c); });
+[[81.78, ecru], [91.93, '#6FD6A0'], [102.08, ecru], [112.23, ecru]].forEach(([x, c]) => { box(dx + x - 4.775, 62.3 + dy, 9.55, 23.7, tile); box(dx + x - 4.775, 62.3 + dy, 9.55, 1.67, c); });
+const groups = [['SOUNDS', [[1, 'TRIG'], [1, 'OUT'], [0, 'IN']]], ['SLIDER A', [[1, 'OUT'], [0, 'IN']]], ['SLIDER B', [[1, 'OUT'], [0, 'IN']]], ['FX', [[1, 'GATES'], [1, 'SEND'], [0, 'RETURN']]]];
+let x = 7.6, prev = null;
+groups.forEach(([name, jacks], gi) => {
+let first = x;
+jacks.forEach(([out, label], ji) => {
+if (prev !== null) x += ((prev && out) ? 11.2 : 11.3) + (ji === 0 ? gap : 0);
+if (ji === 0) first = x;
+jack(x, 116.3, !!out, true, label);
+prev = out;
+});
+box(first - 5.6, 105.6, x - first + 11.2, 0.5, thread);
+text((first + x) / 2, 101.8, 30, name);
+});
+return items;
+};
+return { a: build(121.92, 1.87), b: build(137.16, 6.95) };
+}
+}
+</script>
+</body>
+</html>
