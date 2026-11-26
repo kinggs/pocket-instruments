@@ -1,10 +1,10 @@
 # The terminal host
 
-**Status (2026-11-26):** designed in issue 8 (D123), for the owner. Not built. Rhythm in a Linux
+**Status (2026-11-26):** designed in issue 8 (D123), for Kenny. Not built. Rhythm in a Linux
 terminal, from the same core as the page and Rack. The engine does not change: this host
 sends what a finger did and draws the 64-byte view (`ENGINE.md` §13, §14), as the others do.
 
-What this document settles, each tested on the owner's machine (Omarchy, Hyprland 0.56, foot
+What this document settles, each tested on Kenny's machine (Omarchy, Hyprland 0.56, foot
 1.28, tmux 3.8, herdr 0.9.5, PipeWire 1.6.9; 2026-11-26) and recorded in `REFERENCES.md`
 R78 to R81:
 
@@ -55,7 +55,7 @@ notice. `CREDITS.md` lists both.
 ## Sound
 
 - **cpal's default host, on the default output device,** at the device's own rate (48 kHz on
-  the owner's machine), in its default buffer. With the `pipewire` cargo feature, cpal's own
+  Kenny's machine), in its default buffer. With the `pipewire` cargo feature, cpal's own
   PipeWire backend instead (`--audio pipewire`). `--audio none` runs with no sound at all,
   for a machine without a device and for the tests.
 - **The engine runs in the audio callback** (`PI_AUDIO_MIX`, one float a frame, copied to
@@ -218,8 +218,8 @@ hatching and the core its dark neighbours, so no light is told by hue alone (D11
   (D112 item 1).
 - `Pocket` draws the fx key's band ecru: fern (D112 item 3).
 - `Pocket` has no core, twill or bar: all three, as above.
-- The screens are still *Proposed* on the canvas. They are built as stand-ins; the owner
-  rules the look after he sees them (issue 8's last box).
+- The screens are still *Proposed* on the canvas. They are built as stand-ins; Kenny
+  rules the look after seeing them (issue 8's last box).
 
 ## The beat
 
@@ -237,12 +237,12 @@ hatching and the core its dark neighbours, so no light is told by hue alone (D11
 | **P2 through this host:** the fixtures' traces and views | `term/tests/fixtures.rs` runs every fixture as `harness/harness.cpp` does, at three rates, three block sizes, both sources and from a snapshot, but every `key_down` and `key_up` goes in as the bytes foot sends for that key (the kitty sequence for press and release) and through the host's own reader, map and latch logic. Its report must be the same bytes as the other three: `make test` compares it |
 | Every key of the map, both modes | tests feeding bytes in, the kitty form and the plain one, and checking the commands that come out; the tap fallbacks one by one, D119 item 5's three cases among them |
 | Every light, both screens, both colourings | tests that build view bytes for each light and read the cells back: the character, its two colours, and with no colour its level |
-| Sound | a five-minute run on the owner's machine, counting xruns, the longest gap between callbacks and frames against the clock (R81); the owner listens |
-| The owner | plays a beat with holds and an effect punched in, in foot; judges the look and the sound |
+| Sound | a five-minute run on Kenny's machine, counting xruns, the longest gap between callbacks and frames against the clock (R81); Kenny listens |
+| Kenny | plays a beat with holds and an effect punched in, in foot; judges the look and the sound |
 
 **The showpiece's gate for this host** (D118 item 3): P8 asks of the terminal what it asks
 of the page, a written list of each difference in what a press does, now including the tap
-fallbacks; P9 asks nothing new of the terminal's look beyond the owner ruling it, since it
+fallbacks; P9 asks nothing new of the terminal's look beyond Kenny ruling it, since it
 is Loom in cells and draws nothing of anyone else's.
 
 ## Windows and macOS: what it would take (not built, not claimed)
@@ -263,6 +263,6 @@ is Loom in cells and draws nothing of anyone else's.
 
 ## Not designed here
 
-- Packaging, store listings, a plugin for any host program: the owner's, after the demos.
+- Packaging, store listings, a plugin for any host program: Kenny's, after the demos.
 - More than one pattern (issue 4).
 - MIDI, a clock in or out, recording to a file.

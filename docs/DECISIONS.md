@@ -2716,11 +2716,11 @@ Not chosen: a larger tempo step with Shift (issue 111's suggestion for later); i
 playing to ask for it.
 
 ### D123 — The terminal host designed: its own crate on the core's library, the keys read from the terminal, hold where key-up is real and tap where it is not, sound by cpal
-**2026-11-26 · designed (issue 8's design pass, for the owner) · designs D111 item 3 as ruled by D118 item 3, D117 and D115 items 3 to 5 for the terminal · carries out D113, D119 items 3 and 5, D120 and D122 item 2 there · the engine does not change: ABI 15, the snapshot, the fixtures stand · nothing built**
+**2026-11-26 · designed (issue 8's design pass, for Kenny) · designs D111 item 3 as ruled by D118 item 3, D117 and D115 items 3 to 5 for the terminal · carries out D113, D119 items 3 and 5, D120 and D122 item 2 there · the engine does not change: ABI 15, the snapshot, the fixtures stand · nothing built**
 
 `docs/TERMINAL.md` is the design; this records what it chose and why.
 
-1. **What the issue did not know, tested on the owner's machine** (R78 to R81): foot 1.28
+1. **What the issue did not know, tested on Kenny's machine** (R78 to R81): foot 1.28
    reports key-up through the kitty keyboard protocol; tmux 3.8 passes no key-up in any
    setting and does not answer the protocol's query; herdr 0.9.5 answers the query but sends
    each release at once after its press, so its key-up is not real; cpal plays through
@@ -2736,7 +2736,7 @@ playing to ask for it.
    query, with herdr named as not real; `--keys` forces either. Hold is the page's latch
    logic. Tap is D119 item 5 for fx and a latch for the other function keys (D117 item 4).
 5. **The proposed `:` (save, open, quit) and Ctrl+Q are built as written in D116 item 2,**
-   ⚠ for the owner to rule; "export" is left out.
+   ⚠ for Kenny to rule; "export" is left out.
 6. **Every light on both screens,** the pocket size included: issue 8 asks it, where `Pocket`
    drew one light a key. In the pocket size the bar is an underline ⚠.
 7. **The beat is the snapshot, in one file** under the user's data folder, read at start and
