@@ -11,7 +11,7 @@ CXX    ?= c++
 include rack/math.mk
 RACK_ARCH := $(if $(filter x86_64,$(shell uname -m)),-march=nehalem,-march=armv8-a+fp+simd)
 
-.PHONY: build test check-toolchain check-p1 clean rack-lib race targets web p4 listen hear play bench pairs fuzz
+.PHONY: build test check-toolchain check-p1 clean rack-lib race targets web p4 listen hear play bench pairs fuzz term term-test
 
 # Every native library starts each function on a 64-byte line (Session 29, LEARNINGS.md).
 # Unpinned, where pi_process happened to land moved the bench by up to 3 ns a frame between
@@ -80,6 +80,7 @@ test: build check-p1
 	  $(foreach n,$(LAYOUTS),$(foreach s,table edges,$(foreach r,44100 48000 96000,$(foreach c,16ch 17ch,target/render-cpp-$(n)-$(s)-$(r)-$(c).f32 target/render-node-$(n)-$(s)-$(r)-$(c).f32)))) \
 	  $(foreach n,$(LOOPS),$(foreach s,table edges,$(foreach r,44100 48000 96000,$(foreach c,18ch 50ch,target/render-cpp-$(n)-$(s)-$(r)-$(c).f32 target/render-node-$(n)-$(s)-$(r)-$(c).f32))))
 	@cmp -s $(WASM) web/pi_core.wasm || { echo "web/pi_core.wasm is not the .wasm just built: run 'make web' and commit it"; exit 1; }
+	$(MAKE) --no-print-directory term-test
 	@if command -v clang++ >/dev/null; then $(MAKE) --no-print-directory race; else echo "P6's ThreadSanitizer run skipped: no clang++."; fi
 
 # P6, the ThreadSanitizer half: the core on one thread while another edits, loads and takes
@@ -218,3 +219,20 @@ hear:
 # browser. Needs `make test` first, for the Node report.
 play:
 	node web/play.mjs $(REPORT)-node.txt
+
+# The terminal host (docs/TERMINAL.md, D123): its own crate and workspace in term/, linked to the
+# static library just built and checked. `make term` writes term/target/release/pi-rhythm.
+# Needs ALSA's headers (libasound2-dev, alsa-lib) for cpal. TERM_FEATURES=pipewire adds cpal's
+# PipeWire host (needs libpipewire and clang).
+TERM_CARGO = PI_CORE_LIB=$(CURDIR)/$(NATIVE) cargo
+term: build
+	$(TERM_CARGO) build --release --locked --manifest-path term/Cargo.toml $(if $(TERM_FEATURES),--features $(TERM_FEATURES))
+
+# P2 through the terminal host: every fixture, its keys as the bytes a terminal sends, through
+# the host's reader, map and latches (term/tests/fixtures.rs); its report must be the other
+# three's bytes. Then every key of the shared map in hold and tap, and every light on both
+# screens in colour and with none (term/tests/keys.rs, screens.rs). Needs `make test`'s reports.
+term-test: build
+	PI_REPORT=$(REPORT)-term.txt $(TERM_CARGO) test --release --locked --manifest-path term/Cargo.toml -q
+	cmp $(REPORT)-rust.txt $(REPORT)-term.txt
+	@echo "The terminal host: the fixtures through its own key path, $$(grep -c '^#' $(REPORT)-term.txt) runs, the same report ($$(sha256sum < $(REPORT)-term.txt | cut -c1-16)); every key in hold and tap; every light on both screens."
