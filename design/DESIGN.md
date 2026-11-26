@@ -572,8 +572,8 @@ under 16 px.
 
 ## Loom in a terminal (D115, D117; proposed 2026-11-26; no terminal host exists)
 
-A terminal host is proposed in D111 item 3 (issue 8; a ruling on it was in pull request 86,
-not merged when this was written). These are its
+A terminal host is part of the showpiece (D111 item 3, ruled by D118 item 3; issue 8) and
+is not designed or built. These are its
 first drawings: `tui/Main.dc.html`, `Sound`, `Pocket` and `States`. The colours are the
 tokens above, as truecolour.
 
