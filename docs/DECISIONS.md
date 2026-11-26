@@ -2337,6 +2337,9 @@ Not chosen: patterns first and the move last (the session's recommendation: the 
 waited on the proofs and the name). The owner's order puts the project where its issues
 and its contributors can live before the largest piece of work is cut up.
 
+(Annotated 2026-11-26: item 8's naming of the closed editor is kept as record, and D118 item 1
+says why that derives nothing from it.)
+
 ### D111 — The instruments are named by role, Rhythm and Sampler; the second is a sampler; a terminal host proposed
 **2026-11-26 · decided by the owner, between Session 43 and the move · answers O30 · item 3 is proposed, not ruled**
 
@@ -2354,6 +2357,27 @@ and its contributors can live before the largest piece of work is cut up.
    omarchy TUI for this ... Then we have Web, Rack and TUI to show why this is such a
    powerful idea." Whether it is part of the showpiece is the owner's to rule; recommended:
    a stretch part, the gate does not wait for it.
+
+(Annotated 2026-11-26: item 3 is ruled by D118 item 3: the terminal host is part of the
+showpiece.)
+
+### D118 — The owner's three rulings on the move: the editor's name kept, the support address kept, the terminal host in the showpiece
+**2026-11-26 · decided (owner, after the move) · settles the three questions the move's hand-over left · rules D111 item 3**
+
+1. **D110 item 8 keeps naming the closed-source editor the owner first pointed at,** as
+   record. What it records is that nothing is derived from it, and why: a lane-based step
+   sequencer (every sound a row of steps, a chain of patterns) is a well-established pattern,
+   in Rack's sequencers and in hardware and software sequencers long before them. Ours is
+   built from that common pattern and from our own documents, not from that editor or any
+   other single one. The owner: "I don't mind naming it."
+2. **VCV's public support address stays** where it appears (O2, `docs/PROOFS.md`,
+   `docs/history/PLAN-HISTORY.md`): it is a published address. The owner: "Happy to keep
+   support address."
+3. **The terminal host is part of the showpiece** (D19, D22), beside the page and Rack. The
+   owner: "yes - I want to include terminal in showpiece." D111 had recommended a stretch
+   part that the gate does not wait for; the owner chose more. ⚠ What the showpiece's gate
+   (P8, P9) asks of the terminal host is not yet written: the host's design pass (issue #8)
+   says it.
 
 ## Open
 
