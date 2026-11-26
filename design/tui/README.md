@@ -1,27 +1,49 @@
-# The terminal host: a first look
+# The design session of 2026-11-26: eight boards
 
-**Status:** a mock-up the owner drew in Claude Design on 2026-11-26 for the terminal host
-(issue #8; D111 item 3, proposed, not ruled). Nothing in it is decided: the host's design
-pass settles it in `docs/ENGINE.md` or a host document, with a decision. Every look is a
-stand-in until the owner rules.
+**Status:** pictures of intent. The owner and a design session drew these in Claude Design
+on 2026-11-26. **None was rendered and checked by the session that drew it:** they are
+drawings of what is meant, not measured pictures. What the owner ruled from them is D112,
+D113 and D114 in `docs/DECISIONS.md`; the rest is proposed (D115, D116, D117). The design
+text is in `../DESIGN.md`: "A key's lights", "The keys and the helper", "Loom in a
+terminal" and "Layout B". Where a board and that text disagree, the text is the later
+reading.
 
-The idea: Loom drawn in terminal cells, and the keyboard laid out as the panel, left to
-right: the grid, sliders A and B, the function keys.
+The folder is named for the terminal host, where the canvas began (issue 8; D111 item 3).
+Three of the boards are about every host.
 
-| File | What it shows |
-|---|---|
-| `Main.dc.html` | Rhythm at 80 by 24 cells: write on, playing. A `screen` property switches it to write off or sound held |
-| `Sound.dc.html` | Main with sound held: the display lists the sixteen sounds by key |
-| `Pocket.dc.html` | A small terminal, 48 by 10: one light a key |
-| `States.dc.html` | Every key state in cells, in truecolour and with no colour (normal, bold and reverse only); a key is 5 by 3 cells |
-| `Keyboard.dc.html` | The keyboard map: the grid on `1234 qwer asdf zxcv`, sliders on `t g` and `y h`, function keys on `7 8 9` and `u i o p`; how holds work in a terminal |
+| File | What it shows | Size, px |
+|---|---|---|
+| `Main.dc.html` | Rhythm in a terminal at 80 by 24 cells: write on, playing. A `screen` property switches it to write off or sound held | 1200 by 760 |
+| `Sound.dc.html` | `Main` with sound held: the display lists the sixteen sounds by key. It only imports `Main` | 1200 by 760 |
+| `Pocket.dc.html` | A small terminal, 48 by 10: one light a key | 752 by 360 |
+| `States.dc.html` | Every key state in terminal cells, in truecolour and with no colour (normal, bold and reverse only); a key is 5 by 3 cells; the function key's states | 1200 by 760 |
+| `Keyboard.dc.html` | The keyboard map for every host, and how holding and the Shift latch work | 1200 by 760 |
+| `Lights.dc.html` | A key's lights from the outside in, on a Rack or page key, with no colour, and in terminal cells; the source marks | 1592 by 860 |
+| `Helper.dc.html` | The keys helper at phone size | 390 by 844 |
+| `Panel.dc.html` | The Rack panel in layout B at 24 HP and at 27 HP, at 5 px a mm | 1452 by 920 |
+| `canvas.json` | The canvas's own index: each board's title, size and place | |
 
-**What the mock-up proposes for holds ⚠:** a tap arms a function key until the next grid key
-(works everywhere); a real hold where the terminal reports key-up (the kitty keyboard
-protocol); shift with the key locks it; esc lets everything go. Which of the owner's
-terminals report key-up is not checked.
+## These do not open as pictures
 
-**How to open them:** these are Claude Design boards. They render on the owner's canvas,
-not from this folder: each loads the canvas's own `support.js`. The markup and the
-`renderVals()` script in each file give every colour, size and cell position. The colours
-are Loom's tokens (`DESIGN.md`).
+`../loom/` holds Claude Design artboards "with the canvas wrapper removed": open one in a
+browser and it is the picture. These eight are not that. Each is the canvas's source: a
+template (`sc-for`, `sc-if`, `{{ }}`, and `dc-import` in `Sound`) filled by a script in the
+file, and run by the canvas's own `support.js`, which is not ours and is not in this
+repository. Opened from this folder a board shows its template unfilled.
+
+They are kept as they are rather than flattened by hand, because a flattened copy nobody
+compared with the canvas would be a second unchecked drawing. Until they are flattened,
+read a board as text: the markup and the `renderVals()` script give every colour, size and
+position. The colours are Loom's tokens, and `#6FD6A0` is `loom/fern`.
+
+## What was changed from the canvas
+
+- `Lights.dc.html` on the canvas carries a stray block of text pasted from another task. It
+  is not part of the design and is left out; nothing of the drawing differs.
+- The other seven files are the canvas's bytes.
+
+## Known to be out of step
+
+- `Main` (with write off) shows a firing as a whole white face, and `Pocket` draws the fx
+  key's band ecru. Both were drawn before the owner's rulings and not redrawn.
+- `Panel`'s numbers are arithmetic. None has been through `make_panel.py --check`.

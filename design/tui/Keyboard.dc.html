@@ -8,7 +8,7 @@
 <body>
 <x-dc>
 <helmet>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&display=swap">
 <style>
 body{margin:0}
 </style>
@@ -39,10 +39,10 @@ body{margin:0}
 <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; font-size: 16px; font-weight: 500; color: #C9C2DD">
 
 <div style="display: flex; flex-direction: column; gap: 10px">
-<div style="font-weight: 800; color: #F2E8D0">Holding, in a terminal</div>
-<div><span style="font-weight: 800; color: #F2E8D0">tap</span> arms a function key until the next grid key. Works everywhere.</div>
-<div><span style="font-weight: 800; color: #F2E8D0">hold</span> is a real hold where the terminal reports key-up (the kitty keyboard protocol).</div>
-<div><span style="font-weight: 800; color: #F2E8D0">shift</span> with the key locks it until it is pressed again.</div>
+<div style="font-weight: 800; color: #F2E8D0">Holding, on every host</div>
+<div><span style="font-weight: 800; color: #F2E8D0">hold</span> the function key and press the second key.</div>
+<div><span style="font-weight: 800; color: #F2E8D0">shift + key</span> or <span style="font-weight: 800; color: #F2E8D0">shift + click</span> latches it: fx until you do it again, the others until the next key.</div>
+<div>A terminal that cannot report key-up latches on a plain tap.</div>
 <div><span style="font-weight: 800; color: #F2E8D0">esc</span> lets everything go.</div>
 </div>
 
@@ -78,7 +78,7 @@ const idle = (cap) => ({ cap, role: '', bg: none, ink: lilac, band: none, line: 
 const w = (list) => list.map((k) => ({ w: 64, ...k }));
 const rows = [
 { indent: 0, keys: w([fn('esc', 'let go', thread), grid('1', 1), grid('2', 2), grid('3', 3), grid('4', 4), idle('5'), idle('6'), fn('7', 'sound', '#F0654A'), fn('8', 'pattern', '#F0B429'), fn('9', 'bpm', '#8FAAF7'), idle('0'), fn('-', 'vol down', thread), fn('=', 'vol up', thread)]) },
-{ indent: 105, keys: w([grid('q', 5), grid('w', 6), grid('e', 7), grid('r', 8), fn('t', 'A up', lilac), fn('y', 'B up', lilac), fn('u', 'function', ecru), fn('i', 'fx', ecru), fn('o', 'play', ecru), fn('p', 'write', ecru), idle('['), idle(']')]) },
+{ indent: 105, keys: w([grid('q', 5), grid('w', 6), grid('e', 7), grid('r', 8), fn('t', 'A up', lilac), fn('y', 'B up', lilac), fn('u', 'function', ecru), fn('i', 'fx', '#6FD6A0'), fn('o', 'play', ecru), fn('p', 'write', ecru), idle('['), idle(']')]) },
 { indent: 122, keys: w([grid('a', 9), grid('s', 10), grid('d', 11), grid('f', 12), fn('g', 'A down', lilac), fn('h', 'B down', lilac), idle('j'), idle('k'), idle('l'), fn('; :', 'command', thread), idle("'")]) },
 { indent: 157, keys: w([grid('z', 13), grid('x', 14), grid('c', 15), grid('v', 16), idle('b'), idle('n'), fn('m', 'sounds', thread), fn(', <', 'bpm, swing', thread), fn('. >', 'bpm, swing', thread), fn('/ ?', 'keys', thread)]) },
 { indent: 262, keys: [{ w: 344, ...fn('space', 'play', ecru) }] },

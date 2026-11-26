@@ -17,11 +17,11 @@ body{margin:0}
 
 <div style="display: flex; flex-direction: column; gap: 12px">
 <div style="font-size: 16px; line-height: 24px">grid key, truecolor: Loom's tokens as they are</div>
-<div style="display: flex; gap: 18px">
+<div style="display: flex; gap: 14px">
 <sc-for list="{{ colour }}" as="k" hint-placeholder-count="9">
-<div style="width: 104px; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="width: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px">
 <div style="height: 84px; display: flex; align-items: center">
-<div style="position: relative; width: 70px; height: 56px; box-sizing: border-box; border-style: solid; border-width: 14px 7px; border-color: {{k.frame}}; background: {{k.field}}; color: {{k.ink}}; text-align: center">q<span style="position: absolute; right: 10px; top: 10px; width: 8px; height: 8px; background: {{k.stitch}}"></span><span style="position: absolute; left: -7px; right: -7px; bottom: -14px; height: 14px; background: {{k.bar}}"></span><span style="position: absolute; left: -7px; top: -14px; width: 14px; height: 14px; background: {{k.dash}}; box-shadow: 28px 0 0 {{k.dash}}, 56px 0 0 {{k.dash}}, 0 56px 0 {{k.dash}}, 28px 56px 0 {{k.dash}}, 56px 56px 0 {{k.dash}}"></span></div>
+<div style="position: relative; width: 70px; height: 56px; box-sizing: border-box; border-style: solid; border-width: 14px 7px; border-color: {{k.frame}}; background: {{k.field}}; color: {{k.ink}}; text-align: center"><span style="position: absolute; left: 7px; top: 0; width: 14px; height: 28px; background: {{k.flank}}"></span><span style="position: absolute; left: 35px; top: 0; width: 14px; height: 28px; background: {{k.flank}}"></span><span style="position: absolute; left: 21px; top: 0; width: 14px; height: 28px; background: {{k.core}}"></span><span style="position: relative">q</span><span style="position: absolute; right: 10px; top: 10px; width: 8px; height: 8px; background: {{k.stitch}}"></span><span style="position: absolute; left: -7px; right: -7px; bottom: -14px; height: 14px; background: {{k.bar}}"></span><span style="position: absolute; left: -7px; top: -14px; width: 14px; height: 14px; background: {{k.dash}}; box-shadow: 28px 0 0 {{k.dash}}, 56px 0 0 {{k.dash}}, 0 56px 0 {{k.dash}}, 28px 56px 0 {{k.dash}}, 56px 56px 0 {{k.dash}}"></span></div>
 </div>
 <div style="font-size: 15px; line-height: 20px; font-weight: 500; color: #C9C2DD; text-align: center">{{k.name}}</div>
 </div>
@@ -31,11 +31,11 @@ body{margin:0}
 
 <div style="display: flex; flex-direction: column; gap: 12px; background: #000000; margin: 0 -48px; padding: 16px 48px">
 <div style="font-size: 16px; line-height: 24px">the same with no colour: only normal, bold and reverse</div>
-<div style="display: flex; gap: 18px">
+<div style="display: flex; gap: 14px">
 <sc-for list="{{ mono }}" as="k" hint-placeholder-count="9">
-<div style="width: 104px; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="width: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px">
 <div style="height: 84px; display: flex; align-items: center">
-<div style="position: relative; width: 70px; height: 56px; box-sizing: border-box; border-style: solid; border-width: 14px 7px; border-color: {{k.frame}}; background: {{k.field}}; color: {{k.ink}}; text-align: center">q<span style="position: absolute; right: 10px; top: 10px; width: 8px; height: 8px; background: {{k.stitch}}"></span><span style="position: absolute; left: -7px; right: -7px; bottom: -14px; height: 14px; background: {{k.bar}}"></span><span style="position: absolute; left: -7px; top: -14px; width: 14px; height: 14px; background: {{k.dash}}; box-shadow: 28px 0 0 {{k.dash}}, 56px 0 0 {{k.dash}}, 0 56px 0 {{k.dash}}, 28px 56px 0 {{k.dash}}, 56px 56px 0 {{k.dash}}"></span></div>
+<div style="position: relative; width: 70px; height: 56px; box-sizing: border-box; border-style: solid; border-width: 14px 7px; border-color: {{k.frame}}; background: {{k.field}}; color: {{k.ink}}; text-align: center"><span style="position: absolute; left: 7px; top: 0; width: 14px; height: 28px; background: {{k.flank}}"></span><span style="position: absolute; left: 35px; top: 0; width: 14px; height: 28px; background: {{k.flank}}"></span><span style="position: absolute; left: 21px; top: 0; width: 14px; height: 28px; background: {{k.core}}"></span><span style="position: relative">q</span><span style="position: absolute; right: 10px; top: 10px; width: 8px; height: 8px; background: {{k.stitch}}"></span><span style="position: absolute; left: -7px; right: -7px; bottom: -14px; height: 14px; background: {{k.bar}}"></span><span style="position: absolute; left: -7px; top: -14px; width: 14px; height: 14px; background: {{k.dash}}; box-shadow: 28px 0 0 {{k.dash}}, 56px 0 0 {{k.dash}}, 0 56px 0 {{k.dash}}, 28px 56px 0 {{k.dash}}, 56px 56px 0 {{k.dash}}"></span></div>
 </div>
 <div style="font-size: 15px; line-height: 20px; font-weight: 500; color: #C9C2DD; text-align: center">{{k.name}}</div>
 </div>
@@ -86,17 +86,18 @@ const mk = (p) => [
 { name: 'pressed', frame: p.bg, field: p.white, ink: p.bg },
 { name: 'other sound', frame: p.tile, field: p.tile, ink: p.ecru, stitch: p.ecru },
 { name: 'chosen', frame: p.tile, field: p.tile, ink: p.ecru, bar: p.madder },
-{ name: 'fired', frame: p.white, field: p.white, ink: p.bg },
+{ name: 'sounding', frame: p.tile, field: p.tile, ink: p.bg, core: p.white },
+{ name: 'effect heard', frame: p.tile, field: p.tile, ink: p.ecru, flank: 'repeating-linear-gradient(135deg, ' + p.fern + ' 0 3px, ' + p.bg + ' 3px 6px)' },
 { name: 'queued', frame: p.tile, field: p.tile, ink: p.ecru, dash: p.ecru },
-].map((k) => ({ stitch: none, bar: none, dash: none, ...k }));
-const colour = mk({ bg: '#14131F', tile: '#2B2942', ecru: '#F2E8D0', white: '#FFFFFF', ochre: '#F0B429', madder: '#F0654A' });
-const mono = mk({ bg: '#000000', tile: none, ecru: '#B4B4B4', white: '#FFFFFF', ochre: '#FFFFFF', madder: '#B4B4B4' });
+].map((k) => ({ stitch: none, bar: none, dash: none, core: none, flank: none, ...k }));
+const colour = mk({ bg: '#14131F', tile: '#2B2942', ecru: '#F2E8D0', white: '#FFFFFF', ochre: '#F0B429', madder: '#F0654A', fern: '#6FD6A0' });
+const mono = mk({ bg: '#000000', tile: none, ecru: '#B4B4B4', white: '#FFFFFF', ochre: '#FFFFFF', madder: '#B4B4B4', fern: '#B4B4B4' });
 const g = '#14131F', tile = '#2B2942', ecru = '#F2E8D0', madder = '#F0654A', lilac = '#C9C2DD';
 const fkeys = [
 { name: 'idle', cap: '7', word: 'sound', bw: '14px 0 0 0', bc: madder, face: tile, ink: ecru, capBg: none, capInk: lilac },
 { name: 'pressed', cap: '7', word: 'sound', bw: '14px', bc: g, face: '#FFFFFF', ink: g, capBg: none, capInk: g },
-{ name: 'held or armed', cap: '7', word: 'sound', bw: '14px 0 0 0', bc: madder, face: madder, ink: g, capBg: none, capInk: g },
-{ name: 'locked', cap: '7', word: 'sound', bw: '14px 0 0 0', bc: madder, face: madder, ink: g, capBg: g, capInk: madder },
+{ name: 'held', cap: '7', word: 'sound', bw: '14px 0 0 0', bc: madder, face: madder, ink: g, capBg: none, capInk: g },
+{ name: 'latched', cap: '7', word: 'sound', bw: '14px 0 0 0', bc: madder, face: madder, ink: g, capBg: g, capInk: madder },
 { name: 'idle', cap: 'o', word: 'play', bw: '14px 0 0 0', bc: ecru, face: tile, ink: ecru, capBg: none, capInk: lilac },
 { name: 'running', cap: 'o', word: 'play', bw: '14px 0 0 0', bc: ecru, face: ecru, ink: g, capBg: none, capInk: g },
 ];
