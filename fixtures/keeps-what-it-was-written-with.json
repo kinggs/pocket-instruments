@@ -29,10 +29,10 @@
     "864 step 5"
   ],
   "views": [
-    {"at": 0, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0001 stitch=0000 bar=0000 sampled=0000 a=10000 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=10000 eb=32768"},
-    {"at": 1, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0011 stitch=0000 bar=0000 sampled=0000 a=50000 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=50000 eb=32768"},
-    {"at": 2, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0011 stitch=0000 bar=0000 sampled=0000 a=50000 b=20000 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=50000 eb=20000"},
-    {"at": 4, "view": "view play=1 write=1 edges=0 sounds=0 step=0 sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0011 stitch=0000 bar=0000 sampled=0000 a=50000 b=20000 fires=1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=10000 eb=32768"},
-    {"at": 8, "view": "view play=1 write=1 edges=0 sounds=0 step=4 sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0011 stitch=0000 bar=0000 sampled=0000 a=50000 b=20000 fires=2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=50000 eb=32768"}
+    {"at": 0, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0001 stitch=0000 bar=0001 sampled=0000 a=10000 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=10000 eb=32768"},
+    {"at": 1, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0011 stitch=0000 bar=0001 sampled=0000 a=50000 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=50000 eb=32768"},
+    {"at": 2, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0011 stitch=0000 bar=0001 sampled=0000 a=50000 b=20000 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=50000 eb=20000"},
+    {"at": 4, "view": "view play=1 write=1 edges=0 sounds=0 step=0 sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0011 stitch=0000 bar=0001 sampled=0000 a=50000 b=20000 fires=1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=10000 eb=32768"},
+    {"at": 8, "view": "view play=1 write=1 edges=0 sounds=0 step=4 sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0011 stitch=0000 bar=0001 sampled=0000 a=50000 b=20000 fires=2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 fx=0 fxsteps=0000 fxsounds=ffff ea=50000 eb=32768"}
   ]
 }

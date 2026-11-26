@@ -1110,7 +1110,12 @@ table change what they put in field and stitch (above, marked D120).
 | write off | the chosen sound's steps | **steps of any other sound** | none | yes |
 
 **Changed 2026-11-26 (D121; not built): the bar is the chosen sound in the bpm, write on and
-write off rows too,** so it shows in every row but pattern held, where it stays on key 1. The
+write off rows too,** so it shows in every row but pattern held, where it stays on key 1. **Built
+(issue 101):** `Engine::view` starts the bar at the chosen sound and only pattern held moves
+it; the 43 view lines worked first moved up unchanged and passed at the first run on all three
+harnesses (1 290 report lines, only `bar=`); every trace and render file the same bytes; rule
+test `the_bar_is_the_chosen_sound_in_every_row_but_pattern_held`; `harness/race.cpp`'s bpm row
+check moved with it; one fault planted (no bar in those rows), caught. The
 table above is D120's; the bar column now reads: bpm held, the chosen sound; sound held, the
 chosen sound; pattern held, key 1; write on, the chosen sound; write off, the chosen sound.
 

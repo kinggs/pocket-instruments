@@ -486,7 +486,7 @@ D120 leaves alone: `keys-bpm-family` and `keeps-what-it-was-written-with` do not
 When the build moves these six files over the ones beside this file, `designed/` is empty
 again.
 
-## The views worked again for D121 (2026-11-26; issue 101; in `designed/` until the build)
+## The views worked again for D121 (2026-11-26; issue 101; in `designed/` until the build, which moved them up unchanged)
 
 A view changed by the owner's decision (D121): the bar is the chosen sound's key in the bpm,
 write on and write off rows, as it already was with sound held; pattern held keeps key 1.
