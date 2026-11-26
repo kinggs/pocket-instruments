@@ -2596,6 +2596,73 @@ exist, its analysis first (what the view must carry, O32), and issue 8 for the t
 host. ⚠ `CONTRIBUTING.md` still asks for a design pull request before a build one; inside
 issue 101 the `ENGINE.md` change and its decision merge before the code.
 
+### D120 — O32 answered: the view already carries D112's lights; two rows of §14's table change, no byte, no ABI, no fixture format
+**2026-11-26 · designed (issue 101's analysis, for the owner) · answers O32 · designs D112 items 1, 2 and 4 and D119 item 7 for the page and Rack · supersedes §17's "the grid's table does not change" where the twill and the marks now show · nothing built**
+
+The design session logged D112's lights as new view bits and an ABI change. They are not.
+Every light can be read from bytes the view already has, or from what the host itself sent
+the core. Only two rows of `ENGINE.md` §14's table change what they put in bytes that exist.
+
+1. **What a host reads for each light** (`ENGINE.md` §14, "§14 and §17, designed
+   2026-11-26"):
+
+   | Light | Read from | In which rows |
+   |---|---|---|
+   | frame | the playhead (25) while flags 0 and 3 are set | every row, as before |
+   | twill | key `heard − 1` while `heard` (55) is not 0 | every row |
+   | field | bit *n* of field (12) | every row; the core fills it |
+   | core | track *n*'s `fires` (32 + *n*) moved since the host last looked; held half a step, as the white was | every row, write on or off |
+   | fern core | the core, while `heard` is not 0 and bit *n* of fx sounds (58) is set | every row |
+   | stitch | bit *n* of stitch (14) | every row; the core fills it |
+   | bar | bit *n* of bar (16) | every row; the core fills it, as before |
+   | pressed | key *n* in `held` (8) | every row, as before |
+   | source mark | `held` bit 16 (sound) or 20 (fx), or the host's own fx latch; then `sampled` (18), and the `ROUTE` masks the host itself sends | while sound or fx is held or latched |
+
+2. **Two rows of §14's table change,** in `Engine::view`:
+   - **Sound held: the field is the sounds in use** (D119 item 7): bit *n* is set when
+     track *n* has any of its sixteen steps on. It was none (D51).
+   - **Write off: the stitch is every other sound's steps,** as with write on. It was none
+     (D82 item 3). This is D112 item 1's words, "every light on a key means the same with
+     write on or off"; ⚠ the owner was not asked about the stitch alone, and D112 flagged
+     it. One line to undo if he says no.
+
+   Nothing else in the table moves: the bpm and pattern rows, the bar, and flag 4 ("the grid
+   is sounds"), which still says what a tap does. Flag 4 no longer gates any light.
+3. **The ABI number does not move,** as D82 did not move it: no byte is added or moved and
+   the header does not change; only what two rows put in field and stitch. **The snapshot
+   does not change.** **No new fixture format:** formats 2 to 4 already print `field=` and
+   `stitch=`. The view lines those two rows reach are worked again by hand before the core
+   changes (`fixtures/README.md`, "The views worked again for D120").
+4. **The source marks come from the host's own knowledge,** not from new bytes. Which sounds
+   come back by a cable and which effects are Rack's are the patch's (`ENGINE.md` §19: the
+   `ROUTE` masks are neither saved nor in a snapshot), and the latch is the host's (D113:
+   the core does not change). The host draws from the masks it last sent, so what it shows
+   is what the core is doing:
+   - sound held: a ring on key *n* where `ROUTE` 0 names sound *n*; else a dash where
+     `sampled` names it; else nothing;
+   - fx held or latched: a disc on key *n* where `ROUTE` 1 and `ROUTE` 4 both name effect
+     *n* + 1; a ring where `ROUTE` 1 alone does; else nothing;
+   - sound and fx both down: sound's marks, as sound's row comes first in §13 and §14.
+   The page sends no `ROUTE`, so only the dash shows there (`design/DESIGN.md` said so).
+5. **Readings made here, ⚠ for the owner:**
+   - The core and the twill show while bpm or pattern is held too. D112 item 1 says every
+     light means the same; the held rows change the field and the bar only.
+   - "In use" counts all sixteen steps, whatever the length: a step past the length is still
+     written, and comes back when the length grows.
+   - Under effect 13 a note of a sound in the effects plays on the key four below it
+     (`(m + 4) & 15`, D93), and that key's core is fern only if its own sound is in the
+     effects. The view cannot say which note a firing came from.
+   - Stopped, `heard` is 0, so no twill and no fern core (§17: nothing is heard stopped).
+   - The bar shows as built: the chosen sound while sound is held, key 1 while pattern is.
+6. **Not chosen:**
+   - **New view bytes** for the marks (an echo of the `ROUTE` masks) or a "sounding" mask.
+     The view's 64 bytes are all used; growing it moves `PI_VIEW_SIZE`, the ABI, every
+     harness, `harness/race.cpp` and the hand-off, to echo what the host already holds. The
+     `fires` counters already say "sounding" in a way a missed view cannot lose (§14).
+   - **The core as the voice's own envelope** (lit for as long as the sound rings). It would
+     need a byte a sound read from the voices on every view, and a decay has no clean end.
+     The half step the white had is kept, and the owner judges it by eye (#9).
+
 ## Open
 
 | ID | Question | Needs |
@@ -2631,7 +2698,7 @@ issue 101 the `ENGINE.md` change and its decision merge before the code.
 | O29 | May Pocket Operations' patterns be shipped inside the instrument? A bookseller's listing says CC BY; the author's own page refused the fetch, so its licence line is unread (2026-11-26) | The owner reads the licence on the page, or the author answers the note drafted in Session 43. Recommended: ship nothing until one of them says yes; credit and link either way |
 | O30 | ~~Which instrument is second? The owner leans to the one on the table, a PO-133. That is the PO-33 K.O! in its Street Fighter edition, a sampler (`libpo` treats the two as one); the EP-133 K.O. II is a different, larger machine~~ | **Answered 2026-11-26: D111** (a sampler, named Sampler). Was: The owner, when patterns are done. Recommended: not yet; it changes no file's place (D110 item 4) |
 | O31 | ~~Looking at the effects wipes them. Holding fx alone while playing empties each step that passes (D66 item 2), so a player who holds fx to see the effects on the keys (D112 item 2) clears the lane as they look. Say that the Shift latch is the safe way in (D78: latched, fx is down only while a grid key is), or give the view another way in?~~ | **Answered 2026-11-26: D119 item 4.** Was: The owner. Recommended: the latch, said in the helper and the footer, until playing it says otherwise |
-| O32 | What must the view carry for D112's lights: the core with write on, the fern core, the twill and the source marks? The design session logged it as new view bits, an ABI change with fixtures. ⚠ The logging session's reading of `ENGINE.md` §14: `fires` (bytes 32 to 47), `heard` (55), fx sounds (58) and `sampled` (18) are already there, and a firing is hidden with write on only by the host rule that reads flag 4; what the view lacks is which sounds come back by a cable and which effects are Rack's, and both are the Rack module's own knowledge. So it may be a change to §14's host rule and no new byte. D51 says the core decides what is lit | A design pass on §14 and §17, with the views worked by hand first. Issue 101, as its first part (D119). D119 item 7 adds the field while sound is held |
+| O32 | ~~What must the view carry for D112's lights: the core with write on, the fern core, the twill and the source marks? The design session logged it as new view bits, an ABI change with fixtures. ⚠ The logging session's reading of `ENGINE.md` §14: `fires` (bytes 32 to 47), `heard` (55), fx sounds (58) and `sampled` (18) are already there, and a firing is hidden with write on only by the host rule that reads flag 4; what the view lacks is which sounds come back by a cable and which effects are Rack's, and both are the Rack module's own knowledge. So it may be a change to §14's host rule and no new byte. D51 says the core decides what is lit~~ | **Answered 2026-11-26: D120.** No new byte and no ABI change: two rows of §14's table change (sound held, write off), and the hosts read the rest. Was: A design pass on §14 and §17, with the views worked by hand first. Issue 101, as its first part (D119). D119 item 7 adds the field while sound is held |
 | O33 | ~~Effects in a terminal that reports no key-up. An effect is heard only while its key is down (D66 item 3), and a plain terminal cannot say when a key comes up (D117 item 4). Suggested by the design session, not drawn and not ruled: with fx latched, a tap starts the effect and a second tap stops it~~ | **Answered 2026-11-26: D119 item 5.** Was: The owner, with the terminal host's design pass |
 | O34 | ~~Layout B (D114): 24 HP or 27 HP? By arithmetic from `design/make_panel.py`'s own clearances one row of ten fits at 24 HP, but the display narrows to about 88 mm and the weave cannot keep its 78 cells without a change in the core (§16). At 27 HP the display is about 103 mm, the weave keeps 78 cells and the groups stand about 7 mm apart. The tempo's column narrows to about 20 mm either way. ⚠ Nothing was run through `make_panel.py --check`~~ | **Answered 2026-11-26: D119 item 1.** Was: The owner. Recommended by the design session: 27 HP. `design/DESIGN.md`, "Layout B" |
 | O35 | ~~Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way~~ | **Answered 2026-11-26: D119 item 2.** Was: The owner |
