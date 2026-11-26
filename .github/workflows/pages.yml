@@ -1,0 +1,99 @@
+# GitHub Pages, with a preview for every pull request.
+#
+# Pages serves the `gh-pages` branch. This workflow keeps it:
+#   - its root: `main` as it is, every file, exactly what Pages served before this existed;
+#   - `pr-<n>/`: a pull request's page (index.html, web/, samples/, fixtures/), refreshed on
+#     every push to the pull request and removed when it closes. The pull request gets one
+#     comment with the link: https://kinggs.github.io/pocket-instruments/pr-<n>/web/rhythm.html
+#
+# A pull request from a fork gets no preview: its token cannot write here, and this workflow
+# never runs a fork's code with a token that can.
+#
+# Nothing here is built: the page runs the committed web/pi_core.wasm, as on main.
+#
+# One setting goes with it (the owner's, once): Settings, Pages, "Deploy from a branch",
+# `gh-pages`, `/ (root)`. Until then Pages still serves main, and previews wait.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: write        # push the gh-pages branch
+  pull-requests: write   # the preview's comment
+
+# One writer to gh-pages at a time, in the order the events came.
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+      ACTION: ${{ github.event.action }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: src
+          fetch-depth: 0
+
+      - name: The gh-pages branch, or a new one
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          url="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          if git ls-remote --exit-code --heads "$url" gh-pages >/dev/null; then
+            git clone --depth 1 --branch gh-pages "$url" site
+          else
+            git init -b gh-pages site
+            git -C site remote add origin "$url"
+          fi
+
+      # The root is always main as it is now, so a preview's run can never leave it stale or
+      # half made. Every pr-*/ folder is kept.
+      - name: The root, from main
+        run: |
+          git -C src fetch -q origin main
+          find site -mindepth 1 -maxdepth 1 ! -name .git ! -name 'pr-*' -exec rm -rf {} +
+          git -C src archive origin/main | tar -x -C site
+
+      - name: This pull request's preview
+        if: github.event_name == 'pull_request'
+        run: |
+          rm -rf "site/pr-$PR"
+          if [ "$ACTION" != closed ]; then
+            mkdir "site/pr-$PR"
+            git -C src archive HEAD index.html web samples fixtures | tar -x -C "site/pr-$PR"
+          fi
+
+      - name: Push
+        run: |
+          cd site
+          git add -A
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          if [ -n "$PR" ]; then msg="Preview of #$PR ($ACTION) at ${GITHUB_SHA::7}"; else msg="main at ${GITHUB_SHA::7}"; fi
+          git commit -q -m "$msg"
+          git push -q origin gh-pages
+
+      - name: The link, once on the pull request
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        run: |
+          marker="<!-- pages-preview -->"
+          have=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[].body' | grep -c -F "$marker" || true)
+          if [ "$have" = 0 ]; then
+            owner=${REPO%%/*}; name=${REPO#*/}
+            gh pr comment "$PR" -R "$REPO" --body "$marker
+          **Preview:** https://${owner}.github.io/${name}/pr-${PR}/web/rhythm.html
+
+          It follows every push to this pull request, a minute or two after this workflow, and goes when the pull request closes. Made by \`.github/workflows/pages.yml\`."
+          fi
