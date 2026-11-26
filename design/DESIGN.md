@@ -155,11 +155,12 @@ cells. ⚠ Every size below is read off that board, which nobody has seen render
 
 - The stitch and the source mark sit over the twill's band. In terminal cells the stitch is
   not drawn while the twill is (`Lights`' own rule), so there a heard effect hides it.
-- When the bar shows is not redrawn: as built, only while sound or pattern is held or
-  latched (the next section). The ruling's words would let it show always.
+- ~~When the bar shows is not redrawn~~ The bar shows as built, only while sound or pattern
+  is held or latched (D120 item 5).
 - The page has no cable and no Rack effect, so only the dash can show there.
-- What the view carries for the core, the twill and the marks: O32, the first part of
-  issue 101.
+- ~~What the view carries for the core, the twill and the marks: O32~~ Answered by D120:
+  no new byte.  §14, "§14 and §17, designed 2026-11-26", says what a host reads
+  for each light; the marks come from what the host sends by .
 
 ## Key states
 

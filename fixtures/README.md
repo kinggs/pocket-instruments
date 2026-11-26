@@ -448,6 +448,44 @@ have steps (`keys-write-a-beat`'s kick and hat, `fx-repeat-punch`'s sounds 2 and
 item 3. `sounds=1` stays on all sixteen: the grid is still sounds, so a key still goes
 white as its own sound fires.
 
+## The views worked again for D120 (2026-11-26; issue 101; in `designed/` until the build)
+
+A view changed by a decision, as Session 20's were (D120, answering O32; D112 item 1, D119
+item 7): worked from `ENGINE.md` §14's changed table and committed in `fixtures/designed/`
+before any code. Two rows change. **Sound held:** the field is the sounds in use, bit *n*
+when track *n* has any step on (was none). **Write off, nothing held:** the stitch is every
+other sound's steps, as with write on (was none). Nothing else on any line moves: no
+`expect` line, no `about`, no trace.
+
+How it was worked: a short model of §13's step rules and §14's table, written from the
+documents and not from the core (`step` edits, a grid key with write on flips the chosen
+sound's step, sound + key chooses, function + pattern clears). It replays each fixture's
+commands to each view and first checks itself against every committed view line whose row
+D120 does not change (each `held`, `sel` and `write`; field and stitch with write on or
+pattern held; the field with write off). It agreed with all of them. Then each changed
+line below was read against the fixture's commands by eye.
+
+| Fixture | View `at` | Row | Was | Now | Why |
+|---|---|---|---|---|---|
+| `fx-repeat-holds` | 1, 5 | write off | `stitch=0000` | `stitch=000c` | sound 1 chosen on step 7; the step-0 edits put sound 3 on step 3 and sound 2 on step 4 (bits 2 and 3) |
+| `fx-repeat-holds` | 23 | write off | `stitch=0000` | `stitch=0008` | edits have taken sound 1's step 7 and sound 3's step 3 off; sound 2's step 4 (bit 3) is left |
+| `fx-repeat-punch` | 4, 7, 14, 23 | write off | `stitch=0000` | `stitch=0060` | sound 1 chosen on steps 1 and 5; sounds 2 and 3 are on steps 6 and 7 (bits 5 and 6) |
+| `fx-repeat-swing` | 2, 15 | write off | `stitch=0000` | `stitch=002a` | sound 1 chosen; the others on steps 2, 4 and 6 (bits 1, 3 and 5) |
+| `fx-shuffle` | 2, 4, 18, 23 | write off | `stitch=0000` | `stitch=005c` | sound 1 chosen on steps 1 and 5; the others on steps 3, 4, 5 and 7 (bits 2, 3, 4 and 6; step 5 shares a key with the field) |
+| `keys-tap-and-choose` | 1, 4, 12, 15 | write off | `stitch=0000` | `stitch=0004` | sound 1 chosen, with no step; track 3's step 3 (bit 2) is the one step, set at step 0 |
+| `keys-tap-and-choose` | 5, 6 | sound held | `field=0000` | `field=0008` | track 3 (key 4) is the only sound with a step |
+| `keys-write-a-beat` | 4 | sound held | `field=0000` | `field=0001` | only the kick (track 0) has steps yet |
+| `keys-write-a-beat` | 11, 15, 27, 31 | write off | `stitch=0000` | `stitch=5555` | the snare chosen; the kick and the hat between them are on every odd step (run step 8's write-on view shows the same `5555`). View 31 is stopped and still takes the row |
+
+Unchanged, and checked: `keys-tap-and-choose` at 7 and 10 take the write-off row with
+key 4 chosen; its step is the only one in the pattern, so no other sound has a step and
+the stitch stays `0000`. Views with bpm or pattern held, and every write-on view, take rows
+D120 leaves alone: `keys-bpm-family` and `keeps-what-it-was-written-with` do not move.
+`weave-views.txt` is input to `pi_weave` and does not move.
+
+When the build moves these six files over the ones beside this file, `designed/` is empty
+again.
+
 ## Format 4 (2026-11-23: the sliders, D75; built in Session 21)
 
 Format 3, and:

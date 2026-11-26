@@ -931,12 +931,10 @@ bytes = pi_view(engine, buf, cap)        /* PI_VIEW_SIZE (64), or 0 if cap is to
 Everything a host draws, as one fixed block. Called on the audio thread like every other
 function on an engine (§8). It moves nothing: not the generation, not a counter.
 
-**⚠ Decided 2026-11-26 and not designed here yet (D112; O32):** every light on a key is to
-mean the same with write on or off, a sounding key is to show a core and not a white face,
-effect *n* heard is to light key *n*, and while sound is held a key's field is to be lit
-when that sound has a step (D119 item 7). This section and §17's "The view" still describe
-what is built. They change with O32's answer, the first part of issue 101; build nothing of D112
-from this section until then.
+**Designed 2026-11-26 (D120, answering O32; D112, D119 item 7; not built):** a key's
+lights need no new byte. Two rows of the grid's table below change (marked D120), and the
+host reads the rest from bytes that exist: "§14 and §17, designed 2026-11-26" after this
+section has the whole of it, and replaces the host's list below for the grid keys.
 
 | Offset | Size | Field |
 |---|---|---|
@@ -965,10 +963,10 @@ first row that applies:
 | When | field | stitch | bar | grid is sounds |
 |---|---|---|---|---|
 | bpm held | keys 1 to `volume` | none | none | no |
-| sound held | none | none | the chosen sound | yes |
+| sound held | ~~none~~ the sounds in use (D120; D119 item 7) | none | the chosen sound | yes |
 | pattern held | none | none | key 1 (the one pattern) | no |
 | write on | the chosen sound's steps | steps of any other sound | none | no |
-| write off | the chosen sound's steps (D82; was none) | none | none | yes |
+| write off | the chosen sound's steps (D82; was none) | ~~none~~ steps of any other sound (D120; D112 item 1) | none | yes |
 
 **The write-off row, changed 2026-11-23 (D71, D72 item 3, D82; built in Session 20).** It
 was `none | none | none | yes`: D37 guessed from a search that the hardware's fields are dark
@@ -1094,6 +1092,73 @@ The page: only the `.wasm`. Nothing turned out different. ⚠ No self-test in Ra
 external clock through the player's path or a beat clock (D100 item 7): a planted fault that
 always sent `SOURCE` 2 when CLOCK is patched passed `make selftest`. The owner's check is
 Clocked at ×1.
+
+### §14 and §17, designed 2026-11-26: a key's lights (D120; D112, D115, D119 item 7; issue 101)
+
+What a host reads for each of D112's lights. No byte is added or moved, the ABI stays 15,
+the snapshot does not change, and fixture formats 2 to 4 stand. Two rows of the grid's
+table change what they put in field and stitch (above, marked D120).
+
+**What the core does.** In `Engine::view`, the first row that applies, as before:
+
+| When | field | stitch | bar | grid is sounds |
+|---|---|---|---|---|
+| bpm held | keys 1 to `volume` | none | none | no |
+| sound held | **the sounds in use:** bit *n* set when track *n* has any of its sixteen steps on | none | the chosen sound | yes |
+| pattern held | none | none | key 1 | no |
+| write on | the chosen sound's steps | steps of any other sound | none | no |
+| write off | the chosen sound's steps | **steps of any other sound** | none | yes |
+
+"In use" counts every step, whatever the length (D120 item 5). Flag 4 keeps its meaning
+(a grid key fires its own sound) and no longer gates a light.
+
+**What a host does with it** (replaces the list above for the grid keys; the function keys,
+the sliders and the hand-off are unchanged):
+
+| Light (`design/DESIGN.md`) | Lit on key *n* when | Rows |
+|---|---|---|
+| frame | *n* is the playhead (25) and flags 0 and 3 are set | all |
+| twill | `heard` (55) is *n* + 1 | all |
+| field | bit *n* of field (12) | all |
+| core | track *n*'s `fires` (32 + *n*) has moved since the host last looked; held for half a step at the view's tempo (`ext × 100` while `ext` is not 0), 40 to 120 ms | all, write on or off |
+| fern core | the core is lit, `heard` is not 0, and bit *n* of fx sounds (58) is set | all |
+| stitch | bit *n* of stitch (14) | all |
+| bar | bit *n* of bar (16) | all |
+| pressed | bit *n* of `held` (8): white, pulled in by the frame's width | all |
+| source mark | below | sound or fx held or latched |
+
+So a firing no longer whitens a face, with write on or off: white pulled in is a finger
+and nothing else (D112 item 1).
+
+**The source marks** (D112 item 4), drawn while `held` bit 16 (sound) is set, or bit 20
+(fx) is set or the host holds fx latched (D78: a latched fx is in `held` only while a grid
+key is down). Sound's marks win if both. From what the host sent by `ROUTE` (§19) and the
+view's `sampled`:
+
+| Down | Ring | Dash | Disc | None |
+|---|---|---|---|---|
+| sound | `ROUTE` 0 names sound *n* (it comes back by RETURN) | else `sampled` bit *n* | | else |
+| fx | `ROUTE` 1 names effect *n* + 1 and `ROUTE` 4 does not (Rack's, beside ours) | | `ROUTE` 1 and `ROUTE` 4 both name it (Rack's, in its place) | else (ours) |
+
+The masks are the ones last sent: the Rack module sends 0 for `ROUTE` 1 and 4 while
+neither FX jack is patched (§19), and then shows no effect mark. The page sends no `ROUTE`,
+so it shows only the dash.
+
+**§17's view, changed.** "The grid's table does not change: holding fx lights nothing" is
+superseded for the twill (every row, held or not) and the source marks (fx held or latched).
+Holding fx still changes no field, stitch or bar.
+
+**What must not move.** Every trace and every render file: the view is not on the sound
+path. In the view, only `field` in rows with sound held and `stitch` in rows with write
+off and nothing held. `fixtures/README.md`, "The views worked again for D120", lists the
+lines and why. `harness/weave-views.txt` gives the weave its view bytes as input and does
+not change.
+
+**Proven when built by:** the changed view lines on all three harnesses, worked by hand
+first; a rule test for each changed row and one that the other three rows did not move
+(`core/src/tests/keys.rs`); `make play` reading each light back off the page against the
+view it came from; `rack/test/jacks.cpp` holding the Rack module's choice of light for
+each case of the table above; the self-test; and screenshots for the owner's eye (#9).
 
 ## 15. Snapshot version 2 (ABI 5; designed in Session 9; D55; built in Session 11)
 
@@ -1346,8 +1411,9 @@ sixteen are usable in Rack from the first build, through D68's loop.
 | 56 | 2 | fx steps: bit *s*, step *s* of the lane holds an effect |
 | 58 | 2 | fx sounds: bit *t*, sound *t* goes through the effects |
 
-Bytes 48 to 54 stay the weave's (§16) and 60 to 63 stay zero (until ABI 8: §20's second mark). **The grid's table does not
-change:** holding fx lights nothing and hides nothing, as on the hardware, where no key
+Bytes 48 to 54 stay the weave's (§16) and 60 to 63 stay zero (until ABI 8: §20's second mark). ~~**The grid's table does not
+change:** holding fx lights nothing and hides nothing~~ (superseded for the twill and the source marks by D120: §14 and
+§17, designed 2026-11-26; holding fx still changes no field, stitch or bar), as on the hardware, where no key
 lights for an effect. (The first draft put the bar on the heard effect's key.) The fx key
 itself shows pressed while held, like any function key.
 
