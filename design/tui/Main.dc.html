@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rhythm in a terminal, 80 by 24</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; background: #07060C; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; font-size: 23.333px; line-height: 28px; color: #F2E8D0">
+<div style="width: 1120px; height: 672px; background: #14131F; display: flex; flex-direction: column; overflow: hidden; border-radius: 6px">
+
+<div style="height: 28px; padding: 0 14px; display: flex; justify-content: space-between; white-space: pre">
+<div style="display: flex; gap: 28px"><span>rhythm</span><span style="color: #C9C2DD">pattern 1</span></div>
+<div style="display: flex; gap: 28px">
+<sc-if value="{{ isSound }}" hint-placeholder-val="{{ false }}"><span style="background: #F0654A; color: #14131F; padding: 0 14px">sound</span></sc-if>
+<sc-if value="{{ isWrite }}" hint-placeholder-val="{{ true }}"><span style="background: #F0B429; color: #14131F; padding: 0 14px">write</span></sc-if>
+<span><span style="color: #C9C2DD">step </span>13</span>
+<span>120<span style="color: #C9C2DD"> bpm</span></span>
+</div>
+</div>
+
+<sc-if value="{{ showWeave }}" hint-placeholder-val="{{ true }}">
+<div style="width: 1092px; height: 280px; margin: 0 14px; background: #0B0A12; display: flex; flex-direction: column">
+<div style="position: relative; width: 1092px; height: 224px">
+<sc-for list="{{ cells }}" as="c" hint-placeholder-count="1">
+<div style="position: absolute; left: {{c.x}}px; top: {{c.y}}px; width: {{c.w}}px; height: {{c.h}}px; background: {{c.c}}"></div>
+</sc-for>
+</div>
+<div style="height: 56px; display: flex; gap: 28px">
+<sc-for list="{{ marks }}" as="m" hint-placeholder-count="16">
+<div style="width: 42px; height: 56px; display: flex; flex-direction: column">
+<div style="height: 28px; display: flex; align-items: center"><div style="width: 42px; height: 4px; background: {{m.tick}}"></div></div>
+<div style="height: 28px; display: flex; align-items: flex-end"><div style="width: 42px; height: {{m.h}}px; background: {{m.c}}"></div></div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSound }}" hint-placeholder-val="{{ false }}">
+<div style="width: 1092px; height: 280px; box-sizing: border-box; margin: 0 14px; padding: 14px 28px; background: #0B0A12; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; gap: 14px; white-space: pre"><span style="color: #F0654A">sound</span><span style="color: #C9C2DD">the grid is sixteen sounds: a key chooses one and plays it</span></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 14px; white-space: pre">
+<div style="display: flex; gap: 14px"><span style="background: #F0654A; color: #14131F; width: 28px; text-align: center">1</span><span style="border-bottom: 4px solid #F0654A; line-height: 24px">bass drum</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">2</span><span>snare drum</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">3</span><span>closed hat</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">4</span><span>open hat</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">q</span><span>synth snare</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">w</span><span>sticks</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">e</span><span>cymbal</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">r</span><span>noise</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">a</span><span>hand clap</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">s</span><span>click</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">d</span><span>low tom</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">f</span><span>high tom</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">z</span><span>cow bell</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">x</span><span>blip</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">c</span><span>tone</span></div>
+<div style="display: flex; gap: 14px"><span style="background: #2B2942; width: 28px; text-align: center">v</span><span>bass tone</span></div>
+</div>
+</div>
+</sc-if>
+
+<div style="height: 336px; padding: 0 28px; display: flex; gap: 28px">
+
+<div style="width: 364px; padding: 14px 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; align-content: start">
+<sc-for list="{{ keys }}" as="k" hint-placeholder-count="16">
+<div style="position: relative; height: 56px; box-sizing: border-box; border-style: solid; border-width: 14px 7px; border-color: {{k.frame}}; background: {{k.field}}; color: {{k.ink}}; text-align: center">{{k.cap}}<span style="position: absolute; right: 10px; top: 10px; width: 8px; height: 8px; background: {{k.stitch}}"></span><span style="position: absolute; left: -7px; right: -7px; bottom: -14px; height: 14px; background: {{k.bar}}"></span></div>
+</sc-for>
+</div>
+
+<div style="width: 98px; display: flex; gap: 14px; text-align: center">
+<div style="width: 42px; display: flex; flex-direction: column">
+<div style="color: #C9C2DD">t</div>
+<div style="position: relative; height: 280px">
+<div style="position: absolute; left: 20px; top: 0; width: 2px; height: 280px; background: #6E6A92"></div>
+<div style="position: absolute; left: 0; top: 180px; width: 42px; height: 4px; background: #F0654A"></div>
+<div style="position: absolute; left: 0; top: 84px; width: 42px; height: 28px; background: #F2E8D0; color: #14131F">A</div>
+</div>
+<div style="color: #C9C2DD">g</div>
+</div>
+<div style="width: 42px; display: flex; flex-direction: column">
+<div style="color: #C9C2DD">y</div>
+<div style="position: relative; height: 280px">
+<div style="position: absolute; left: 20px; top: 0; width: 2px; height: 280px; background: #6E6A92"></div>
+<div style="position: absolute; left: 0; top: 68px; width: 42px; height: 4px; background: #F0654A"></div>
+<div style="position: absolute; left: 0; top: 168px; width: 42px; height: 28px; background: #F2E8D0; color: #14131F">B</div>
+</div>
+<div style="color: #C9C2DD">h</div>
+</div>
+</div>
+
+<div style="width: 546px; padding: 14px 0; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; gap: 42px">
+<sc-for list="{{ top }}" as="f" hint-placeholder-count="3">
+<div style="width: 154px; height: 140px; box-sizing: border-box; border-top: 14px solid {{f.band}}; background: {{f.face}}; color: {{f.ink}}; padding: 0 14px; display: flex; flex-direction: column; justify-content: center"><div style="color: {{f.capInk}}">{{f.cap}}</div><div>{{f.word}}</div></div>
+</sc-for>
+</div>
+<div style="display: flex; gap: 14px">
+<sc-for list="{{ bottom }}" as="f" hint-placeholder-count="4">
+<div style="width: 126px; height: 140px; box-sizing: border-box; border-top: 14px solid {{f.band}}; background: {{f.face}}; color: {{f.ink}}; padding: 0 7px; display: flex; flex-direction: column; justify-content: center"><div style="color: {{f.capInk}}">{{f.cap}}</div><div>{{f.word}}</div></div>
+</sc-for>
+</div>
+</div>
+
+</div>
+
+<sc-if value="{{ isWrite }}" hint-placeholder-val="{{ true }}">
+<div style="height: 28px; padding: 0 14px; display: flex; gap: 28px; white-space: pre; color: #C9C2DD">
+<span><span style="color: #F2E8D0">1…v</span> step</span>
+<span><span style="color: #F2E8D0">7+key</span> sound</span>
+<span><span style="color: #F2E8D0">t g</span> A</span>
+<span><span style="color: #F2E8D0">y h</span> B</span>
+<span><span style="color: #F2E8D0">space</span> play</span>
+<span><span style="color: #F2E8D0">?</span> keys</span>
+<span><span style="color: #F2E8D0">:</span> command</span>
+<span><span style="color: #F2E8D0">^q</span> quit</span>
+</div>
+</sc-if>
+<sc-if value="{{ isOff }}" hint-placeholder-val="{{ false }}">
+<div style="height: 28px; padding: 0 14px; display: flex; gap: 28px; white-space: pre; color: #C9C2DD">
+<span><span style="color: #F2E8D0">1…v</span> play</span>
+<span><span style="color: #F2E8D0">7+key</span> sound</span>
+<span><span style="color: #F2E8D0">p</span> write</span>
+<span><span style="color: #F2E8D0">i+key</span> effect</span>
+<span><span style="color: #F2E8D0">space</span> stop</span>
+<span><span style="color: #F2E8D0">?</span> keys</span>
+<span><span style="color: #F2E8D0">:</span> command</span>
+</div>
+</sc-if>
+<sc-if value="{{ isSound }}" hint-placeholder-val="{{ false }}">
+<div style="height: 28px; padding: 0 14px; display: flex; gap: 28px; white-space: pre; color: #C9C2DD">
+<span><span style="color: #F2E8D0">1…v</span> choose a sound</span>
+<span><span style="color: #F2E8D0">shift+7</span> latch</span>
+<span><span style="color: #F2E8D0">esc</span> let go</span>
+<span><span style="color: #F2E8D0">?</span> keys</span>
+</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":{"editor":"enum","options":["write on","write off","sound held"],"default":"write on"},"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+renderVals() {
+const T = { ground: '#14131F', tile: '#2B2942', ecru: '#F2E8D0', white: '#FFFFFF', ochre: '#F0B429', madder: '#F0654A', sky: '#8FAAF7', lilac: '#C9C2DD', thread: '#6E6A92' };
+const screen = this.props.screen ?? 'write on';
+const isSound = screen === 'sound held', isOff = screen === 'write off', isWrite = screen === 'write on';
+const caps = '1234qwerasdfzxcv'.split('');
+const lit = isSound ? [] : [0, 4, 8, 12];
+const stitch = isWrite ? [2, 4, 6, 10, 12, 14] : [];
+const fired = isOff ? [0, 1] : [];
+const play = 12;
+const keys = caps.map((cap, i) => {
+const on = lit.includes(i), hot = fired.includes(i);
+const field = hot ? T.white : on ? T.ecru : T.tile;
+const dark = hot || on;
+return { cap, field, frame: i === play ? T.ochre : field, ink: dark ? T.ground : T.ecru,
+stitch: stitch.includes(i) ? (dark ? T.ground : T.ecru) : 'transparent',
+bar: isSound && i === 0 ? T.madder : 'transparent' };
+});
+const fk = (cap, word, colour, latched) => ({ cap, word, band: colour, face: latched ? colour : T.tile, ink: latched ? T.ground : T.ecru, capInk: latched ? T.ground : T.lilac });
+const top = [fk('7', 'sound', T.madder, isSound), fk('8', 'pattern', T.ochre, false), fk('9', 'bpm', T.sky, false)];
+const bottom = [fk('u', 'function', T.ecru, false), fk('i', 'fx', '#6FD6A0', false), fk('o', 'play', T.ecru, true), fk('p', 'write', T.ecru, isWrite)];
+const marks = caps.map((_, i) => ({ h: i === play ? 28 : (i % 4 === 0 ? 14 : 7), c: i === play ? T.ochre : T.thread, tick: [5, 6, 7].includes(i) ? '#6FD6A0' : 'transparent' }));
+const P = 14, cells = [];
+const put = (x, y, w, h, c) => cells.push({ x: x * P, y: y * P + 7, w: w * P, h: h * P, c });
+const edge = 52;
+put(0, 0, edge, 15, T.tile);
+[[0, 7], [1, 4], [2, 6]].forEach(([b, R]) => {
+const cx = b * 16 + 8;
+for (let dy = -R; dy <= R; dy++) {
+const half = R - Math.abs(dy);
+let run = null;
+for (let dx = -half; dx <= half + 1; dx++) {
+const d = Math.abs(dx) + Math.abs(dy);
+const c = d > R ? null : d <= 2 ? T.ecru : d <= 4 ? T.ochre : T.madder;
+if (run && run.c !== c) { put(run.x, 7 + dy, cx + dx - run.x, 1, run.c); run = null; }
+if (c && !run) run = { x: cx + dx, c };
+}
+}
+});
+put(edge, 0, 2, 15, T.ochre);
+[1, 4, 7, 10, 13].forEach((r) => put(edge + 2, r, 78 - edge - 2, 1, T.thread));
+put(edge + 7, 0, 1, 6, T.ecru);
+put(edge + 6, 6, 3, 4, T.ecru);
+return { isSound, isOff, isWrite, showWeave: !isSound, keys, top, bottom, marks, cells };
+}
+}
+</script>
+</body>
+</html>

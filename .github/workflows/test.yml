@@ -1,0 +1,50 @@
+# Pocket Instruments: `make test` and the Node harness, on every pull request and every push
+# to main. `make test` builds the core twice (a static library and a .wasm), runs the same
+# fixtures through Rust, C++ and Node, and holds the three reports to the same bytes
+# (docs/PROOFS.md P1, P2, P6, P7).
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      # The harness is run with `node --test`. No version is pinned in the repository yet, so
+      # this takes the current LTS.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # rust-toolchain.toml is the pin and names the wasm32-unknown-unknown target. With no
+      # arguments rustup installs what that file says. The target is added by name as well,
+      # as `make check-toolchain` would.
+      - name: Rust (from rust-toolchain.toml)
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+          rustc --version
+
+      # What the Makefile calls besides cargo and node: c++ (g++), ar and nm (binutils), cmp,
+      # sha256sum. jq is only the Rack plugin's, and is on the runner too. If clang++ is
+      # there, `make test` also runs the ThreadSanitizer harness (P6); if not, it says so.
+      - name: Tools
+        run: |
+          c++ --version | sed -n 1p
+          node --version
+          jq --version
+          command -v clang++ && clang++ --version | sed -n 1p || echo "no clang++: the ThreadSanitizer run will be skipped"
+
+      - run: make test
+
+      - run: node --test harness/

@@ -1,0 +1,43 @@
+name: Idea
+description: Something the instrument could do, or do better.
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One person maintains this project, so a reply may be slow.
+        An idea that changes behaviour becomes a design issue before anything is built.
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What should happen, in a sentence or two.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What you were trying to do when you wanted it.
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Where
+      multiple: true
+      options:
+        - The web page
+        - The VCV Rack plugin
+        - The core
+        - The documents
+        - Not sure
+    validations:
+      required: false
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: Links to anything this draws on, with its licence if you know it. Mark what you have not checked with ⚠.
+    validations:
+      required: false

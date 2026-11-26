@@ -1,0 +1,57 @@
+name: Bug
+description: Something does not work as the documents say it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One person maintains this project, so a reply may be slow.
+        For a security problem, do not use this form. See SECURITY.md.
+  - type: dropdown
+    id: host
+    attributes:
+      label: Where
+      options:
+        - The web page
+        - The VCV Rack plugin
+        - The core, tests or build
+        - The documents
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: did
+    attributes:
+      label: What you did
+      description: The steps, in order. Keys pressed, files loaded, commands run.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: If a document says so, name the section (for example docs/ENGINE.md section 16).
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: Paste any error text or log. Attach a file that reproduces it if you have one.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, browser and version, or VCV Rack version.
+      placeholder: "Android 15, Chrome 141"
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The commit you built from, or the date you opened the page.
+    validations:
+      required: false
