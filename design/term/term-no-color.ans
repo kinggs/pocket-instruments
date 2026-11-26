@@ -1,0 +1,24 @@
+ rhythm  pattern 1                                   [7m fx [0m [7m fx 5 [0m step 9 120 bpm
+  fx hold a key for its effect; alone, it takes effects off the steps
+
+  1 low sample rate  2 distortion       3 bit crush        4 delay
+
+  [7mq[0m lowpass          w lowpass sweep    e hipass           r hipass sweep
+
+  a repeat 4 a beat  s repeat 3 a beat  d repeat 8 a beat  f repeat 6 a beat
+
+  z note shuffle     x feedback         c 15 (none yet)    v 16 (none yet)
+
+  ▄▄▄▄▄         ▄▄▄▄▄          t   y   ▄▄▄▄▄▄▄▄▄▄▄   [1m▄▄▄▄▄▄▄▄▄▄▄[0m   ▄▄▄▄▄▄▄▄▄▄▄
+  █[7m 1 [0m█    2▪   █[7m 3 [0m█    4▪    │   │    7             8             9
+  █████         ▀▀▀▀▀          │   │    sound         pattern       bpm
+                ▄▄▄▄▄          │   │
+  [1m▐[0m╱[1;7mq[0m╱[1m▌[0m    w    █[7m e [0m█    r▪    │   │
+                ▀▀▀▀▀         [7m A [0m [7m B [0m
+  [1m▄▄▄▄▄[0m         ▄▄▄▄▄          │   │   ▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄
+  [1m█[0;7m a [0;1m█[0m    s▪   █[7m d [0m█    f▪    │   │    u        [7m [0mi[7m       [0m [7m o       [0m  p
+  [1m▀▀▀▀▀[0m         ▀▀▀▀▀          │   │    function [7m fx      [0m [7m play    [0m  write
+  ▄▄▄▄▄         ▄▄▄▄▄          │   │             [7m         [0m [7m         [0m
+  █[7m z [0m█    x    █[7m c [0m█    v     │   │             ▀▀▀▀▀▀▀▀▀ ▀▀▀▀▀▀▀▀▀
+  ▀▀▀▀▀         ▀▀▀▀▀          g   h
+ tap keys: as asked. sound: no sound (--audio none). ? for every key

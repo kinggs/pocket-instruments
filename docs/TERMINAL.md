@@ -285,7 +285,7 @@ What was checked, and how:
 | Planted faults, each built and caught by a named test | Shift dropped from the protocol (9 tests); two keys swapped in the map (9); no twill (2); fx let up between keys in a tap switch (1); a release read as a press (the fixtures: 150 of 360 runs) |
 | Hold, end to end in foot | Keys sent with Hyprland's `send_key_state` to a hidden foot window (R78's method): a plain `7` let go before a key is no hold; Shift+`7` latches and lets go after the next key; `7` held over `s` chooses sound 10. The beat file read back held exactly those steps |
 | Tap, end to end in tmux | `i`, then taps on `q`, `w`, `w`, `a`, then esc: effects 5, 6, none, 9, none in the status line |
-| Both screens, both colourings | drawn in a headless tmux and read back (`capture-pane -e`): main, sound held, the helper, the sheet, the pocket size, and both with `NO_COLOR` |
+| Both screens, both colourings | drawn in a headless tmux and read back (`capture-pane -e`): main, sound held, the helper, the sheet, the pocket size, and both with `NO_COLOR`. Kept in `design/term/*.ans`, for Kenny's eye: `cat design/term/term-write-on.ans` in a truecolour terminal shows the screen as drawn |
 | The beat | saved at quit and a second after a change, read at the next start; a version 4 snapshot, 1464 bytes |
 
 ⚠ Found on the way: Hyprland's `send_key_state` moves focus to the window and back around every
