@@ -9,7 +9,9 @@
 //           snapshot the page saved.
 //   reload  the beat kept in the browser is back.
 //   bpm     keys-bpm-family's edits and keys; the last view, as text.
-//   latch   Ctrl+click latches (D60, D61), and the sounds sheet's two halves.
+//   latch   Shift+click latches (D60, D61; Ctrl+click until D113), Ctrl+click is plain, Shift+7
+//           q chooses by the computer keys, a sample's dash while sound is latched, and the
+//           sounds sheet's two halves.
 //   keep    §20 (D75, Session 21): the cap is the hand's and stays put when another sound
 //           is chosen; a load moves it; a step keeps what it was written with, and the
 //           second mark shows what the chosen sound was last hit with.
@@ -20,6 +22,7 @@
 //   written keeps-what-it-was-written-with (format 4) by touch: its views.
 //   fxlatch D78 by a mouse, fx + key by the computer keys, and the sounds sheet's "through
 //           fx" switch (D69); each gesture held to the commands it sent.
+//   keys    the one-key shortcuts and the keys helper (D116, D119 items 3 and 6).
 //   still   the weave (Session 14, ENGINE.md §16): two sounds a step played as it is, then
 //           with reduced motion asked for, then stopped.
 // And in every phase, every drawing's weave: the cells read back off the canvas by their
@@ -152,36 +155,55 @@ r.afterDraw = (v) => {
   }
   const bad = Object.keys(want).filter((k) => (typeof want[k] === "number" && k.includes(" ") ? Math.abs(want[k] - got[k]) > 0.01 : want[k] !== got[k]));
   if (bad.length && out.drawn.bad.length < 5) out.drawn.bad.push(`${bad.map((k) => `${k} drawn ${got[k]}, view ${want[k]}`).join("; ")} (${viewText(v, 4)})`);
-  white(v);
+  lights(v);
   cloth(v);
 };
 
-// Session 20 (D82 item 4): the white, read off the face by its colour. ENGINE.md §14: a key
-// is white under a finger, or, while the grid is sounds, for half a step at the view's tempo
-// (40 to 120 ms) after its count in `fires` moves. This keeps its own record of when each
-// count moved, from the views drawn, and shares nothing with draw(). A drawing that falls
-// within 15 ms of a white's end is not judged (the page and this read the clock a moment
-// apart). `white.lit` counts drawings where a key the field lights is white from a firing;
-// `white.back` counts a lit key drawn ecru again after that: lit, white, lit.
-const WHITE = "rgb(255, 255, 255)", ECRU = "rgb(242, 232, 208)";
-const seenFires = new Array(16).fill(null), firedAt = new Array(16).fill(-1e9), wasWhite = new Array(16).fill(false);
-out.white = { lit: 0, back: 0, bad: [] };
-function white(v) {
-  const now = performance.now(), sounds = v[24] & 16, field = u16(v, 12), held = u32(v, 8);
+// D120 (ENGINE.md §14 and §17, designed 2026-11-26): a key's lights read off the face by
+// their colour and their display, sharing nothing with draw(). This keeps its own record of
+// when each track's count in `fires` moved. The core: lit for half a step at the view's tempo
+// (40 to 120 ms) after the count moves, in every row, write on or off; fern while `heard` is
+// not 0 and fx sounds names the sound; a drawing within 15 ms of a core's end is not judged.
+// The face is white only under a finger. The twill: key `heard` − 1 alone. The dash: a sample,
+// while sound is held or latched. Fern: the fx key's band, the fx block and the lane's ticks.
+// Until D120 this was white(), holding a firing's white face to the write-off row (D82 item 4).
+const WHITE = "rgb(255, 255, 255)", FERN = "rgb(111, 214, 160)";
+const seenFires = new Array(16).fill(null), firedAt = new Array(16).fill(-1e9);
+out.core = { writeOn: 0, writeOff: 0, fern: 0, twill: 0, dash: 0, fernDrawn: 0, bad: [] };
+const shown = (el) => !!el && getComputedStyle(el).display !== "none";
+function lights(v) {
+  const now = performance.now(), held = u32(v, 8), heard = v[55], through = u16(v, 58), sampled = u16(v, 18);
   const span = Math.max(40, Math.min(120, 7500000 / Math.max(1, u32(v, 4))));
+  const soundDown = !!((held >> 16) & 1) || r.latched.has(16);
+  const C = out.core, bad = (s) => { if (C.bad.length < 5) C.bad.push(`${s} (${viewText(v, 4)})`); };
   r.keys.forEach((el, n) => {
     const f = v[32 + n];
-    if (seenFires[n] !== null && f !== seenFires[n] && sounds) firedAt[n] = now;
+    if (seenFires[n] !== null && f !== seenFires[n]) firedAt[n] = now;
     seenFires[n] = f;
-    if ((held >> n) & 1) return; // a finger's white is held to `held` above
-    const bg = getComputedStyle(el).backgroundColor, lit = (field >> n) & 1, left = firedAt[n] + span - now;
-    const want = sounds && left > 0;
-    if (Math.abs(left) > 15 && (bg === WHITE) !== !!want && out.white.bad.length < 5)
-      out.white.bad.push(`key ${n + 1} drawn ${bg}, ${want ? "white" : "not white"} wanted (${Math.round(left)} ms of white left; ${viewText(v, 4)})`);
-    if (bg === WHITE && lit) out.white.lit++;
-    if (bg === ECRU && lit && wasWhite[n]) out.white.back++;
-    wasWhite[n] = bg === WHITE && !!lit;
+    const co = el.querySelector(".co"), left = firedAt[n] + span - now, lit = shown(co);
+    const fern = lit && getComputedStyle(co).backgroundColor === FERN;
+    if (Math.abs(left) > 15) {
+      if (lit !== left > 0) bad(`key ${n + 1}: core ${lit ? "drawn" : "not drawn"}, ${Math.round(left)} ms of core left`);
+      else if (lit && fern !== !!(heard && (through >> n) & 1)) bad(`key ${n + 1}: core ${fern ? "fern" : "white"}, heard ${heard}, through ${through.toString(16)}`);
+    }
+    if (lit) { if (v[24] & 2) C.writeOn++; else C.writeOff++; if (fern) C.fern++; }
+    const face = getComputedStyle(el).backgroundColor;
+    if ((face === WHITE) !== !!((held >> n) & 1)) bad(`key ${n + 1}: face ${face}, held ${(held >> n) & 1}`);
+    const tw = shown(el.querySelector(".tw"));
+    if (tw !== (heard === n + 1)) bad(`key ${n + 1}: twill ${tw}, heard ${heard}`);
+    if (tw) C.twill++;
+    const dash = shown(el.querySelector(".mk"));
+    if (dash !== (soundDown && !!((sampled >> n) & 1))) bad(`key ${n + 1}: dash ${dash}, sound down ${soundDown}, sampled ${sampled.toString(16)}`);
+    if (dash) C.dash++;
   });
+  const fxKey = r.fkeys[4], mark = document.getElementById("fxmark");
+  if (!fxKey.classList.contains("press") && !fxKey.classList.contains("latched") && getComputedStyle(fxKey).borderTopColor !== FERN)
+    bad(`the fx key's band is ${getComputedStyle(fxKey).borderTopColor}`);
+  if (heard) {
+    if (getComputedStyle(mark).backgroundColor !== FERN) bad(`the fx block is ${getComputedStyle(mark).backgroundColor}`);
+    else C.fernDrawn++;
+  }
+  r.ticks.forEach((el, n) => { if (el.classList.contains("on") && getComputedStyle(el).backgroundColor !== FERN) bad(`tick ${n + 1} is ${getComputedStyle(el).backgroundColor}`); });
 }
 
 // Pointers, as a finger gives them.
@@ -316,16 +338,17 @@ async function phaseBpm() {
   out.bpm = { last: viewText(await settle()), want: fx.views.at(-1).view };
 }
 
-// D61, by a mouse: Ctrl+click latches, a left-click on a key finishes. Each gesture's view
-// is recorded as text; play.mjs holds each to what ENGINE.md §13 says it should be.
-const mouse = (el, type, button, ctrlKey = false) => el.dispatchEvent(new PointerEvent(type, {
-  pointerId: 1, bubbles: true, cancelable: true, isPrimary: true, pointerType: "mouse", button, ctrlKey,
+// D61, by a mouse: Shift+click latches (Ctrl+click until D113), a left-click on a key
+// finishes. Each gesture's view is recorded as text; play.mjs holds each to what ENGINE.md §13
+// says it should be.
+const mouse = (el, type, button, ctrlKey = false, shiftKey = false) => el.dispatchEvent(new PointerEvent(type, {
+  pointerId: 1, bubbles: true, cancelable: true, isPrimary: true, pointerType: "mouse", button, ctrlKey, shiftKey,
   buttons: type === "pointerdown" ? 1 << (button === 2 ? 1 : 0) : 0,
 }));
 // The latched light is the page's own state, drawn on the next frame: wait two frames.
 const DOUBLE_GAP = 350; // longer than the page's double-click window, so two pairs stay two
 const frames2 = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
-const ctrl = (el) => { mouse(el, "pointerdown", 0, true); mouse(el, "pointerup", 0, true); };
+const shiftClick = (el) => { mouse(el, "pointerdown", 0, false, true); mouse(el, "pointerup", 0, false, true); };
 const rightClick = (el) => { mouse(el, "pointerdown", 2); mouse(el, "pointerup", 2); };
 const click = (el) => { mouse(el, "pointerdown", 0); mouse(el, "pointerup", 0); };
 async function phaseLatch() {
@@ -333,7 +356,7 @@ async function phaseLatch() {
   await r.ctx.resume();
   const L = (out.latch = {});
   // Ctrl+click sound: held, and lit as latched. Click key 16: chosen, and nothing held.
-  ctrl(r.fkeys[0]);
+  shiftClick(r.fkeys[0]);
   let v = await settle((x) => u32(x, 8) & (1 << 16), "sound latched");
   L.soundHeld = u32(v, 8);
   await frames2();
@@ -345,20 +368,20 @@ async function phaseLatch() {
   L.afterLit = r.fkeys[0].classList.contains("latched");
   // Ctrl+click bpm, two slider moves (they let nothing go), Ctrl+click bpm again: the tempo
   // is the slider's, not the next preset, because bpm was used.
-  ctrl(r.fkeys[2]);
+  shiftClick(r.fkeys[2]);
   await settle((x) => u32(x, 8) & (1 << 18), "bpm latched");
   r.slide(1, 40000);
   r.slide(0, 20000);
   v = await settle((x) => x[29] === 15, "swing 15");
   L.bpmStillHeld = !!(u32(v, 8) & (1 << 18));
-  ctrl(r.fkeys[2]);
+  shiftClick(r.fkeys[2]);
   v = await settle((x) => u32(x, 8) === 0, "bpm let go");
   L.tempo = u32(v, 4);
   // Clear by mouse: a step set, write on; Ctrl+click function, click pattern.
   r.send([16, 15, 0, 1]);
   click(r.fkeys[6]);
   v = await settle((x) => x[24] & 2 && u16(x, 12) === 1, "write on, step 1 of sound 16 lit");
-  ctrl(r.fkeys[3]);
+  shiftClick(r.fkeys[3]);
   click(r.fkeys[1]);
   v = await settle((x) => u32(x, 8) === 0, "function let go");
   L.fieldAfterClear = u16(v, 12);
@@ -369,10 +392,10 @@ async function phaseLatch() {
   await frames2();
   L.afterRight = { held: u32(v, 8), lit: r.fkeys[0].classList.contains("latched") };
   // Ctrl+click on play is a plain press: it starts. Ctrl+click again stops it.
-  ctrl(r.fkeys[5]);
+  shiftClick(r.fkeys[5]);
   v = await settle((x) => x[24] & 1, "Ctrl+click on play started it");
   L.playAfterCtrl = { playing: v[24] & 1, held: u32(v, 8) };
-  ctrl(r.fkeys[5]);
+  shiftClick(r.fkeys[5]);
   await settle((x) => !(x[24] & 1), "stopped");
   // D63: a double-click puts a slider back. The chosen sound's A moved, then double-clicked:
   // 32768. With bpm held, A double-clicked: swing 0; B: 120 bpm.
@@ -407,6 +430,118 @@ async function phaseLatch() {
   L.switchSampled = u16(v, 18);
   await sleep(50);
   L.switchLabel = r.sounds[2].sw.textContent;
+  // D113: Ctrl+click on sound is a plain press now: down while the button is, nothing after.
+  mouse(r.fkeys[0], "pointerdown", 0, true);
+  v = await settle((x) => u32(x, 8) & (1 << 16), "Ctrl+click held sound");
+  L.ctrl = { down: u32(v, 8) };
+  mouse(r.fkeys[0], "pointerup", 0, true);
+  v = await settle((x) => u32(x, 8) === 0, "Ctrl+click let sound go");
+  await frames2();
+  L.ctrl.after = u32(v, 8);
+  L.ctrl.lit = r.fkeys[0].classList.contains("latched");
+  // D112 item 4: with sound latched, key 3's sample shows as a dash, and no other key's.
+  shiftClick(r.fkeys[0]);
+  await settle((x) => u32(x, 8) & (1 << 16), "sound latched again");
+  await frames2();
+  L.dash = r.keys.reduce((m, el, n) => m | (getComputedStyle(el.querySelector(".mk")).display !== "none" ? 1 << n : 0), 0);
+  shiftClick(r.fkeys[0]);
+  await settle((x) => u32(x, 8) === 0, "sound let go");
+  await frames2();
+  L.dashAfter = r.keys.reduce((m, el, n) => m | (getComputedStyle(el.querySelector(".mk")).display !== "none" ? 1 << n : 0), 0);
+  // D113: Shift+7 latches sound by the computer keys; q then chooses sound 5 and lets it go.
+  key("keydown", "Digit7", { shiftKey: true });
+  key("keyup", "Digit7", { shiftKey: true });
+  v = await settle((x) => u32(x, 8) === 1 << 16, "Shift+7 latched sound");
+  L.shiftKeys = { held: u32(v, 8) };
+  key("keydown", "KeyQ");
+  key("keyup", "KeyQ");
+  v = await settle((x) => x[26] === 4 && u32(x, 8) === 0, "q chose sound 5");
+  await frames2();
+  L.shiftKeys.sel = v[26];
+  L.shiftKeys.after = u32(v, 8);
+  L.shiftKeys.lit = r.fkeys[0].classList.contains("latched");
+}
+// A computer key by its place (e.code), with what else the event says.
+const key = (type, code, more = {}) => window.dispatchEvent(new KeyboardEvent(type, { code, bubbles: true, cancelable: true, ...more }));
+
+// The one-key shortcuts (D116 item 2, D119 item 3) and the keys helper (D116 item 3, D119 item
+// 6). What each sent is read from the page's own messages, as "type a b value".
+async function phaseKeys() {
+  await r.ready;
+  await r.ctx.resume();
+  const K = (out.keys = {});
+  let log = [];
+  r.onPost = (m) => { if (m.cmds) log.push(...m.cmds.map((c) => c.join(" "))); };
+  const take = () => { const l = log; log = []; return l; };
+  const press = async (code, more = {}, what = "a view") => { take(); key("keydown", code, more); key("keyup", code, more); return settle(undefined, what); };
+  let v = await settle();
+  take();
+  await press("Space");
+  v = await settle((x) => x[24] & 1, "space played");
+  K.space = { sent: take(), playing: v[24] & 1 };
+  await press("Space");
+  v = await settle((x) => !(x[24] & 1), "space stopped");
+  K.space.stopped = !(v[24] & 1);
+  take();
+  await press("Period");
+  v = await settle((x) => u32(x, 4) === 121000, "tempo up");
+  K.tempoUp = take();
+  await press("Comma");
+  v = await settle((x) => u32(x, 4) === 120000, "tempo down");
+  K.tempoDown = take();
+  await press("Period", { shiftKey: true, key: ">" });
+  v = await settle((x) => x[29] === 1, "swing up");
+  K.swingUp = take();
+  await press("Comma", { shiftKey: true, key: "<" });
+  v = await settle((x) => x[29] === 0, "swing down");
+  K.swingDown = take();
+  await press("Minus");
+  v = await settle((x) => x[27] === 15, "volume down");
+  K.volume = { down: v[27] };
+  await press("Equal");
+  v = await settle((x) => x[27] === 16, "volume up");
+  K.volume.up = v[27];
+  K.volume.held = u32(v, 8);
+  K.volume.tempo = u32(v, 4); // using bpm for the volume does not step the tempo
+  take();
+  const a = r.sliders[0], capA = () => +a.getAttribute("aria-valuenow");
+  // Not 32768: a PARAM that changes nothing posts no view while stopped, and settle waits for one.
+  r.slide(0, 30000); r.slide(1, 30000);
+  await settle((x) => u16(x, 20) === 30000 && u16(x, 22) === 30000, "sliders at 30000");
+  take();
+  K.sliders = [];
+  for (const c of ["KeyT", "KeyG", "KeyY", "KeyH"]) { await press(c); K.sliders.push(...take()); }
+  K.capA = capA();
+  window.scrollTo(0, 0);
+  await press("KeyM");
+  await sleep(50);
+  K.sheetTop = Math.round(document.querySelector(".sheet").getBoundingClientRect().top);
+  window.scrollTo(0, 0);
+  // The helper: ? opens it, esc closes it; the ? mark opens it too.
+  const open = () => !document.getElementById("helper").hidden;
+  key("keydown", "Slash", { shiftKey: true, key: "?" });
+  K.helper = { byKey: open() };
+  key("keydown", "Escape", { key: "Escape" });
+  K.helper.escClosed = !open();
+  const mark = document.getElementById("helpmark"), glass = document.querySelector(".display");
+  const mr = mark.getBoundingClientRect(), gr = glass.getBoundingClientRect();
+  K.helper.corner = Math.round(gr.right - mr.right) <= 2 && Math.round(mr.top - gr.top) <= 2 && mr.width >= 24;
+  mark.click();
+  K.helper.byMark = open();
+  key("keydown", "Escape", { key: "Escape" });
+  K.helper.escClosed2 = !open();
+  // esc lets every latch go, fx's too.
+  shiftClick(r.fkeys[0]);
+  shiftClick(r.fkeys[4]);
+  await settle((x) => u32(x, 8) & (1 << 16), "sound latched");
+  await frames2();
+  K.esc = { before: [...r.latched].sort() };
+  key("keydown", "Escape", { key: "Escape" });
+  v = await settle((x) => u32(x, 8) === 0, "esc let go");
+  await frames2();
+  K.esc.after = [...r.latched];
+  K.esc.lit = r.fkeys.some((el) => el.classList.contains("latched"));
+  r.onPost = null;
 }
 
 // §20 (D75). A beat saved before Session 21 has each sound's own sliders: here sound 1's A
@@ -633,7 +768,7 @@ async function phaseFxLatch() {
   await settle((x) => u16(x, 56) === 0, "the lane emptied");
   take();
   // D78 item 1: Ctrl+click fx latches it, lit, and sends nothing: fx alone would empty steps.
-  ctrl(r.fkeys[4]);
+  shiftClick(r.fkeys[4]);
   await frames2();
   v = await settle();
   X.latched = { lit: latchedLit(4), held: u32(v, 8), sent: take() };
@@ -663,7 +798,7 @@ async function phaseFxLatch() {
   await settle((x) => u32(x, 8) === 0, "the second click let go");
   X.up2 = { sent: take() };
   // Item 5: Ctrl+click sound, click key 5: chosen, sound's latch gone, fx's still on.
-  ctrl(r.fkeys[0]);
+  shiftClick(r.fkeys[0]);
   click(r.keys[4]);
   v = await settle((x) => x[26] === 4 && u32(x, 8) === 0, "sound 5 chosen with fx latched");
   await frames2();
@@ -671,7 +806,7 @@ async function phaseFxLatch() {
   take();
   // Ctrl+click fx again: off, and it sends nothing (fx was not down). A click on key 2 is
   // then a plain press: only the key goes down and up.
-  ctrl(r.fkeys[4]);
+  shiftClick(r.fkeys[4]);
   await frames2();
   X.off = { lit: latchedLit(4), sent: take() };
   click(r.keys[1]);
@@ -723,7 +858,7 @@ async function phaseStill() {
 }
 
 const PHASES = { 1: [phase1, "reload"], reload: [phaseReload, "bpm"], bpm: [phaseBpm, "latch"], latch: [phaseLatch, "keep"],
-  keep: [phaseKeep, "punch"], punch: [phasePunch, "shuffle"], shuffle: [phaseShuffle, "written"], written: [phaseWritten, "fxlatch"], fxlatch: [phaseFxLatch, "still"], still: [phaseStill, null] };
+  keep: [phaseKeep, "punch"], punch: [phasePunch, "shuffle"], shuffle: [phaseShuffle, "written"], written: [phaseWritten, "fxlatch"], fxlatch: [phaseFxLatch, "keys"], keys: [phaseKeys, "still"], still: [phaseStill, null] };
 const [run, then] = PHASES[phase] || [async () => { throw new Error(`no phase ${phase}`); }, null];
 try {
   await run();

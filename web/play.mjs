@@ -141,7 +141,7 @@ function judge(phases) {
   const bad = [];
   const p = Object.fromEntries(phases.map((r) => [r.phase, r]));
   for (const r of phases) for (const f of r.failed) bad.push(`phase ${r.phase}: ${f}`);
-  for (const name of ["1", "reload", "bpm", "latch", "keep", "punch", "shuffle", "written", "fxlatch", "still"]) if (!p[name]) bad.push(`phase ${name} never reported`);
+  for (const name of ["1", "reload", "bpm", "latch", "keep", "punch", "shuffle", "written", "fxlatch", "keys", "still"]) if (!p[name]) bad.push(`phase ${name} never reported`);
   // Each phase reports under its own name: p.reload.reload, p.bpm.bpm. (A first draft read
   // p.bpm.last, and undefined equalled undefined: the bpm line passed with nothing checked.)
   const one = p["1"] || {}, reload = p.reload?.reload || {}, bpm = p.bpm?.bpm || {};
@@ -157,21 +157,23 @@ function judge(phases) {
   const drawnBad = phases.flatMap((r) => r.drawn.bad);
   if (drawn <= 50) bad.push(`only ${drawn} drawings checked`);
   for (const d of drawnBad) bad.push(`a drawing is not its view: ${d}`);
-  // Session 20 (D82 item 4): every drawing's white held to ENGINE.md §14's rule; and in the
-  // punch phase, played with write off and sound 1's steps lit, a lit key goes white as its
-  // sound fires and comes back lit.
-  for (const r of phases) for (const d of r.white?.bad || []) bad.push(`phase ${r.phase}: a white is not §14's: ${d}`);
-  const pw = p.punch?.white || {};
-  if (!(pw.lit > 0 && pw.back > 0)) bad.push(`write off: no lit key seen going white and back to lit (${JSON.stringify(pw)})`);
+  // D120 (until then Session 20's white, D82 item 4): every drawing's core, twill, dash and
+  // fern held to ENGINE.md §14's host rule; and each seen.
+  for (const r of phases) for (const d of r.core?.bad || []) bad.push(`phase ${r.phase}: a light is not §14's: ${d}`);
+  const pw = phases.reduce((t, r) => { for (const k of Object.keys(r.core || {})) if (k !== "bad") t[k] = (t[k] || 0) + r.core[k]; return t; }, {});
+  for (const k of ["writeOn", "writeOff", "fern", "twill", "dash", "fernDrawn"]) if (!(pw[k] > 0)) bad.push(`D120: never seen: ${k} (${JSON.stringify(pw)})`);
   if (!(one.two?.sel === 5 && (one.two.held & 0x10020) === 0x10020 && one.two.after === 0)) bad.push(`two pointers: ${JSON.stringify(one.two)}`);
   if (!(reload.loaded === 0 && reload.hex && reload.hex === reload.before)) bad.push(`reload: loaded ${reload.loaded}; saved ${reload.hex?.slice(0, 32)}…, kept ${reload.before?.slice(0, 32)}…`);
   const L = p.latch?.latch || {};
   const latchOk = L.soundHeld === 1 << 16 && L.soundLit === true && L.chosen === 15 && L.afterLit === false &&
     L.bpmStillHeld === true && L.tempo === 170000 && L.fieldAfterClear === 0 &&
     L.afterRight?.held === 0 && L.afterRight?.lit === false && L.playAfterCtrl?.playing === 1;
-  if (!latchOk) bad.push(`Ctrl+click latch: ${JSON.stringify({ ...L, nameFired: undefined, nameSampled: undefined, switchFired: undefined, switchSampled: undefined, switchLabel: undefined })}`);
+  if (!latchOk) bad.push(`Shift+click latch: ${JSON.stringify({ ...L, nameFired: undefined, nameSampled: undefined, switchFired: undefined, switchSampled: undefined, switchLabel: undefined })}`);
   if (!(L.nameFired === 1 && L.nameSampled === 0 && L.switchFired === 2 && L.switchSampled === 4 && L.switchLabel === "sample"))
     bad.push(`sounds sheet: name fired ${L.nameFired} (sampled ${L.nameSampled}); switch fired ${L.switchFired} (sampled ${L.switchSampled}, "${L.switchLabel}")`);
+  if (!(L.ctrl?.down === 1 << 16 && L.ctrl?.after === 0 && L.ctrl?.lit === false)) bad.push(`D113: Ctrl+click is not a plain press: ${JSON.stringify(L.ctrl)}`);
+  if (!(L.dash === 1 << 2 && L.dashAfter === 0)) bad.push(`D112 item 4: the dash with sound latched: ${L.dash?.toString(16)}, after ${L.dashAfter?.toString(16)}`);
+  if (!(L.shiftKeys?.held === 1 << 16 && L.shiftKeys?.sel === 4 && L.shiftKeys?.after === 0 && L.shiftKeys?.lit === false)) bad.push(`D113: Shift+7 q: ${JSON.stringify(L.shiftKeys)}`);
   if (!(L.dblA === 32768 && L.dblBpm?.swing === 0 && L.dblBpm?.tempo === 120000)) bad.push(`double-click: A ${L.dblA}; with bpm ${JSON.stringify(L.dblBpm)}`);
   const K = p.keep?.keep || {};
   const keepOk = K.size === 1464 && K.loadedCap === true && K.chosen?.a === 60000 && K.chosen?.mark === 60000 &&
@@ -203,17 +205,31 @@ function judge(phases) {
   const fxChecks = {
     "fx + key 11 by the computer keys": X.keys?.held === (FX | 1 << 10) && X.keys?.heard === 11 &&
       sent(X.keys?.sent, ["32 20 0 0", "32 10 0 0"]) && sent(X.keys?.after, ["33 10 0 0", "33 20 0 0"]),
-    "D78: Ctrl+click fx lights it and sends nothing": X.latched?.lit === true && X.latched?.held === 0 && sent(X.latched?.sent, []),
+    "D78: Shift+click fx lights it and sends nothing": X.latched?.lit === true && X.latched?.held === 0 && sent(X.latched?.sent, []),
     "D78: a click sends fx down, then the key, and punches 2": X.click1?.held === (FX | 1 << 1) && sent(X.click1?.sent, ["32 20 0 0", "32 1 0 0"]),
     "D78: its release sends the key up, then fx; the latch stays; steps took 2": sent(X.up1?.sent, ["33 1 0 0", "33 20 0 0"]) && X.up1?.lit === true && written >= 2,
     "D78: a bar with nothing clicked replays the lane and changes nothing": X.bar?.heard?.join() === "0,2" && sent(X.bar?.lanes, [lanes]) && sent(X.bar?.sent, []),
     "D78: a second click punches 3": X.click2?.held === (FX | 1 << 2) && sent(X.click2?.sent, ["32 20 0 0", "32 2 0 0"]) && sent(X.up2?.sent, ["33 2 0 0", "33 20 0 0"]),
     "D78 item 5: sound's latch goes after a key, fx's stays": X.sound?.sel === 4 && X.sound?.soundLit === false && X.sound?.fxLit === true,
-    "D78: Ctrl+click fx again lets it go; a click is then plain": X.off?.lit === false && sent(X.off?.sent, []) && sent(X.off?.click, ["32 1 0 0", "33 1 0 0"]),
+    "D78: Shift+click fx again lets it go; a click is then plain": X.off?.lit === false && sent(X.off?.sent, []) && sent(X.off?.click, ["32 1 0 0", "33 1 0 0"]),
     "D69: the through fx switch": X.through?.off === 0xfff7 && sent(X.through?.sentOff, ["24 3 0 0"]) && X.through?.lit === false &&
       X.through?.pressed === "false" && X.through?.on === 0xffff && sent(X.through?.sentOn, ["24 3 0 1"]),
   };
   for (const [name, ok] of Object.entries(fxChecks)) if (!ok) bad.push(`${name}: ${JSON.stringify(X)}`);
+  // Issue 101: the one-key shortcuts and the helper (D116, D119 items 3 and 6).
+  const KY = p.keys?.keys || {};
+  const keyChecks = {
+    "space: the play key down and up, twice": sent(KY.space?.sent, ["32 21 0 0", "33 21 0 0"]) && KY.space?.playing === 1 && KY.space?.stopped === true,
+    ". and ,: TEMPO one bpm up and down": sent(KY.tempoUp, ["4 0 0 121000"]) && sent(KY.tempoDown, ["4 0 0 120000"]),
+    "> and <: SWING one up and down": sent(KY.swingUp, ["18 0 0 1"]) && sent(KY.swingDown, ["18 0 0 0"]),
+    "- and =: the volume one down and up, the tempo kept": KY.volume?.down === 15 && KY.volume?.up === 16 && KY.volume?.held === 0 && KY.volume?.tempo === 120000,
+    "t g y h: PARAM 4096 from the hand": sent(KY.sliders, ["34 0 0 34096", "34 0 0 30000", "34 1 0 34096", "34 1 0 30000"]) && KY.capA === 30000,
+    "m: the sounds sheet in view": KY.sheetTop !== undefined && KY.sheetTop < 200,
+    "?: the helper opens; esc closes it; the ? mark in the corner opens it": KY.helper?.byKey === true && KY.helper?.escClosed === true &&
+      KY.helper?.corner === true && KY.helper?.byMark === true && KY.helper?.escClosed2 === true,
+    "esc: every latch lets go, fx's too": sent(KY.esc?.before, [16, 20]) && sent(KY.esc?.after, []) && KY.esc?.lit === false,
+  };
+  for (const [name, ok] of Object.entries(keyChecks)) if (!ok) bad.push(`${name}: ${JSON.stringify(KY)}`);
   // Session 14: the weave. Every drawing's cells held to pi_weave; then what moves.
   const woven = phases.reduce((n, r) => n + (r.weave?.checked ?? 0), 0);
   if (woven <= 50) bad.push(`only ${woven} drawings of the weave checked`);
@@ -234,7 +250,7 @@ function judge(phases) {
   if (!p6.playing) bad.push("P6: it was not playing while the keys went in");
   if (!label) bad.push(`P6: the page's snapshot is not one the wasm host ran straight-sixteenths from: ${p6.hex}`);
   if (p6.stored !== p6.hex) bad.push("P6: what the browser kept is not the snapshot the page was sent");
-  const whites = phases.reduce((n, r) => n + (r.white ? 1 : 0), 0);
+  const whites = phases.reduce((n, r) => n + (r.core ? 1 : 0), 0);
   return { bad, drawn, p6, pw, whites, woven, S };
 }
 
@@ -261,7 +277,7 @@ for (const name of browsers) {
   const one = results.find((r) => r.phase === "1");
   console.log(`play ${name} at ${one?.rate} Hz: ${bad.length ? "FAILED" : "passed"}; ${results.length} phases, ${drawn} drawings checked; ` +
     `P6: ${p6.hex ? "snapshot " + p6.hex.slice(32, 48) + "…" : "no snapshot"}, audio ${p6.behindMs} ms behind the page's clock over ${p6.seconds} s; ` +
-    `whites held to §14 in ${whites} phases; write off, a lit key white ${pw.lit ?? 0} times and lit again ${pw.back ?? 0}; ` +
+    `lights held to §14 in ${whites} phases (cores: ${pw.writeOn ?? 0} with write on, ${pw.writeOff ?? 0} off, ${pw.fern ?? 0} fern; twill ${pw.twill ?? 0}; dash ${pw.dash ?? 0}); ` +
     `the weave held to pi_weave in ${woven} drawings${REDUCED ? " (the browser asking for reduced motion)" : ""}: moving, ${S.moving?.whites} with a flash and ${S.moving?.travel} drawings in a step; ` +
     `reduced, ${S.reduced?.whites} and ${S.reduced?.travel}; stopped, ${S.stoppedPaints} paints`);
   for (const b of bad) console.log(`  ${b}`);
