@@ -99,6 +99,19 @@ a cable from us into their filter." In Rack, integration is a cable, not shared 
 | [VCSL](https://github.com/sgossner/VCSL) (Versilian Studios, CC0) | Samples to audition for the starter pack. Nothing used yet |
 | [libpo](https://github.com/ericlewis/libpo) (Eric Lewis, MIT) | Being read. Nothing used yet |
 
+## The design
+
+The look is drawn in public, in Claude Design:
+
+- **[The design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK)**, "Pocket Instruments: design": every board for the
+  instruments, in pages (start here, Loom, Rhythm, the weave, Sampler and after, expanders).
+  Each board is named proposed, ruled or built.
+- **[Loom, the design system](https://claude.ai/artifact/EzTa2cGzc2duUV25f9Huo1)**: the colour tokens, the type and the rules. No
+  components.
+
+Where either differs from [design/DESIGN.md](design/DESIGN.md) or
+[docs/DECISIONS.md](docs/DECISIONS.md), the repository is right.
+
 ## How the repository is laid out
 
 By host at the top. It is built for several instruments, and nothing is made generic until a
@@ -112,7 +125,7 @@ second instrument needs it.
 | `harness/` | The same fixtures run through Rust, C++ and the `.wasm`, and compared |
 | `fixtures/` | Test inputs and the exact output (the trace) each must produce |
 | `samples/` | The starter drum pack and its origins |
-| `design/` | The look: tokens, the panel, the font |
+| `design/` | The look: tokens, the panel, the font. The drawings themselves are on [the canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK) |
 | `docs/` | The design documents: `ENGINE.md` (the contract), `DECISIONS.md`, `REFERENCES.md`, `PROOFS.md`, `WORKFLOW.md`, `VOICES.md`, `LEARNINGS.md`, `RACK-RULES.md`. [docs/README.md](docs/README.md) maps them and explains the words and codes they use |
 | `docs/history/` | `PLAN.md` and `PLAN-HISTORY.md`, frozen as they stood on 2026-11-26. The live backlog is the [issues](https://github.com/kinggs/pocket-instruments/issues) |
 

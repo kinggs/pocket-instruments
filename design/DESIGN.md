@@ -17,6 +17,10 @@ effects view by the Shift latch, effects by taps in a terminal with no key-up, a
 the display's corner for the helper, and a lit field for a sound in use while sound is
 held. Still not built: issue 101 for the page and Rack, issue 8 for the terminal.
 
+**Where the drawings are.** [The design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK) holds every board, in pages; its
+start page maps the rest. [Loom, the design system](https://claude.ai/artifact/EzTa2cGzc2duUV25f9Huo1) holds the tokens, the type and
+the rules. This file and `docs/DECISIONS.md` are the source of truth where they differ.
+
 The idea in one line: a pattern is a cloth. The grid is a tight woven swatch, the dividers are
 stitches, the sliders are shuttles on a thread, and the display weaves as the pattern plays.
 
