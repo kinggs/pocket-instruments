@@ -165,8 +165,8 @@ numeral sits on the core where both are lit (dark on the core), as the board dra
 
 - The stitch and the source mark sit over the twill's band. In terminal cells the stitch is
   not drawn while the twill is (`Lights`' own rule), so there a heard effect hides it.
-- ~~When the bar shows is not redrawn~~ The bar shows as built, only while sound or pattern
-  is held or latched (D120 item 5).
+- ~~When the bar shows is not redrawn~~ ~~The bar shows as built, only while sound or pattern
+  is held or latched (D120 item 5).~~ Since D121 the bar is on the chosen sound always, but on key 1 while pattern is held (not built).
 - The page has no cable and no Rack effect, so only the dash can show there.
 - ~~What the view carries for the core, the twill and the marks: O32~~ Answered by D120:
   no new byte.  §14, "§14 and §17, designed 2026-11-26", says what a host reads
@@ -223,7 +223,7 @@ what is built today.
 | Core | each key's own sound sounding |
 | Twill | effect *n* heard |
 | White, pulled in | a finger |
-| Bar | the chosen sound, while sound is held or latched |
+| Bar | ~~the chosen sound, while sound is held or latched~~ the chosen sound, always; key 1 while pattern is held (D121; not built) |
 
 As built:
 

@@ -2663,6 +2663,31 @@ the core. Only two rows of `ENGINE.md` §14's table change what they put in byte
      need a byte a sound read from the voices on every view, and a decay has no clean end.
      The half step the white had is kept, and the owner judges it by eye (#9).
 
+### D121 — The chosen sound's bar shows in every row but pattern held
+**2026-11-26 · decided (owner, in issue 101's session) · changes §14's bar column; D120 item 5's "the bar shows as built" and D36's "while sound is held" for the bar end · ABI, snapshot and fixture formats stand · nothing built**
+
+The owner: "I would love for the currently selected sound-bar (the little orange one at the
+bottom of the number) to always be visible when we have a sound selected." Asked how, he chose
+that the core fills it, not each host.
+
+1. **The bar is on the chosen sound's key in every row of `ENGINE.md` §14's table but one:**
+   bpm held, sound held, write on and write off. A sound is always chosen (track 0 at
+   `pi_init`), so the bar always shows.
+2. **Pattern held keeps the pattern's bar on key 1,** in the pattern key's ochre, as now: the
+   bar then says the pattern. ⚠ A reading of "when we have a sound selected"; the owner was not
+   asked about pattern held alone.
+3. **With bpm held the bar shows too,** over the volume's fields. ⚠ The same reading of
+   "always".
+4. **No byte moves and the ABI stays 15,** as for D82 and D120: only which rows fill the bar.
+   The snapshot does not change. The view lines that move are worked again by hand first
+   (`fixtures/README.md`, "The views worked again for D121"). The hosts draw the bar from the
+   mask as they already do and do not change; the page's and Rack's bar is madder for a sound
+   and ochre while pattern is held.
+
+Not chosen: each host drawing the bar from the chosen-sound byte (26) when the mask is empty.
+It needs no core change, but every host, the terminal (issue 8) among them, would repeat the
+rule, and D51 has the core decide what is lit.
+
 ## Open
 
 | ID | Question | Needs |
