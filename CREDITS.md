@@ -67,6 +67,22 @@ Not affiliated with Émilie Gillet or Mutable Instruments.
 
 Not affiliated with any of them.
 
+### Linked into the terminal host
+
+`pi-rhythm` (`term/`, `docs/TERMINAL.md`) is built with two libraries from crates.io. Neither is
+in the repository; `term/Cargo.lock` pins the versions. A binary someone distributes carries
+their notices, and cpal's Apache-2.0 licence.
+
+| Source | Author | Licence | What we take |
+|---|---|---|---|
+| [crossterm](https://github.com/crossterm-rs/crossterm) 0.29 | the crossterm contributors | MIT | Raw mode, the alternate screen, the terminal's size |
+| [cpal](https://github.com/RustAudio/cpal) 0.18 | the RustAudio contributors | Apache-2.0 | Sound out: ALSA and PipeWire on Linux |
+
+Their own dependencies are listed by `cargo tree --manifest-path term/Cargo.toml`. On
+2026-11-26 every one was MIT, Apache-2.0, or either (`alsa`, `alsa-sys`, `bitflags`, `cfg-if`,
+`dasp_sample`, `document-features`, `libc`, `linux-raw-sys`, `litrs`, `lock_api`, `parking_lot`,
+`parking_lot_core`, `rustix`, `scopeguard`, `smallvec`).
+
 ## Admired, asked about, or being read
 
 | Source | Author | Licence | What is here | Where it stands |
