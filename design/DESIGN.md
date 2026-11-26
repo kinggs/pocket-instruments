@@ -167,7 +167,7 @@ with fx and key 6 down; Rack's effect 4 beside ours, effect 2 in its place),
 `rack-lights-sound-held-100.png` and `-200.png` (the sounds in use, samples on 3, 4 and 9,
 RETURN taking 9 and 12).
 
-**Accepted (D122 item 1, 2026-11-26).** The owner, after seeing the page and Rack built: "Happy
+**Accepted (D122 item 1, 2026-11-26).** Kenny, after seeing the page and Rack built: "Happy
 with the looks." On those two hosts these lights are no longer stand-ins.
 
 **The source mark (D112 item 4).** Shown only while sound or fx is held or latched.
