@@ -279,7 +279,8 @@ impl Engine {
         let sel = k.sel as usize & 15;
 
         // What the grid shows: the first row of §14's table that applies.
-        let (mut field, mut stitch, mut bar, mut sounds) = (0u16, 0u16, 0u16, false);
+        // D121: the bar is the chosen sound in every row but pattern held (was only sound held).
+        let (mut field, mut stitch, mut bar, mut sounds) = (0u16, 0u16, 1u16 << sel, false);
         if k.down(KEY_BPM) {
             field = (((1u32 << k.volume) - 1) & 0xFFFF) as u16;
         } else if k.down(KEY_SOUND) {
@@ -289,7 +290,6 @@ impl Engine {
                     field |= 1 << t;
                 }
             }
-            bar = 1 << sel;
             sounds = true;
         } else if k.down(KEY_PATTERN) {
             bar = 1; // the one pattern

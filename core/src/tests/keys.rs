@@ -714,6 +714,9 @@ fn patterned() -> Host {
     h
 }
 const MINE: u16 = 1 << 0 | 1 << 5;
+// D121 (2026-11-26): the bar is the chosen sound (track 2 here) in every row but pattern held.
+// Until then 0 in the bpm, write on and write off rows; each such expectation below changed.
+const CHOSEN: u16 = 1 << 2;
 const OTHERS: u16 = 1 << 5 | 1 << 15;
 
 // Until Session 20 this was `write_off_the_grid_is_sounds_and_nothing_is_lit`, holding the
@@ -726,30 +729,54 @@ const ALL_STEPS: u16 = 1 << 0 | 1 << 5 | 1 << 15;
 #[test]
 fn write_off_the_field_is_the_chosen_sound_s_steps_the_stitch_every_other_sound_s_and_the_grid_is_sounds() {
     let mut h = patterned();
-    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, true), "tracks 0 and 9 make the stitch");
+    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, CHOSEN, true), "tracks 0 and 9 make the stitch");
     // The same field and stitch as with write on: write changes what a tap does, not the lights.
     send(&mut h, &[down(WRITE), up(WRITE)]);
     assert_eq!((V::of(&h).field(), V::of(&h).stitch()), (MINE, OTHERS));
     send(&mut h, &[down(WRITE), up(WRITE)]);
-    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, true));
+    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, CHOSEN, true));
     // It follows the choice, and an edit, like any other change.
     send(&mut h, &[down(SOUND), down(9), up(9), up(SOUND)]);
-    assert_eq!(V::of(&h).grid(), (1 << 15, 1 << 0 | 1 << 5, 0, true), "track 9 chosen");
+    assert_eq!(V::of(&h).grid(), (1 << 15, 1 << 0 | 1 << 5, 1 << 9, true), "track 9 chosen");
     send(&mut h, &[cmd(CMD_STEP, 9, 3, 1)]);
-    assert_eq!(V::of(&h).grid(), (1 << 15 | 1 << 3, 1 << 0 | 1 << 5, 0, true));
+    assert_eq!(V::of(&h).grid(), (1 << 15 | 1 << 3, 1 << 0 | 1 << 5, 1 << 9, true));
     send(&mut h, &[down(SOUND), down(4), up(4), up(SOUND)]);
-    assert_eq!(V::of(&h).grid(), (0, ALL_STEPS | 1 << 3, 0, true), "a sound with no steps: every step is another's");
+    assert_eq!(V::of(&h).grid(), (0, ALL_STEPS | 1 << 3, 1 << 4, true), "a sound with no steps: every step is another's");
     // fx and function held take this row too: they change no field, stitch or bar.
     let mut h = patterned();
     for key in [FX, FUNCTION] {
         send(&mut h, &[down(key)]);
-        assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, true), "key {key} held");
+        assert_eq!(V::of(&h).grid(), (MINE, OTHERS, CHOSEN, true), "key {key} held");
         send(&mut h, &[up(key)]);
     }
     // A tap fires its own sound and changes no light: the core is the host's, from `fires`.
     send(&mut h, &[down(5), up(5)]);
-    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, true));
+    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, CHOSEN, true));
     assert_eq!(V::of(&h).fires()[5], 1);
+}
+
+/// D121: in every row but pattern held the bar is the chosen sound, whatever is held, written
+/// or chosen.
+#[test]
+fn the_bar_is_the_chosen_sound_in_every_row_but_pattern_held() {
+    for write in [false, true] {
+        for sel in [0u8, 6, 15] {
+            let mut h = patterned();
+            send(&mut h, &[down(SOUND), down(sel), up(sel), up(SOUND)]);
+            if write {
+                send(&mut h, &[down(WRITE), up(WRITE)]);
+            }
+            assert_eq!(V::of(&h).bar(), 1 << sel, "write {write}, sound {sel}");
+            for key in [BPM, SOUND, FX, FUNCTION] {
+                send(&mut h, &[down(key)]);
+                assert_eq!(V::of(&h).bar(), 1 << sel, "write {write}, sound {sel}, key {key} held");
+                send(&mut h, &[up(key)]);
+            }
+            send(&mut h, &[down(PATTERN)]);
+            assert_eq!(V::of(&h).bar(), 1, "pattern held: key 1");
+            send(&mut h, &[up(PATTERN)]);
+        }
+    }
 }
 
 /// D120: write on and write off differ only in what a tap does (flag 4), never in field,
@@ -812,14 +839,14 @@ fn the_field_is_the_same_with_write_off_as_with_write_on() {
 fn write_on_the_field_is_the_chosen_sound_s_steps_and_the_stitch_every_other_sound_s() {
     let mut h = patterned();
     send(&mut h, &[down(WRITE), up(WRITE)]);
-    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, 0, false), "a key can carry both: step 5");
+    assert_eq!(V::of(&h).grid(), (MINE, OTHERS, CHOSEN, false), "a key can carry both: step 5");
     // An edit shows like any other change.
     send(&mut h, &[cmd(CMD_STEP, 2, 5, 0), cmd(CMD_STEP, 3, 1, 1)]);
-    assert_eq!(V::of(&h).grid(), (1, OTHERS | 2, 0, false));
+    assert_eq!(V::of(&h).grid(), (1, OTHERS | 2, CHOSEN, false));
     // The chosen sound's own steps are never its stitch.
     let mut h = fresh();
     send(&mut h, &[cmd(CMD_STEP, 0, 7, 1), down(WRITE)]);
-    assert_eq!(V::of(&h).grid(), (1 << 7, 0, 0, false));
+    assert_eq!(V::of(&h).grid(), (1 << 7, 0, 1, false));
 }
 
 #[test]
@@ -832,7 +859,7 @@ fn pattern_held_the_bar_is_on_key_1() {
         send(&mut h, &[down(PATTERN)]);
         assert_eq!(V::of(&h).grid(), (0, 0, 1, false), "write {write}");
         send(&mut h, &[up(PATTERN)]);
-        assert_eq!(V::of(&h).grid().2, 0);
+        assert_eq!(V::of(&h).grid().2, CHOSEN, "D121: back to the chosen sound's bar");
     }
 }
 
@@ -878,14 +905,14 @@ fn bpm_held_the_fields_show_the_volume() {
             send(&mut h, &[down(WRITE), up(WRITE)]);
         }
         send(&mut h, &[down(BPM)]);
-        assert_eq!(V::of(&h).grid(), (0xFFFF, 0, 0, false), "write {write}: volume 16 is every key");
+        assert_eq!(V::of(&h).grid(), (0xFFFF, 0, CHOSEN, false), "write {write}: volume 16 is every key");
         for n in [0u8, 1, 8, 14, 15] {
             send(&mut h, &[down(n), up(n)]);
             assert_eq!(V::of(&h).field() as u32, (1u32 << (n + 1)) - 1, "keys 1 to {}", n + 1);
         }
         // Before the sound and pattern rows.
         send(&mut h, &[down(SOUND), down(PATTERN)]);
-        assert_eq!(V::of(&h).grid(), (0xFFFF, 0, 0, false));
+        assert_eq!(V::of(&h).grid(), (0xFFFF, 0, CHOSEN, false));
         send(&mut h, &[up(BPM)]);
         // The sound row's field is the sounds in use since D120 (was 0).
         assert_eq!(V::of(&h).grid(), (IN_USE, 0, 1 << 2, true), "and the sound row once bpm is let go");
@@ -901,6 +928,7 @@ fn the_view_at_pi_init() {
     want[4..8].copy_from_slice(&120_000u32.to_le_bytes());
     want[20..22].copy_from_slice(&32768u16.to_le_bytes());
     want[22..24].copy_from_slice(&32768u16.to_le_bytes());
+    want[16] = 1; // D121: the bar on the chosen sound, track 0 (was 0)
     want[24] = 16; // stopped, write off, the table clock, no step yet, the grid is sounds
     want[27] = 16; // volume
     want[28] = 16; // length
@@ -910,7 +938,7 @@ fn the_view_at_pi_init() {
     assert_eq!(h.view(), want);
     assert_eq!(
         view_text(&h.view()),
-        "view play=0 write=0 edges=0 sounds=1 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0000 stitch=0000 bar=0000 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        "view play=0 write=0 edges=0 sounds=1 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0000 stitch=0000 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
     );
 }
 

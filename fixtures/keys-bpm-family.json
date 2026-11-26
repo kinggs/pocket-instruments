@@ -33,18 +33,18 @@
     {"at": 11, "cmd": "key_up", "key": 19}
   ],
   "views": [
-    {"at": 0, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0001 stitch=0008 bar=0000 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 1, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=140000 len=16 swing=0 held=000000 field=0001 stitch=0008 bar=0000 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 2, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=80000 len=16 swing=0 held=000000 field=0001 stitch=0008 bar=0000 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 3, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0001 stitch=0008 bar=0000 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 4, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=040000 field=ffff stitch=0000 bar=0000 sampled=0000 a=0 b=21845 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 5, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=170000 len=16 swing=0 held=040000 field=ffff stitch=0000 bar=0000 sampled=0000 a=0 b=40049 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 6, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=170000 len=16 swing=15 held=040000 field=ffff stitch=0000 bar=0000 sampled=0000 a=20479 b=40049 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 7, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=170000 len=16 swing=15 held=040000 field=00ff stitch=0000 bar=0000 sampled=0000 a=20479 b=40049 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 8, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=170000 len=16 swing=15 held=000000 field=0001 stitch=0008 bar=0000 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 9, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=000000 field=0001 stitch=0008 bar=0000 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 0, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0001 stitch=0008 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 1, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=140000 len=16 swing=0 held=000000 field=0001 stitch=0008 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 2, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=80000 len=16 swing=0 held=000000 field=0001 stitch=0008 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 3, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=000000 field=0001 stitch=0008 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 4, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=120000 len=16 swing=0 held=040000 field=ffff stitch=0000 bar=0001 sampled=0000 a=0 b=21845 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 5, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=170000 len=16 swing=0 held=040000 field=ffff stitch=0000 bar=0001 sampled=0000 a=0 b=40049 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 6, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=16 tempo=170000 len=16 swing=15 held=040000 field=ffff stitch=0000 bar=0001 sampled=0000 a=20479 b=40049 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 7, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=170000 len=16 swing=15 held=040000 field=00ff stitch=0000 bar=0001 sampled=0000 a=20479 b=40049 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 8, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=170000 len=16 swing=15 held=000000 field=0001 stitch=0008 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 9, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=000000 field=0001 stitch=0008 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
     {"at": 10, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=0a0000 field=0000 stitch=0000 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 11, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=000000 field=0000 stitch=0000 bar=0000 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"}
+    {"at": 11, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=000000 field=0000 stitch=0000 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"}
   ],
   "expect": [
   ]

@@ -267,7 +267,8 @@ struct Other {
         ok = ok && (woven >= 16 || wove >> woven == 0) && b[PI_VIEW_ON_STEP] <= PI_TRACKS;
         if (!(b[PI_VIEW_FLAGS] & PI_VIEW_FLAG_STEP)) ok = ok && b[PI_VIEW_ON_STEP] == 0;
         ok = ok && b[PI_VIEW_HEARD] <= PI_FX_MAX;
-        if (held >> PI_KEY_BPM & 1) ok = ok && field == (1u << volume) - 1 && bar == 0;
+        // Since D121 (2026-11-26) the bar is the chosen sound with bpm held (it was 0).
+        if (held >> PI_KEY_BPM & 1) ok = ok && field == (1u << volume) - 1 && bar == 1u << b[PI_VIEW_SEL];
         if (!ok) torn++;
     }
 
