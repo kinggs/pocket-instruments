@@ -1,11 +1,11 @@
 # The look: Loom
 
-**Status:** chosen by the owner on 2026-11-19 (D36) from three directions drawn in Claude
+**Status:** chosen by Kenny on 2026-11-19 (D36) from three directions drawn in Claude
 Design to `PROMPT.md`. The phone is built (`web/rhythm.html`, Session 12), and the Rack module
 (`rack/src/Rhythm.cpp`, Session 13), ~~both without the animation~~ and since Session 14 both weave,
-as a first attempt the owner has not yet watched (D84). ⚠ marks a proposal the owner has not ruled on.
+as a first attempt Kenny has not yet watched (D84). ⚠ marks a proposal Kenny has not ruled on.
 
-**Changed 2026-11-26 (D112 to D117; built on the page and in Rack in issue 101, D120, D121):** the owner ruled that a key's lights mean
+**Changed 2026-11-26 (D112 to D117; built on the page and in Rack in issue 101, D120, D121):** Kenny ruled that a key's lights mean
 the same with write on or off, that effects light keys in a dye of their own, that the
 latch is Shift, and that Rack's jacks move to one row. The sections "A key's lights", "The
 keys and the helper", "Loom in a terminal" and "Layout B" say what was drawn. Older lines
@@ -24,7 +24,7 @@ the rules. This file and `docs/DECISIONS.md` are the source of truth where they 
 The idea in one line: a pattern is a cloth. The grid is a tight woven swatch, the dividers are
 stitches, the sliders are shuttles on a thread, and the display weaves as the pattern plays.
 
-The owner's brief for it: dark, high contrast, easy to read with weak eyes.
+Kenny's brief for it: dark, high contrast, easy to read with weak eyes.
 
 ## What is in this folder
 
@@ -37,15 +37,15 @@ The owner's brief for it: dark, high contrast, easy to read with weak eyes.
 | `loom/phone.html` | The phone layout, 390 by 844 |
 | `loom/frames.html` | Three frames of the display |
 | `loom/tokens.html` | The colours and type, as swatches |
-| `directions/` | The three directions the owner chose between. A and C were not taken |
+| `directions/` | The three directions Kenny chose between. A and C were not taken |
 | `tui/` | The design session of 2026-11-26, eight Claude Design boards kept as their source: the terminal host (`Main`, `Sound`, `Pocket`, `States`), the keys (`Keyboard`, `Helper`), a key's lights on every host (`Lights`) and Rack's layout B at 27 HP (`Panel`). **Pictures of intent:** none was rendered and checked by the session that drew it, and none opens from this folder as the `loom/` pictures do (`tui/README.md` says what each is and why) |
 | `panel.svg` | The static Rack panel, flat, in mm. Made by `make_panel.py` |
 | `make_panel.py` | Draws `panel.svg`, prints the widget positions, and (`--check`) holds every jack's label, plate and stitches clear of its neighbour's |
 | `rack-face-unlit-100.png` | The Rhythm module as Rack draws it, from Rack's own screenshot mode at 100% zoom (360 px wide: what a player sees without zooming). Nothing lit: no module runs in that mode. Taken in Session 18, with the two jack rows; again in Session 24, with FX SEND's and FX RETURN's stitches |
 | `rack-face-unlit-200.png` | The same at 200%, to judge the lettering and the plates |
 | `rack-face-lit-100.png`, `rack-face-lit-200.png` | The same from a scratch build whose face was filled by hand (never shipped): playing on step 5 with write on, steps 1, 5, 7, 9, 11 and 13 lit, key 10 pressed, the stitch on key 3, the bar on key 1, fx latched (D78: its face lit like play and write), and each slider's second mark at 20000 and 50000. Taken again in Session 19 with effect 3 heard (the madder `fx 3` block above `write`) and the lane on steps 6, 7, 8 and 13 (four madder ticks over the step marks). Not taken again in Session 20: they show write on, which did not change. Taken again in Session 24 for FX SEND's and FX RETURN's stitches, with the same face (the weave's bytes left at 0, so the loom is bare) |
-| `rack-face-writeoff-100.png`, `rack-face-writeoff-200.png` | The same kind of scratch build, taken in Session 20 for the owner to judge write off (D82): playing on step 5 with write off (no write mark, play lit), sound 1 chosen with steps 1, 5, 7, 9 and 13 lit in ecru and no stitch; key 5 white inside the ochre frame (a lit step firing on the playhead: it comes back lit when its half step is over), and key 3 white (another sound firing, on a key that is not lit). The whites are held on by hand for the picture |
-| `rack-face-ext-200.png` | The same kind of scratch build, taken in Session 34 for the owner to judge ENGINE.md §14's measured tempo (D100 item 5, O27): on an external clock (the view's flag 2), playing on step 5 with write off, the stored tempo 116 and `ext` 1 230, so the display reads `123` with `ext` where `bpm` was, in bpm's place, size and colour (a stand-in). With `ext` at 0 (before the second edge, or a stopped clock) the number reads `--`; not pictured |
+| `rack-face-writeoff-100.png`, `rack-face-writeoff-200.png` | The same kind of scratch build, taken in Session 20 for Kenny to judge write off (D82): playing on step 5 with write off (no write mark, play lit), sound 1 chosen with steps 1, 5, 7, 9 and 13 lit in ecru and no stitch; key 5 white inside the ochre frame (a lit step firing on the playhead: it comes back lit when its half step is over), and key 3 white (another sound firing, on a key that is not lit). The whites are held on by hand for the picture |
+| `rack-face-ext-200.png` | The same kind of scratch build, taken in Session 34 for Kenny to judge ENGINE.md §14's measured tempo (D100 item 5, O27): on an external clock (the view's flag 2), playing on step 5 with write off, the stored tempo 116 and `ext` 1 230, so the display reads `123` with `ext` where `bpm` was, in bpm's place, size and colour (a stand-in). With `ext` at 0 (before the second edge, or a stopped clock) the number reads `--`; not pictured |
 | `rack-weave-bare-200.png` | Session 14, the weave's first attempt (D84), from Rack's screenshot mode at 200%. No module runs there, so this is the real build with nothing played: the bare loom. The beater one cell wide at the left edge, five warp threads across, the shuttle resting at the top |
 | `rack-weave-step07-100.png`, `-200.png` | The same from a scratch build whose face was filled by hand (never shipped), as the three below. Step 7 of a first bar, write off, a kick on the beats and a hat between: one finished diamond and most of the second (two of four steps set: ochre round ecru), the beater two cells wide (one sound on this step), the shuttle half way down trailing its thread from the top. Keys 1, 5, 9 and 13 lit, the frame on 7 |
 | `rack-weave-step13-100.png`, `-200.png` | Step 13 of the same bar as two sounds fire together: three diamonds, the three newest columns of cloth white (rule 6's flash), the beater three cells wide, the shuttle just leaving the top |
@@ -151,7 +151,7 @@ fifths of the key with a 3 px dark line, the stitch 11 px and the bar 8 px insid
 the dash 15 by 4 px. `make play` reads each back off the page in every drawing.
 `design/page-lights-playing.png` and its `-grey` twin (playing, write off, effect 6 punched),
 `design/page-sound-held.png` and `-grey` (the sounds in use, the bar, the dashes, two cores),
-`design/page-helper.png`: taken by `node web/shot.mjs design`, for the owner's eye. ⚠ The
+`design/page-helper.png`: taken by `node web/shot.mjs design`, for Kenny's eye. ⚠ The
 numeral sits on the core where both are lit (dark on the core), as the board draws it.
 
 **Built in Rack (issue 101, 2026-11-26).** `rack/src/Rhythm.cpp` draws the same lights from the
@@ -177,7 +177,7 @@ with the looks." On those two hosts these lights are no longer stand-ins.
 | sound held | built in code | a sample | back in from a cable (RETURN) | |
 | fx held | ours | | Rack's beside ours | Rack's in its place |
 
-⚠ Left open by the board, for the build or the owner:
+⚠ Left open by the board, for the build or Kenny:
 
 - The stitch and the source mark sit over the twill's band. In terminal cells the stitch is
   not drawn while the twill is (`Lights`' own rule), so there a heard effect hides it.
@@ -234,7 +234,7 @@ what is built today.
 | | Write on or off |
 |---|---|
 | Field | the chosen sound's steps |
-| Stitch | other sounds' steps ⚠ (with write off too: D112's words; D82 item 3 had none there, and the owner was not asked about the stitch alone) |
+| Stitch | other sounds' steps ⚠ (with write off too: D112's words; D82 item 3 had none there, and Kenny was not asked about the stitch alone) |
 | Frame | the playhead |
 | Core | each key's own sound sounding |
 | Twill | effect *n* heard |
@@ -253,7 +253,7 @@ As built:
 | Bar | off | the chosen sound, while sound is held or latched |
 
 **Write off, changed 2026-11-23 (built in Session 20).** D37 had the fields dark with write
-off, from what a search said of the hardware (R26, R27). The owner's PO-12 lights the
+off, from what a search said of the hardware (R26, R27). Kenny's PO-12 lights the
 chosen sound's steps in both modes (D71), so the field now does too, and write changes what
 a tap does and the display's write mark, not the grid's fields. With write off a lit key
 whose sound fires goes white for half a step and comes back lit ("step" then "fired" then
@@ -282,7 +282,7 @@ playing step is the tallest and is ochre.
 The write mark is a solid ochre block with the word `write` in it. It is absent when write
 is off, so its presence does not depend on colour.
 
-### The effects on the display (D81; a stand-in for the owner's eye, ⚠)
+### The effects on the display (D81; a stand-in for Kenny's eye, ⚠)
 
 Drawn in Session 19 on the page and in Rack, from the same view bytes. ~~No key lights for an
 effect (D66 item 3)~~ (superseded by D112 item 2: effect *n* heard lights key *n*'s twill),
@@ -306,12 +306,12 @@ fern, the effects' own dye, where "madder" stands below.
 
 **Where it stands (2026-11-23):** the seven rules below are drawn, once, in the core
 (`core/src/weave.rs`; `ENGINE.md` §16), and the page and the Rack display paint the same
-cells. The owner has not watched it move. Until they have, nothing below "How each rule is
+cells. Kenny has not watched it move. Until they have, nothing below "How each rule is
 drawn" is settled, and no frame is kept as the picture to hold to.
 
 The subject is a cloth being woven. Flat colour on a 1 mm weave grid: no gradients.
 
-The owner keeps weaving as the subject (O12, answered 2026-11-19). The original's protected
+Kenny keeps weaving as the subject (O12, answered 2026-11-19). The original's protected
 display art shows a sewing machine and thread spools (R6): a different drawing, a
 neighbouring subject, so it still goes to O7 and D19 at P9. If it has to move then, the rules
 below are about a beat, a density and a loudness and carry over; the shuttle and thread are
@@ -361,7 +361,7 @@ cloth, and so does a reset while playing.
 **What it must stay clear of (R6, D20):** the original's display shows a sewing machine and
 thread spools. Nothing here is a machine, a needle or a spool: the parts are a loom's (warp,
 cloth, beater, shuttle), drawn as cells. ⚠ The shuttle is a block crossing bare warp with a
-thread behind it; whether that could be read as a needle and thread is for the owner's eye
+thread behind it; whether that could be read as a needle and thread is for Kenny's eye
 and then O7.
 
 ## The Rack panel
@@ -418,7 +418,7 @@ did not change.
 
 ### The jack rows
 
-Two rows, thirteen jacks, grouped by what they carry (D76, the owner: "inputs and outputs
+Two rows, thirteen jacks, grouped by what they carry (D76, Kenny: "inputs and outputs
 for the same kinds of things close together"). Drawn in Session 18, and "accepted for now":
 judged in use, with cables in.
 
@@ -475,12 +475,12 @@ lower row, y 116.3 (triggers and sound):
 ### Layout B: one row of jacks, at 27 HP (D114, D119; 2026-11-26; built in issue 101)
 
 **As built (issue 101, `make_panel.py --check` passing).** Where the build parted from the
-arithmetic below, measured by `--check` and put to the owner:
+arithmetic below, measured by `--check` and put to Kenny:
 
 - **The row keeps the 5 mm margin** (`docs/RACK-RULES.md`: nothing past the margin). The
   arithmetic put its ends 2.0 mm from the edges; laid out by the same pitches, centred, the
   groups stand 4.95 mm further apart than the jacks inside a group, not 6.95.
-- **AUDIO's plate is narrower** (the owner's choice, 2026-11-26): at the board's x it reached
+- **AUDIO's plate is narrower** (Kenny's choice, 2026-11-26): at the board's x it reached
   2.6 mm from the edge and 0.25 mm from the display's frame. It is now as wide as the room
   between the margin and the frame (11.15 mm, was 13.8), two lines tall, with its frame; AUDIO
   sits at 126.58.
@@ -492,7 +492,7 @@ arithmetic below, measured by `--check` and put to the owner:
 - CLOCK's label clears the top left screw by 0.87 mm.
 - The names in code, the tooltips and the menu were not changed (not ruled ⚠).
 
-The owner ruled the layout (D114), then the width, 27 HP, and the labels (D119 items 1 and
+Kenny ruled the layout (D114), then the width, 27 HP, and the labels (D119 items 1 and
 2). ~~The width is not ruled (O34) and the labels are not (O35).~~ `tui/Panel.dc.html` now
 draws 27 HP only, with the `?`; the 24 HP column below is kept as what was not chosen. ⚠ Every number here is the design session's
 arithmetic from `make_panel.py`'s own clearances. **None of it has been through
@@ -578,8 +578,8 @@ The rules themselves are in `../RACK-RULES.md`. This is Loom against them.
 | No complex gradients, no CSS | Yes: flat fills only |
 | Component graphics off the panel, on a hidden `components` layer | Partly: the panel is static only, but it has no `components` layer. The positions table above stands in; the builder adds the layer if Rack's helper script is used |
 | An inverted background for output ports | Yes: each output on its own plate (Session 18; one plate under all three before) |
-| Room for thumbs between knobs and ports | Sockets are 11.67 mm apart or more (12, 13 and 13.67 in the lower row); the two rows are 18.8 mm apart; keys are at 12 mm; the sliders are 10 mm apart (they were 7; the owner widened them, and the dividers closed in to make the room) |
-| Text readable at 100% on an ordinary monitor | ⚠ Jack labels were raised to 2.6 mm for this, about 5.6 px of capital height at 100%. Read at that size in Rack's own screenshot in Session 18 (`rack-face-unlit-100.png`): every label reads; TRIGGERS and VOICES, 1.5 mm apart, are the closest. The owner's eye has not judged it |
+| Room for thumbs between knobs and ports | Sockets are 11.67 mm apart or more (12, 13 and 13.67 in the lower row); the two rows are 18.8 mm apart; keys are at 12 mm; the sliders are 10 mm apart (they were 7; Kenny widened them, and the dividers closed in to make the room) |
+| Text readable at 100% on an ordinary monitor | ⚠ Jack labels were raised to 2.6 mm for this, about 5.6 px of capital height at 100%. Read at that size in Rack's own screenshot in Session 18 (`rack-face-unlit-100.png`): every label reads; TRIGGERS and VOICES, 1.5 mm apart, are the closest. Kenny's eye has not judged it |
 | Roughly the density and text sizes of VCV's own modules | ⚠ Not compared against one |
 | Do not use others' intellectual property | D20's avoid list; O7 at P9 |
 | A dark panel may be offered | Not needed: it is already dark |
@@ -623,7 +623,7 @@ keyboard and `tui/Helper.dc.html` draws the helper at phone size.
 | Ctrl+Q | in a terminal: quit | proposed ⚠ |
 
 The keyboard reads left to right as the panel does: the grid, the sliders, the function
-keys. ~~The proposed keys are not ruled one by one (O36).~~ The owner ruled all of them but
+keys. ~~The proposed keys are not ruled one by one (O36).~~ Kenny ruled all of them but
 the terminal's two, which the ruling as reported does not name (D119 item 3).
 
 **The helper** is one sheet with three parts: the map; "two keys at once" (hold the first
@@ -707,11 +707,11 @@ terminal reports key-up, a real hold works as on the other hosts (D119 item 5).
 
 ⚠ What the boards do not yet agree on, or leave out:
 
-- `Main` and `Pocket` were drawn before the owner's rulings and were not redrawn: `Main`
+- `Main` and `Pocket` were drawn before Kenny's rulings and were not redrawn: `Main`
   with write off shows a firing as a whole white face, not a core, and `Pocket` draws the
   fx key's band ecru. `States` and `Lights` are the later reading.
 - `Pocket` has no core, no twill and no bar.
-- Nothing was tried in a terminal: only foot 1.28 was found on the owner's machine, and it
+- Nothing was tried in a terminal: only foot 1.28 was found on Kenny's machine, and it
   is believed, not tested, to support the protocol; tmux probably does not pass key-up
   through; sound out (PipeWire) was not looked at.
 
@@ -724,7 +724,7 @@ terminal reports key-up, a real hold works as on the other hosts (D119 item 5).
 | On the phone both sliders are on the left | One at each edge left the bottom four keys under 60 px |
 | The wordmark moved 14 mm left when the outputs became three | The brief said nothing else moves; three sockets with readable labels do not fit beside it where it was |
 | The wordmark moved right again and down to 3.0 mm for RETURN | D62 item 4: an input sits on the dark body, beside RESET, and only 33.4 mm is left |
-| Four grid states the prompt did not ask for: other sound, chosen, fired, queued | The owner kept the first, second and fourth (2026-11-19). Fired came from `WORKFLOW.md` afterwards ⚠ |
+| Four grid states the prompt did not ask for: other sound, chosen, fired, queued | Kenny kept the first, second and fourth (2026-11-19). Fired came from `WORKFLOW.md` afterwards ⚠ |
 
 ## Not done
 
@@ -757,23 +757,23 @@ terminal reports key-up, a real hold works as on the other hosts (D119 item 5).
   held or not. In Rack 6 mm by 0.35 mm (the cap's 5 mm and half a millimetre each side); on
   the phone 36 by 2 px across the 6 px track. Seen in Rack's screenshot mode with a face
   filled by hand (A at 20000, B at 50000, the caps in the middle): visible on the ecru
-  thread and on the cap. To be drawn with the owner's eye (Surge XT's way of showing a
+  thread and on the cap. To be drawn with Kenny's eye (Surge XT's way of showing a
   modulated value is the idea, D40; none of theirs).
-  **Changed 2026-11-24, by the owner:** the line is `loom/madder` on both hosts, same size.
+  **Changed 2026-11-24, by Kenny:** the line is `loom/madder` on both hosts, same size.
   In `loom/thread` "it really just doesn't stand out". Still a stand-in for the shape.
 - ⚠ The two jack rows (Session 18) are drawn and seen only in Rack's screenshot mode,
-  never with cables in. D76 says the grouping is judged in use. For the owner's eye: the
+  never with cables in. D76 says the grouping is judged in use. For Kenny's eye: the
   plates of three heights in the lower row (TRIGGERS and VOICES one line of label, FX SEND
   and AUDIO two); FX over SEND and over RETURN; the empty corner right of FX GATES; whether
   0.87 mm between a slider output's plate and the next input's stitches is enough.
 - ⚠ The display's effect block and the lane's ticks (Session 19, "The effects on the
-  display" above) are D81's stand-in, built on both hosts and not yet seen by the owner. The
+  display" above) are D81's stand-in, built on both hosts and not yet seen by Kenny. The
   readings built on: the block sits just above the write mark's place, keeping it whether or
   not write is on ("beside the write mark in the display's column"); the ticks sit on one
   line above the tallest mark rather than on each mark's own top; the sizes are the
   builder's. ⚠ **Madder:** D81 calls madder "the fx key's own colour", but the fx key's band
   and latched face are ecru here (madder is the sound key's). Built in madder, as D81 names
-  it twice; the owner's to rule. Seen on the phone in a headless screenshot and in Rack's
+  it twice; Kenny's to rule. Seen on the phone in a headless screenshot and in Rack's
   screenshot mode (`rack-face-lit-*.png`), never on a real screen.
 - ⚠ The sounds sheet's "through fx" switch (D69, Session 19): a third button in each row,
   120 px wide, always reading `through fx`, lit as the sample switch is (ecru face, dark
@@ -783,9 +783,9 @@ terminal reports key-up, a real hold works as on the other hosts (D119 item 5).
 - ~~The animation is seven rules and three frames, not a running thing. Nobody has seen it move.~~
   ⚠ Since Session 14 it runs, on the page and in Rack, as a first attempt (D84, O19): seen
   moving only by `make play`'s checks, and as still pictures (`rack-weave-*.png`,
-  `phone-weave-step13.png`). **The owner has not watched it.** Not done: the acceptance, and
+  `phone-weave-step13.png`). **Kenny has not watched it.** Not done: the acceptance, and
   the three views and their cells to keep as the picture to hold to (`PLAN.md`, Session 14's
-  fourth box). The drawing choices least sure, for the owner's eye: a diamond growing after
+  fourth box). The drawing choices least sure, for Kenny's eye: a diamond growing after
   its first columns are woven (D84 item 8); the cloth jumping a whole beat (item 9); the
   flash's quarter step (item 11); every cell a square with a gap, the beater and shuttle too
   (item 14); the half diamond's ochre meeting the ochre beater (`rack-weave-busy-200.png`);

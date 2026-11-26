@@ -89,7 +89,7 @@ async function proof() {
             numberOfInputs: 0, outputChannelCount: [1],
             // All eight runs play at once, at four tempos. Only one of them ticks: with all
             // eight ticking the sum sounded like crackle, and a real dropout could not be
-            // told from it (found on the owner's phone).
+            // told from it (found on Kenny's phone).
             processorOptions: { wasm, seed: fx.seed, cmds, end, tick: name === "straight-sixteenths" && source === 0 },
           });
           node.connect(gain);

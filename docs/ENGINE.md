@@ -1,8 +1,8 @@
 # The engine interface
 
-**Status:** decided by the owner 2026-11-19 (D17, D24, D25, D26). P2 passed on it in Session 2;
+**Status:** decided by Kenny 2026-11-19 (D17, D24, D25, D26). P2 passed on it in Session 2;
 P6's ThreadSanitizer half ran on it in Session 3 and changed §8's hand-over (D43);
-P7 added sound as ABI 2 (§11; D44). The owner accepted D42 to D45 the same day (D46). A failed proof reopens it. Written in Session 1. Building it found seven
+P7 added sound as ABI 2 (§11; D44). Kenny accepted D42 to D45 the same day (D46). A failed proof reopens it. Written in Session 1. Building it found seven
 places where the text did not say what happens; they are marked (D42) below.
 
 The contract between the core and its two hosts. `core/include/pi_engine.h` is the same
@@ -388,7 +388,7 @@ What turned out different, or is a reading:
 - ⚠ **The play key on one edge a beat sends `PLAY 1` alone,** as on one edge a step (§13's
   "on edges": `keys.rs` now asks "not the table"). The design does not name `SOURCE` 2 there;
   the view calls it edges, so it was read as edges. A test holds it
-  (`on_beats_the_play_key_sends_play_alone_as_on_edges`). The owner's to overrule.
+  (`on_beats_the_play_key_sends_play_alone_as_on_edges`). Kenny's to overrule.
 - **Two lines no test can see:** `ext`'s test of the table (measured is only ever set on
   edges and any switch clears it) and the `not have_edge` of the guess's branch (with
   `have_edge` and `since` 0, the guess is the period already, or nothing was measured and the
@@ -970,7 +970,7 @@ first row that applies:
 
 **The write-off row, changed 2026-11-23 (D71, D72 item 3, D82; built in Session 20).** It
 was `none | none | none | yes`: D37 guessed from a search that the hardware's fields are dark
-with write off. The owner's PO-12 lights the chosen sound's steps in both modes (D71), so the
+with write off. Kenny's PO-12 lights the chosen sound's steps in both modes (D71), so the
 field is now the chosen sound's steps whether write is on or off. Still no stitch and no bar
 (D82 item 3: the stitch is ours, for editing), and the grid is still sounds, so every key
 goes white as its own sound fires and the frame marks the playhead, as before. A field key
@@ -1090,7 +1090,7 @@ label, the number, `--`, rounding down, 65 535, the white at `ext × 100`), draw
 `RhythmDisplay::draw` and used by `Face::take`; `design/rack-face-ext-200.png` (123, `ext`).
 The page: only the `.wasm`. Nothing turned out different. ⚠ No self-test in Rack runs an
 external clock through the player's path or a beat clock (D100 item 7): a planted fault that
-always sent `SOURCE` 2 when CLOCK is patched passed `make selftest`. The owner's check is
+always sent `SOURCE` 2 when CLOCK is patched passed `make selftest`. Kenny's check is
 Clocked at ×1.
 
 ### §14 and §17, designed 2026-11-26: a key's lights (D120; D112, D115, D119 item 7; issue 101)
@@ -1168,7 +1168,7 @@ not change.
 first; a rule test for each changed row and one that the other three rows did not move
 (`core/src/tests/keys.rs`); `make play` reading each light back off the page against the
 view it came from; `rack/test/jacks.cpp` holding the Rack module's choice of light for
-each case of the table above; the self-test; and screenshots for the owner's eye (#9).
+each case of the table above; the self-test; and screenshots for Kenny's eye (#9).
 
 **Built in the core (issue 101, 2026-11-26).** The two rows in `Engine::view`
 (`core/src/keys.rs`). Proven: the 24 view lines worked first, moved up from `designed/`
@@ -1227,7 +1227,7 @@ with RETURN patched (D62), the mix rebuilt in the core's order with the core's g
 `core/src/tests/snapshot.rs`:
 
 - ⚠ Two readings where §15 is silent, built on and not ruled (Session 11 ran on Opus;
-  `PLAN.md`'s Handover asks the owner): a chosen sound past 15 loads as 15, as a volume
+  `PLAN.md`'s Handover asks Kenny): a chosen sound past 15 loads as 15, as a volume
   past 16 loads as 16; and bytes 381 to 383 are not read, like the bytes after a snapshot.
 - Following from §8's order, not a reading: a version 2 whose version field says 1 is read
   as version 1 and refused by its payload size (`PI_ERR_SIZE`), before its CRC is looked at.
@@ -1265,7 +1265,7 @@ cells = pi_weave(view, len, flags, out, cap)    /* PI_WEAVE_W × PI_WEAVE_H, or 
 - The host draws the rest of the display itself, from the view: the tempo, `bpm`, the write
   mark, the step number, the sixteen step marks.
 
-**Built (Session 14, 2026-11-23; a first attempt, D84).** The owner has not watched it move
+**Built (Session 14, 2026-11-23; a first attempt, D84).** Kenny has not watched it move
 and nothing here is accepted (`PLAN.md`, Session 14's fourth box; O19). As built:
 
 ```
@@ -1289,7 +1289,7 @@ cells = pi_weave(view, len, flags, out, cap)    /* PI_WEAVE_CELLS (78 × 15 = 11
   of the seven rules, for reduced motion, for the three fields, and for what the function
   reads. No test says which cell a diamond lights.
 
-**What turned out different from the design above (each ruled in D84, the owner's to overrule):**
+**What turned out different from the design above (each ruled in D84, Kenny's to overrule):**
 
 | The design said | Built |
 |---|---|
@@ -1321,13 +1321,13 @@ punched, in the order they went down, of which `punch` is the last still held (0
 and in the sequencer `eff` (the effect it read at the last step boundary), `run_step` and
 `run_tick`.
 
-**Checked on the owner's PO-12, 2026-11-23** (`WORKFLOW.md`): recorded with write off;
+**Checked on Kenny's PO-12, 2026-11-23** (`WORKFLOW.md`): recorded with write off;
 heard at once; cleared a step at a time by fx alone; of two keys held the last wins and
 the first comes back when it is let go; nothing happens while stopped; no key lights for
 an effect; the step being played when a key lands is not recorded and the next ones are;
 clear empties the lane; an effect stays on its step whatever notes are later put there or
 taken off. Each is marked "(hardware)" below where it is a rule. **Not checked: the
-repeats.** With effect 9 held the owner heard no repeat at all, so what 9 to 12 do on the
+repeats.** With effect 9 held Kenny heard no repeat at all, so what 9 to 12 do on the
 hardware is unknown and ours are our own design under its names.
 
 ### Commands
@@ -1522,15 +1522,15 @@ with an empty lane. The design held. What it did not say, built on and marked:
   held while playing, it lets steps write the lane at the audio thread's pace, which its
   model (a frame an edit) cannot keep; the lane goes in by `FX` instead.
 
-**Proposed after Session 22 (2026-11-24; measured, R66), for the owner. Nothing here is built.** Ruled yes by the owner, 2026-11-24 (D90 item 1); Session 25 designs it exactly.
+**Proposed after Session 22 (2026-11-24; measured, R66), for Kenny. Nothing here is built.** Ruled yes by Kenny, 2026-11-24 (D90 item 1); Session 25 designs it exactly.
 
 - **A repeat holds the last step that sounded, not the step it began on.** The hardware's
   11 and 12 retrigger the kick through two passes when only step 1 has a note; ours re-fire
-  the step the run began on and are silent if it is empty, which the owner hears as a mute.
+  the step the run began on and are silent if it is empty, which Kenny hears as a mute.
   Proposed: when a run begins, the step it repeats is the latest step, at or before it,
   on which a switched-in sound had a note; if the pattern has none, silence as now. ⚠ The
   hardware repeated the kick alone and dropped the hats and the snare (one pattern);
-  whether ours repeats that whole step (as now) or one sound of it is the owner's ear to say.
+  whether ours repeats that whole step (as now) or one sound of it is Kenny's ear to say.
   Recommended: the whole step, until it is heard.
 - **The rates of 11 and 12 hold:** 8 and 6 a beat, measured 7.94 and 5.97.
 - **9 and 10 stay as they are, and stay ours.** The hardware's 9 and 10 are not 11 and 12
@@ -1706,7 +1706,7 @@ draws passing, one `TRIG`; a lane edit between a boundary and its swung firing).
   snare as the blip, 1 331 Hz and 25 ms (1 841 Hz and pure); the hat as the tone, 220 Hz held 95
   ms (74 Hz held). Nothing moved: 13 has no constant.
 
-### §17, proposed 2026-11-25 after Session 22's last takes (R74, R76), for the owner. Nothing here is built
+### §17, proposed 2026-11-25 after Session 22's last takes (R74, R76), for Kenny. Nothing here is built
 
 **Ruled 2026-11-25 (D95).** Item 1: **the hardware's rule, not the recommendation** (a repeat
 holds the step the key came down on; an empty step is silent), so "§17, designed 2026-11-24:
@@ -1714,17 +1714,17 @@ a repeat holds the nearest note behind it" below is superseded once Session 30 b
 Items 2 to 4 as recommended.
 
 Take c (sound 8 and sound 15, four notes a bar) showed three things about the hardware
-that this section had wrong or had guessed. Each is the owner's to rule; no constant moves
+that this section had wrong or had guessed. Each is Kenny's to rule; no constant moves
 until a build session.
 
 1. **The repeat's rule is ours, not the PO-12's (corrects "Proposed after Session 22" above,
    and D90 item 1's reason).** The PO-12's 11 and 12 repeat what is on the step where the key
    came down, and an empty step repeats as silence for as long as the key is held (R74: two
-   whole bars at the noise floor). That is what §17 first did, and what the owner heard as
+   whole bars at the noise floor). That is what §17 first did, and what Kenny heard as
    "it just feels like it mutes things". R66 read "the last sound, on through empty steps"
    from one take where the key happened to land on the kick. So D90's rule (the nearest note
    behind) does not copy the hardware; it mends it. **Recommended: keep D90's rule, and say
-   in `WORKFLOW.md` that it differs.** The owner asked for it because the hardware's mute
+   in `WORKFLOW.md` that it differs.** Kenny asked for it because the hardware's mute
    felt wrong, and that reason stands. The other choice is the hardware's rule back (one
    line of `held_step`, and `fx-repeat-holds` worked again by hand).
 2. **11's and 12's rates: no change.** Measured 94.21 and 125.60 ms a repeat at 80 bpm,
@@ -1737,7 +1737,7 @@ until a build session.
    2026-11-24 because the rule was unknown. It is now known in outline. **Recommended: leave
    ours as they are.** A chop that silences most of a short sound is the same complaint as
    item 1, and ⚠ what the windows are counted from (each note, or the key) and whether
-   they act on a sound or the mix are not measured. If the owner wants the hardware's chop,
+   they act on a sound or the mix are not measured. If Kenny wants the hardware's chop,
    it is a design pass first (a gate on the bus, counted in ticks), and a take to settle
    the two unknowns.
 4. **13's map is not confirmed (D93 item 1; O23).** On take c sound 15 did not play as the
@@ -1760,14 +1760,14 @@ a run begins:         run_step = (write == eff and down is not none) ? down : cu
 play, reset:          wrote = none;  down = none
 ```
 
-- **A punch held: the step its key came down on** (D96 item 1, the owner in the session). A
+- **A punch held: the step its key came down on** (D96 item 1, Kenny in the session). A
   press during step 5 starts its run at step 6's boundary, as always, and repeats step 5. On
   an empty step it is silent for as long as it lasts, and takes no draw. A punch on a
   boundary's frame came down on the step arriving. A punch made while stopped, or before the
   first step after play, repeats that first step.
 - **From the lane, no punch held: the run's own first step** (D96 item 2). ~~A replay of a
   punch made mid-step therefore repeats the step after the one the hand heard.~~ **Since D97
-  (the owner, the same day) a repeat punched mid-step is also recorded on the step being
+  (Kenny, the same day) a repeat punched mid-step is also recorded on the step being
   played, on the first tick after the press**, so the replay's run begins there, a step
   earlier than the performance's, and repeats what the hand heard. Sound effects still do
   not record the step being played (D66 item 3). Nothing is recorded for a punch seen before
@@ -1812,7 +1812,7 @@ Rack self-test plays both fixtures on both clocks. The report's other runs did n
 - **The same bits on every host** (§11): `+ − × ÷` and casts only. The filter's `tan` is a
   polynomial (R56).
 
-The first set. Every number is a first value for the owner's ear (⚠), as the voices' were:
+The first set. Every number is a first value for Kenny's ear (⚠), as the voices' were:
 
 | Effect | Role (R48) | Built as |
 |---|---|---|
@@ -1883,7 +1883,7 @@ over the dry beat. What it did not say, built on and marked:
   channels (`rack/src/jacks.hpp`, D62), which are before the effects. Session 18 moves the
   returns into the core (§19).
 
-(Ruled yes by the owner, 2026-11-24: D90 items 2 and 3; Session 25 designs them.) **Proposed after Session 22 (2026-11-24; measured, R64, R65, R67), for the owner. Targets
+(Ruled yes by Kenny, 2026-11-24: D90 items 2 and 3; Session 25 designs them.) **Proposed after Session 22 (2026-11-24; measured, R64, R65, R67), for Kenny. Targets
 for a build session; the constants are set there and then by ear. Nothing here is built.**
 
 | Effect | Built | Measured on the PO-12 | Proposed |
@@ -1916,7 +1916,7 @@ reading of Session 22's reports.
 | 3 bit crush | `(floor(4.6 × bus) + 0.5) / 4.6`: steps of **1 / 4.6** (was 4 levels a unit, a quarter, Session 26: ours read a step of the kick's dry peak / 1.65 against the PO-12's / 1.90; at 4.6, / 1.91), levels at ±½, ±1½ … steps | `trunc(12 × bus) / 12` | R69: on take b the levels sit at ±½ and ±1½ steps, and a step is 1 / 4.02 of the clip's ceiling (ours at 4.6 and 0.88: 1 / 4.05). On silence it is **+½ step exactly** (0.5 / 4.6), as the hardware rests half a step off zero |
 | 5 low pass | the filter's low output at **300 Hz**, `r` 0.5 | 600 Hz | R65: 233 to 344 Hz, +7 dB at the cutoff (Q 2.2) |
 | 7 high pass | its high output at **1 800 Hz**, `r` **1/6** | 2 kHz, `r` 0.5 | R65: 1 796 Hz, +15.5 dB (Q 6) |
-| 6 low-pass sweep | low output, `r` 0.5; the cutoff from **3 240 Hz down to 190 Hz** in 432 ticks, back up in 432, and again (was from 2 500 Hz, Session 26: read every half step as the PO-12 was, ours spanned 186 to 1 930 Hz against its 190 to 2 500; from 3 240, 190 to 2 383) | 8 kHz to 200 Hz in 1 536 ticks, one way | R65: 190 Hz to 2.5 kHz, both ways, a cycle every 8.5 to 9 steps: nine steps is 864 ticks. Ruled by the owner to move now (D91 item 3) |
+| 6 low-pass sweep | low output, `r` 0.5; the cutoff from **3 240 Hz down to 190 Hz** in 432 ticks, back up in 432, and again (was from 2 500 Hz, Session 26: read every half step as the PO-12 was, ours spanned 186 to 1 930 Hz against its 190 to 2 500; from 3 240, 190 to 2 383) | 8 kHz to 200 Hz in 1 536 ticks, one way | R65: 190 Hz to 2.5 kHz, both ways, a cycle every 8.5 to 9 steps: nine steps is 864 ticks. Ruled by Kenny to move now (D91 item 3) |
 | 8 high-pass sweep | high output, `r` 1/6; from **220 Hz up to 2 900 Hz** in 432 ticks, back down in 432, and again (Session 26: its top read 2 728 Hz, in; its bottom cannot be read on take a, so it stays as designed ⚠) | 100 Hz to 4 kHz in 1 536 ticks, one way | R65: 220 Hz to 2.9 kHz, the same cycle |
 | 4 delay | `bus + 0.15 × echo`, the echo being the bus **8 192 / 46 875 s** ago (174.76 ms) | no sound | R67: one echo at 174.8 ms, 0.09 to 0.25 of the hit (0.15 is the middle, as a ratio), the next 0.04 of that |
 
@@ -1953,11 +1953,11 @@ reading of Session 22's reports.
   are still hers) and drops `SoftLimit` and `SoftClip` from its list; the credits on the
   page and in the plugin do not change.
 - **Loud, on purpose.** Effect 2 can put the bus at ±1 and effect 7 lifts 1.8 kHz by 15 dB:
-  "some of theirs is rather intense" (the owner). Each host bends what passes its ceiling,
+  "some of theirs is rather intense" (Kenny). Each host bends what passes its ceiling,
   as now (D48).
 - **Effect 3 on silence** is a steady +1/8 in the mix before the volume, ramped in and out
   over the 2 ms: a soft thump as it starts and ends, and a tail that buzzes at ±1/8 until
-  its voice ends. Both are the hardware's (R69). ⚠ The owner's ear: the quiet reading is
+  its voice ends. Both are the hardware's (R69). ⚠ Kenny's ear: the quiet reading is
   `floor(4 × bus) / 4`, which rests on zero.
 
 **The delay's line is the host's** (D91 item 4), as a sample is (§12). Two calls:
@@ -1999,7 +1999,7 @@ reading of Session 22's reports.
   already 12 to 21 dB down. One tap; a multiply and an add if the ear ever wants it.
 - **The time is fixed** (D91 item 5): 8 192 samples at 46 875 Hz is a buffer's length, not
   a note's (0.93 of a step at 80 bpm). ⚠ One tempo was measured; a take of effect 4 at
-  another tempo settles it (`PLAN.md`, the owner's hands).
+  another tempo settles it (`PLAN.md`, Kenny's hands).
 - **In a loop layout** (§19) the line holds the bus as it is there, returned sounds
   included. Effect 4 named in `ROUTE` 1 is the host's and ours does not run, lent or not.
   **FX SEND does not change:** its channel 4 is the bus before any effect, so with effect 4
@@ -2255,10 +2255,10 @@ scratch copies (each read by the same script):
   build our loop before it ends.
 - ⚠ **Steps 6 and 14 of take a are not silent wet.** Our snare and hat end at exact zero later
   than they fall under the script's floor, so the loop runs on through those steps, where the
-  PO-12's falls silent. Not moved (nothing may); the owner's ear on a sparse beat says if it
+  PO-12's falls silent. Not moved (nothing may); Kenny's ear on a sparse beat says if it
   matters.
 
-### §18, proposed 2026-11-25 after Session 22's last takes (R72, R73, R75, R76), for the owner. Nothing here is built
+### §18, proposed 2026-11-25 after Session 22's last takes (R72, R73, R75, R76), for Kenny. Nothing here is built
 
 **Ruled 2026-11-25 (D95): as recommended.** Effect 1 is designed in Session 31; the sweeps
 and 5 are retuned in Session 30; the delay does not stand still; 13 and 14 wait.
@@ -2543,7 +2543,7 @@ catch (below). 282 Rust tests.
   The pattern is Sessions 26, 28 and 29's: where code lands. Left as designed, as the build
   list says (`LEARNINGS.md`, Session 32, has every reading).
 - **Credits** on `web/rhythm.html` and in `rack/plugin.json` still name Plaits' sample-rate
-  reducer (and stmlib's soft clip, gone since ABI 12) ⚠ the owner's: keep as history or
+  reducer (and stmlib's soft clip, gone since ABI 12) ⚠ Kenny's: keep as history or
   reword. `bus.rs`'s header says what was read and what is used now. **Ruled 2026-11-25
   (Fable), built in Session 34:** they name stmlib's filter alone; `bus.rs`'s header says so.
 
@@ -2577,7 +2577,7 @@ read the same way: the tone 0.75 → 0.75 steps, above 10 kHz −21.3 dB.)
 Session 40 gave the model of this section (`core/src/tests/bus.rs`, `Model`) every layout and a
 seeded tour (`core/src/tests/tour.rs`), and held the engine to it bit for bit. Where §18 says
 nothing, the build is the baseline (no byte moved in Session 40) and the model does what the
-build does. Neither was ruled then; the owner accepted both on 2026-11-26 (D109 item 4):
+build does. Neither was ruled then; Kenny accepted both on 2026-11-26 (D109 item 4):
 
 - ⚠ **A line forgotten while 4 or 14 ramps out** (a rate change, or `pi_set_delay` refused):
   the bus as it is, `wet = bus`, for the rest of the ramp; nothing read or written, and 14
@@ -2825,7 +2825,7 @@ sounds 1 to 16, and 34 to 49 are B.
   nothing: there is no input to read. An input past 1 is 65535 and one below 0, or not a
   number, is 0. The outputs are written on every frame, including the frame of the hit that
   changes them.
-- ⚠ **Found, for the owner (D80, "Left open"):** out, through a module, and back in is one
+- ⚠ **Found, for Kenny (D80, "Left open"):** out, through a module, and back in is one
   hit late. The output says what the sound was last hit with, and the input is read on the
   next hit, so a step played through A OUT to A IN sounds with the values of the hit before
   it. With steps that all keep the same values nothing is heard of it; with steps written
@@ -2834,7 +2834,7 @@ sounds 1 to 16, and 34 to 49 are B.
 
 ### §19, designed 2026-11-24: a channel an effect, the return summed (ABI 11; D87, D88; designed in Session 23, built in Session 24)
 
-The owner patched D86 item 2 by hand and ruled (D87): FX SEND and FX RETURN carry sixteen
+Kenny patched D86 item 2 by hand and ruled (D87): FX SEND and FX RETURN carry sixteen
 channels, a channel an effect, and what comes back is always in the mix. This replaces the
 effects loop above (channel 17 as an insert that crosses over, and `ROUTE` 1's meaning).
 The returns (`ROUTE` 0), the sliders (`ROUTE` 2 and 3) and both layouts stay as built.
@@ -2941,7 +2941,7 @@ self-test's three FX SEND to FX RETURN modules at 44.1, 48 and 96 kHz, every fra
 second engine's and FX SEND's sixteen channels bit for bit `jacks.hpp`'s; 30 faults planted in the core and `jacks.hpp`, each built and caught by a named test (two of them after a test was added for them: `LEARNINGS.md`).
 Cost: idle, the beat, all and both within the spread of one build's runs; beside the dry
 about 2 ns a frame cheaper than the crossing over it replaces (`LEARNINGS.md`, Session 24).
-What the text did not say, built on and marked for the owner (`PLAN.md`, Session 24's
+What the text did not say, built on and marked for Kenny (`PLAN.md`, Session 24's
 Handover):
 
 - ⚠ **Where the fifth mask lives.** In the bus, in two bytes the sweep's tick counter gave
@@ -2966,8 +2966,7 @@ Handover):
 ### §19, as built, Session 40: what the model reads where the section is silent
 
 Session 40's model of every layout (`core/src/tests/tour.rs`) is written from §15 and §19's
-words; where they are silent the build is the baseline (no byte moved in Session 40). The
-owner accepted each on 2026-11-26 (D109 item 4):
+words; where they are silent the build is the baseline (no byte moved in Session 40). Kenny accepted each on 2026-11-26 (D109 item 4):
 
 - ⚠ **An infinity coming in is silence, as a NaN is:** on a returned sound's channel and on FX
   RETURN. D80 item 4 says "not a number"; the build cleans anything not finite (`is_finite`),

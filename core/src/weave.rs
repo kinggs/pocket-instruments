@@ -6,7 +6,7 @@
 //! The loom, left to right: the cloth (it grows to the right), the beater at its edge, then
 //! the bare warp, which the shuttle crosses. `design/DESIGN.md`, "The animation", has the
 //! seven rules; each is marked below where it is drawn. Every number in "THE DRAWING" is a
-//! first value, for the owner's eye.
+//! first value, for Kenny's eye.
 
 use crate::clock::TICKS_PER_STEP;
 use crate::keys::{FLAG_PLAYING, FLAG_STEP, VIEW_SIZE};

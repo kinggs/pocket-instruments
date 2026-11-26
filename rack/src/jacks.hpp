@@ -174,7 +174,7 @@ struct Jacks {
     // effect n + 1 and towards 0 otherwise, whatever that effect's setting. Only the channels
     // whose gain is not 0 are visited: one that reaches 0 is written exactly 0 V once, and then
     // left, so `volts` (the output's own voltages) must start at 0. Every channel always live:
-    // a send with nothing returned is the owner's kept patch (D87).
+    // a send with nothing returned is Kenny's kept patch (D87).
     void fxSend(const float *loop, uint32_t heard, float step, float *volts) {
         if (heard - 1 < PI_TRACKS) fxLive |= 1u << (heard - 1);
         if (!fxLive) return;
@@ -237,7 +237,7 @@ inline uint32_t source(bool clockPatched, bool beat) {
 // is edges (flag 2, a step or a beat), the label is "ext" where "bpm" was and the number is ext
 // / 10 rounded down, or "--" while ext is 0 (before the second edge, a stopped clock);
 // otherwise "bpm" and the stored tempo in whole bpm, rounded down. Writes the number into
-// `num` and returns the label. (ext in place of bpm is D100 item 5's stand-in for the owner's eye.)
+// `num` and returns the label. (ext in place of bpm is D100 item 5's stand-in for Kenny's eye.)
 inline uint32_t viewU32(const uint8_t *v, uint32_t at) {
     return uint32_t(v[at]) | uint32_t(v[at + 1]) << 8 | uint32_t(v[at + 2]) << 16 | uint32_t(v[at + 3]) << 24;
 }

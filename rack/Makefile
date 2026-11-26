@@ -117,7 +117,7 @@ selftest:
 	./selftest.sh 12 48000
 	./selftest.sh 12 96000
 
-# The patch the owner opens for P3: a Fundamental LFO's square as the clock into one probe
+# The patch Kenny opens for P3: a Fundamental LFO's square as the clock into one probe
 # (swing-length-change, track 2) and a second probe on its own clock (straight-sixteenths,
 # track 0), both into a Scope; and a quiet sine to the audio module, so a dropout is heard.
 .PHONY: patch

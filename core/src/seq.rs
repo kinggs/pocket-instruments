@@ -138,7 +138,7 @@ pub struct Seq {
     /// 35, so `beats` fits the struct's padding and `pi_size` does not move.
     period: u16,
     run_step: u8,
-    /// §17, Session 30 (D95 item 1, the owner: "as close as possible to the PO"): the last
+    /// §17, Session 30 (D95 item 1, Kenny: "as close as possible to the PO"): the last
     /// `write` seen, and the step that was playing when it changed, `NO_DOWN` until a step has
     /// arrived since play or reset. A run begun by a punch still held repeats `down`: the
     /// step the key came down on, not the step after it, which the lane takes.
@@ -247,7 +247,7 @@ impl Seq {
         if !boundary && write != self.wrote {
             self.wrote = write;
             self.down = if self.fresh { NO_DOWN } else { self.cur };
-            // D97 (the owner: the replay must match the push): a repeat punched mid-step is
+            // D97 (Kenny: the replay must match the push): a repeat punched mid-step is
             // recorded on the step being played too, so a replay's run begins there and
             // repeats what the hand heard. Sound effects keep §17's rule (D66 item 3): the
             // step being played is not recorded.

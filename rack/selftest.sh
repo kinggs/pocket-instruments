@@ -1,7 +1,7 @@
 #!/bin/sh
 # P3 without the screen: Rack itself, headless, on a patch of four probes (one a fixture each;
 # three on a Fundamental LFO's square as the clock, one on its own table clock), in a throwaway
-# user folder so the owner's Rack is not touched. Passes only if every probe matched at least
+# user folder so the Rack you play is not touched. Passes only if every probe matched at least
 # one pass of its fixture, none mismatched, no event was dropped, and its AUDIO output carried
 # sound (every fixture fires the bass drum on track 0): a peak above 0 V and under 10 V, with
 # no sample NaN or infinite. One probe is given a saved snapshot of version 1 (§15: an old
@@ -22,7 +22,7 @@
 # Since Session 28: the other two format 3 fixtures as well, fx-repeat-holds (Session 26's, left
 # out then) and fx-shuffle (effect 13, ABI 13).
 # Then four modules on the module's own cables (Rhythm.cpp, "The loop self-tests"): one with
-# VOICES into RETURN and effect 2 punched on what comes back (the owner's patch: TRIGGERS out
+# VOICES into RETURN and effect 2 punched on what comes back (Kenny's patch: TRIGGERS out
 # to drums, the drums back in, a punch heard on them), one with FX SEND into FX RETURN and
 # effect 4 punched, one with A OUT into A IN and B OUT into B IN, each held frame by frame to a
 # second engine given what its cables should carry; and one playing D78's fx latch.
@@ -33,7 +33,7 @@
 #
 #   selftest.sh [seconds] [sample rate]
 #
-# It does not replace the owner's ten minutes: there is no audio device here, so "no dropout"
+# It does not replace Kenny's ten minutes: there is no audio device here, so "no dropout"
 # and the CPU meter are not measured. SPDX-License-Identifier: MIT
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)

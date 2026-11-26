@@ -1,10 +1,9 @@
 # The workflow
 
-**Status:** a draft from the published guide (R23). Since 2026-11-23 partly checked on the
-owner's PO-12: the effects (nine of thirteen checks), the lights with write off, and how
+**Status:** a draft from the published guide (R23). Since 2026-11-23 partly checked on Kenny's PO-12: the effects (nine of thirteen checks), the lights with write off, and how
 the knobs act; each such row says so. The rest is still not checked on the hardware. By D29 it is
 built from as it stands: a row is ticked, or a mismatch added to the differences table, as
-the owner meets it. P8 is judged against this file (D22).
+Kenny meets it. P8 is judged against this file (D22).
 
 Written in our own words. No text or pictures from the guide are in this repo (README rule 6).
 
@@ -136,15 +135,15 @@ Two checks on the hardware, about three minutes, settle what the search could no
    Hold sound + 1 again and tap key 1 without touching the knob: is its pitch where you left
    it? Now nudge A a hair: does the pitch jump?
 
-## What two videos and the owner's PO-12 showed (2026-11-23)
+## What two videos and Kenny's PO-12 showed (2026-11-23)
 
 R53 is two videos of a PO-12 in use, read from their captions; the last column says what
-is now a fact from the owner's own hardware. Where a row disagrees with what is built, it
+is now a fact from Kenny's own hardware. Where a row disagrees with what is built, it
 is a mismatch (D29), listed until ruled on.
 
 | What | Seen | Ours now |
 |---|---|---|
-| The lights with write off | **Fact (the owner, D71):** the chosen sound's steps are lit, steady, write on or off; choosing another sound shows that sound's steps; write changes only the display's mark and what a tap does. **While playing, every sound's key flashes as that sound fires, and the playhead's key flashes as it passes;** on one key the two are one flash | ~~**Mismatch.** D37: with write off no step is lit. D71 proposes following the hardware~~ **Closed (Session 20, 2026-11-23; D72 item 3, D82):** the chosen sound's steps are lit with write off as with write on; each key still goes white as its own sound fires (a lit one comes back lit) and the frame marks the playhead, so ours keeps the two flashes apart. No stitch with write off (D82 item 3) |
+| The lights with write off | **Fact (Kenny, D71):** the chosen sound's steps are lit, steady, write on or off; choosing another sound shows that sound's steps; write changes only the display's mark and what a tap does. **While playing, every sound's key flashes as that sound fires, and the playhead's key flashes as it passes;** on one key the two are one flash | ~~**Mismatch.** D37: with write off no step is lit. D71 proposes following the hardware~~ **Closed (Session 20, 2026-11-23; D72 item 3, D82):** the chosen sound's steps are lit with write off as with write on; each key still goes white as its own sound fires (a lit one comes back lit) and the frame marks the playhead, so ours keeps the two flashes apart. No stitch with write off (D82 item 3) |
 | Effects are recorded with write off | Both videos; four reviews (R49) | Designed so (D66) |
 | Clearing effects | Hold fx through the steps; a whole pass clears all | Designed so |
 | Effects belong to a pattern | Written across four chained patterns and cleared across them; a copied pattern given its own (R53) ⚠ | One pattern; the lane is saved with it |
@@ -166,27 +165,27 @@ kick and a hat.
 
 | ☐ | Do | Look or listen for | It decides |
 |---|---|---|---|
-| ☑ | Write off. Hold fx + key 3 for four steps, let go. Wait a bar | **Yes** (owner, 2026-11-23): "The crush comes back in exactly the same step" | D66 item 2: recorded without write. Holds |
-| ☑ | Punch key 3 between two hits | **At once** (owner): between two kicks with only kicks playing, nothing is heard, because nothing is sounding | §17: heard at once. Holds |
-| ☑ | Press key 3 just after the snare on step 5, let go just after the hat on step 7; listen to the next bar | **The snare on 5 is not crushed; the hat on 7 is** (owner, 2026-11-23) | D66 item 3 holds: the step being played when the key lands is not written, and a step that arrives while it is held is |
-| ☑ | Hold fx alone for half a bar | **Yes, cleared** (owner) | §17: the lane is written by arriving steps. Holds |
-| ☑ | Hold fx + 3, add key 5 without letting 3 go; then let 5 go | **Only the last; and the first comes back** when the last is let go (owner) | One effect at a time (D66 item 1) holds. §17 first said letting go leaves none: corrected |
-| ☑ | Stopped: hold fx + 3 | **Nothing** (owner) | D66 item 3 first let a punch sound while stopped: corrected |
-| ☑ | fx held, playing | **No light does anything; the display's sewing machine sparks when an effect plays** (owner; as R51) | §17 first put a bar on the effect's key: removed. The display gets a mark of our own |
-| ☑ | Punch 9, 10, 11 and 12 for a bar each | **Measured 2026-11-24 (R66).** 11 and 12 retrigger the last sound 8 and 6 times a beat, on through empty steps. 9 and 10 do not: with one kick on step 1 nothing repeats, which is what the owner heard on 2026-11-23 ("I don't hear any repeats"); on a fuller pattern 9 adds a hit a step after some hits and 10 puts hits 1.33 steps apart ⚠ rule not known | D67 item 1: the rates of 11 and 12 hold (8 and 6 a beat). Ours go silent on an empty step and the hardware does not: `ENGINE.md` §17, "Proposed after Session 22". 9 and 10 stay our own design ⚠ **Corrected 2026-11-25 (R74):** 11 and 12 repeat the step the key came down on, and an empty step repeats as silence; 9 and 10 are mutes (9: heard 0.44 of a step, silent to 1.0, heard to 1.44, then gone; 10: silent from 0.67 to 1.33). Our repeat's rule (D90) was ours; **ruled back to the hardware's 2026-11-25 (D95)**, **built in Session 30** (D96): a run repeats the step the key came down on, silent on an empty one, as the PO-12. A repeat punched mid-step is recorded on that step too, so the replay repeats what was heard (D97 ⚠ the PO-12 may not). 9 and 10 stay repeats. `ENGINE.md` §17, "Built (Session 30)" |
-| ☑ | Mute nothing; punch a repeat over a bar with kick and hat | **Measured 2026-11-24 (R66): not all.** With 11 or 12 held only the kick repeats; the hats and the snare are gone ⚠ one pattern | D66 item 4 (all sounds in) is ours, not the hardware's. Kept until the owner rules (§17's proposal) |
-| ☑ | Record an effect, then function + pattern, put a kick back | **Clear wipes the effects** (owner) | D66 item 7 holds |
-| ☑ | Record an effect on a step, then take that step's note off and put it back | **The effect stays** (owner): "it basically applies it there, regardless of what I later program into those spots" | The lane is beside the steps. Holds |
+| ☑ | Write off. Hold fx + key 3 for four steps, let go. Wait a bar | **Yes** (Kenny, 2026-11-23): "The crush comes back in exactly the same step" | D66 item 2: recorded without write. Holds |
+| ☑ | Punch key 3 between two hits | **At once** (Kenny): between two kicks with only kicks playing, nothing is heard, because nothing is sounding | §17: heard at once. Holds |
+| ☑ | Press key 3 just after the snare on step 5, let go just after the hat on step 7; listen to the next bar | **The snare on 5 is not crushed; the hat on 7 is** (Kenny, 2026-11-23) | D66 item 3 holds: the step being played when the key lands is not written, and a step that arrives while it is held is |
+| ☑ | Hold fx alone for half a bar | **Yes, cleared** (Kenny) | §17: the lane is written by arriving steps. Holds |
+| ☑ | Hold fx + 3, add key 5 without letting 3 go; then let 5 go | **Only the last; and the first comes back** when the last is let go (Kenny) | One effect at a time (D66 item 1) holds. §17 first said letting go leaves none: corrected |
+| ☑ | Stopped: hold fx + 3 | **Nothing** (Kenny) | D66 item 3 first let a punch sound while stopped: corrected |
+| ☑ | fx held, playing | **No light does anything; the display's sewing machine sparks when an effect plays** (Kenny; as R51) | §17 first put a bar on the effect's key: removed. The display gets a mark of our own |
+| ☑ | Punch 9, 10, 11 and 12 for a bar each | **Measured 2026-11-24 (R66).** 11 and 12 retrigger the last sound 8 and 6 times a beat, on through empty steps. 9 and 10 do not: with one kick on step 1 nothing repeats, which is what Kenny heard on 2026-11-23 ("I don't hear any repeats"); on a fuller pattern 9 adds a hit a step after some hits and 10 puts hits 1.33 steps apart ⚠ rule not known | D67 item 1: the rates of 11 and 12 hold (8 and 6 a beat). Ours go silent on an empty step and the hardware does not: `ENGINE.md` §17, "Proposed after Session 22". 9 and 10 stay our own design ⚠ **Corrected 2026-11-25 (R74):** 11 and 12 repeat the step the key came down on, and an empty step repeats as silence; 9 and 10 are mutes (9: heard 0.44 of a step, silent to 1.0, heard to 1.44, then gone; 10: silent from 0.67 to 1.33). Our repeat's rule (D90) was ours; **ruled back to the hardware's 2026-11-25 (D95)**, **built in Session 30** (D96): a run repeats the step the key came down on, silent on an empty one, as the PO-12. A repeat punched mid-step is recorded on that step too, so the replay repeats what was heard (D97 ⚠ the PO-12 may not). 9 and 10 stay repeats. `ENGINE.md` §17, "Built (Session 30)" |
+| ☑ | Mute nothing; punch a repeat over a bar with kick and hat | **Measured 2026-11-24 (R66): not all.** With 11 or 12 held only the kick repeats; the hats and the snare are gone ⚠ one pattern | D66 item 4 (all sounds in) is ours, not the hardware's. Kept until Kenny rules (§17's proposal) |
+| ☑ | Record an effect, then function + pattern, put a kick back | **Clear wipes the effects** (Kenny) | D66 item 7 holds |
+| ☑ | Record an effect on a step, then take that step's note off and put it back | **The effect stays** (Kenny): "it basically applies it there, regardless of what I later program into those spots" | The lane is beside the steps. Holds |
 | ☑ | Punch 4, 13, 14, 15 and 16 in turn | **Measured 2026-11-24 (R67):** 4 is one echo 175 ms on, nearly no feedback, heard past its step; 13 plays each note as a different sound ⚠; 14 builds and rings near 1 kHz; 15 and 16 wobble the pitch (6.5 Hz a little, 3.5 Hz a lot) ⚠. Whether 15 touches every sound is not answered | the effects not designed yet (D67 item 4) have a target each; 15 and 16 wait for take c **Read again 2026-11-25 (R75, R76):** 4's time is fixed (174.8 ms at 120 bpm too) and its line stands still in silence; 13's map is not settled; 15 is not understood; 16 reads as effect 1's slowed sounds with the rate wobbling |
 | ☑ | Punch 6 or 8 over two bars | **Measured 2026-11-24 (R65): it runs on across steps, and goes both ways,** a cycle every 8.5 to 9 steps between about 200 Hz and 2.5 to 2.9 kHz ⚠ sparse | §18's sweeps (one way, over sixteen steps) are wrong in kind: §18, "Proposed after Session 22" **Corrected 2026-11-25 (R73):** a cycle of 6.0 steps, a triangle in octaves, 6 from the top down and 8 from the bottom up, starting when the key comes down |
 | ☑ | Punch 1 over a pitched sound, and let go while a long one still sounds | **Measured 2026-11-25 (R72, take c): every sound at a quarter of its speed,** two octaves down and four times as long, no louder; nothing above 12 kHz. ⚠ **Not measured: the release** (take c's sounds had all ended by the bar the key went up: R77). To check: a long tom, fx + 1 held, let go mid-note: does the tom jump back up to its pitch, or finish slow? | §18's hold at 1 kHz was wrong in kind. **Designed 2026-11-25 (D98), built in Session 32 (ABI 14):** the voices in the effects retuned for 46 875 Hz and asked on a grid a quarter of it, a straight line between; a sounding note changes speed on the frame 1 comes on and goes off (D98 item 3, the ⚠ above); the track channels and VOICES carry it. Read beside the PO-12 on take c: 220 → 55 Hz, 3.85 times as long, +0.1 dB (`ENGINE.md` §18, "Built (Session 32)") |
 
 ## The sliders: what the hardware does, and what we do (D75)
 
-Seen by the owner on the PO-12, 2026-11-23: "the knob positions *seem* to affect everything
+Seen by Kenny on the PO-12, 2026-11-23: "the knob positions *seem* to affect everything
 regardless of which sound is selected", and they "seem to do pitch and release". R53's
 second video (9:40 to 12:04) shows steps keeping the knob positions they were entered
-with. ⚠ The owner's own unit did not behave as plainly as the video: "If I am just in write
+with. ⚠ Kenny's own unit did not behave as plainly as the video: "If I am just in write
 mode, and move the knobs up and down in between recording a spot in the sequence, it feels
 like it ignores me. However, when I re-select the sound, then move them, then e.g. switch
 off and on one of the sounds, it records it in the new way." Not understood; not followed.
@@ -220,7 +219,7 @@ D22 asks for every one to be listed and explained. So far:
 | A length under sixteen | same |
 | One pattern at first | D12: the tiny rhythm machine comes first. Sixteen sounds from the start (D30) |
 | Our own sixteen sounds, in the same roles on the same keys | D31: synthesised by us, close in character, never sampled. (Since D35 and D50: or a public-domain sample, per key. Still nothing from the hardware) |
-| Each sound has a switch, through the effects or not; the hardware's effects are on everything (R50) | D66 item 4: the owner's "per channel". All in at the start, so untouched it is the hardware |
+| Each sound has a switch, through the effects or not; the hardware's effects are on everything (R50) | D66 item 4: Kenny's "per channel". All in at the start, so untouched it is the hardware |
 | In Rack the effect being heard goes out as a gate, and the effects' bus goes out and comes back | D68: so a punch can drive, or be, a Rack effect |
 | ~~⚠ Not deliberate: with write off no step is lit; the hardware lights the chosen sound's steps in both modes~~ Closed in Session 20: with write off the chosen sound's steps are lit, as on the hardware | D37 guessed it; D71 had the fact; D72 item 3 and D82 decided it; built 2026-11-23 |
 | A firing and the playhead are two lights (white and the frame), where the hardware flashes one key for either | D36's two lights; D72 item 3 keeps them apart with write off too |
