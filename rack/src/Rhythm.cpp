@@ -301,7 +301,8 @@ struct Rhythm : Module {
         configOutput(FX_SEND_OUTPUT, "FX send (sixteen channels, one an effect: the sounds through the effects while that effect is heard)");
         configOutput(A_OUTPUT, "Slider A (sixteen channels, 0 to 10 V: what each sound was last hit with)");
         configOutput(B_OUTPUT, "Slider B (sixteen channels, 0 to 10 V: what each sound was last hit with)");
-        configInput(PLAY_INPUT, "Play (presses play: a gate plays while high and stops when it goes low; a trigger toggles)");        if (pi_abi_version() != PI_ABI_VERSION || pi_size() > sizeof mem) {
+        configInput(PLAY_INPUT, "Play (presses play: a gate plays while high and stops when it goes low; a trigger toggles)");
+        if (pi_abi_version() != PI_ABI_VERSION || pi_size() > sizeof mem) {
             WARN("Pocket Instruments: the core is not the one this plugin was built for");
             return;
         }
