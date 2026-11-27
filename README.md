@@ -174,7 +174,7 @@ second instrument needs it.
 | Folder | What it holds |
 |---|---|
 | `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies |
-| `rack/` | One VCV Rack plugin (slug `PocketInstruments`), a module an instrument: Rhythm, plus Probe, a test module |
+| `rack/` | One VCV Rack plugin (slug `pocket-instruments`), a module an instrument: Rhythm, plus Probe, a test module |
 | `web/` | One site, a page an instrument: `rhythm.html` |
 | `term/` | The terminal host, `pocket-instruments`: its own Rust crate on the engine's static library |
 | `harness/` | The same fixtures run through Rust, C++ and the `.wasm`, and compared |

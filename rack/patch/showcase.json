@@ -8,7 +8,7 @@
  "modules": [
   {
    "id": 1,
-   "plugin": "PocketInstruments",
+   "plugin": "pocket-instruments",
    "model": "Rhythm",
    "version": "2.0.0",
    "params": [],

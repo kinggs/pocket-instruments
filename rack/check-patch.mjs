@@ -36,7 +36,7 @@ const pi = new WebAssembly.Instance(new WebAssembly.Module(readFileSync(wasm)), 
 const base = pi.memory.grow(1) * 65536;
 const engine = pi.pi_init(base, pi.pi_size(), 48000, 1);
 
-const probes = patch.modules.filter((m) => m.plugin === "PocketInstruments" && m.model === "Probe");
+const probes = patch.modules.filter((m) => m.plugin === "pocket-instruments" && m.model === "Probe");
 let failed = probes.length === 0 ? 1 : 0, met = 0;
 if (!probes.length) console.log("P6 in Rack: no probe in this patch");
 for (const m of probes) {

@@ -96,8 +96,8 @@ The root `index.html` is the landing page. It would list each instrument's page.
 
 ## How Rack lays them out
 
-- **One plugin.** Slug `PocketInstruments`. The slug can change until the VCV Library has
-  it (O3).
+- **One plugin.** Slug `pocket-instruments` (D128; `PocketInstruments` before it). A slug
+  must never change once released (R84), so this is the last change.
 - **A module an instrument.** Today: Rhythm, 24 HP, thirteen jacks.
 - **Expanders are their own modules,** sitting to the right of their instrument. None is
   built. Proposed so far: a breakout with a jack a sound (D33, D70), small breakouts for

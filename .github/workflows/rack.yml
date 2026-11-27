@@ -160,6 +160,6 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: PocketInstruments-${{ matrix.platform }}
+          name: pocket-instruments-${{ matrix.platform }}
           path: rack/dist/*.vcvplugin
           if-no-files-found: error
