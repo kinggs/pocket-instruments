@@ -296,6 +296,8 @@ finds its offsets.
 
 ## The agent's command (designed 2026-11-27, D140; proposed, for Kenny to rule; not built)
 
+**Built in issue 163, on D140 as proposed: "Built (issue 163)", at the end of this section.**
+
 Issue 6: "a small command checks a beat file, renders it to sound, and makes a link or a Rack
 paste". Nothing below is built; the build is issue 163. Where this section and D140 differ,
 D140 is the record. The bank of beats it is proved on is `docs/BANK.md`.
@@ -421,3 +423,73 @@ node beat/beat.mjs pack amen.beat -o amen.beat
 It answers with the file, the WAV's path and the four grids, and how to open the file: on the
 page (Open), in Rack (the module's menu, Beat, Open) or in the terminal (`:e amen.beat`). Into
 the terminal's own saved beat only if the player says so, keeping the old one beside it.
+
+### Built (issue 163, 2026-11-27)
+
+`beat/beat.mjs`, tested by `beat/beat.test.mjs` (`node --test beat/` in `make test`, about 4
+seconds: each case runs the command as its own Node process). The Node harness's loading,
+engine, starter pack, effect 4's line, schedule and run moved, unchanged, from
+`harness/trace.test.mjs` into `harness/engine.mjs`, which both import; `target/report-rust.txt`
+and every `target/render-*.f32` are the same bytes before and after. The render is a fixture
+with a beat run the harness's way (`SOURCE` table and `PLAY 1` on frame 0, the snapshot's
+tempo, blocks of 128 frames), with `PLAY 0` added on the frame the chain would start over.
+
+- **The same bits:** the worked example through `render --trace --times 2` gives the first 80
+  steps of its fixture's trace, and the WAV's first frames are, bit for bit, the floats the
+  harness renders for the fixture, at 44 100, 48 000 and 96 000 Hz. Every bank file renders
+  the same WAV bytes from `web/`'s `.wasm` and from `target/`'s (`--built`).
+- **The WAV:** RIFF, `WAVE_FORMAT_IEEE_FLOAT`, one channel, 32 bits; the `fmt` chunk of 18
+  bytes (with `cbSize` 0, as a format other than PCM has it) and a `fact` chunk with the frame
+  count, so the data starts at byte 58. `ffprobe` reads the Amen's as `pcm_f32le`, 48 000 Hz,
+  mono, 386 206 frames (8.046 s), and `ffmpeg`'s decode is the data's bytes.
+- **Grids worked by hand first:** `beat/expected/amen-break.txt` and `beat/expected/stutter.txt`
+  were committed before the command could print them; it printed both at its first run.
+- **The bank** (48 kHz, the chain once): every file checks, packs to itself byte for byte (all
+  seven are canonical) and renders with a peak under 1.
+
+  | File | Chain | Tail | Peak |
+  |---|---|---|---|
+  | `amen-break.beat` | 7.059 s | 0.987 s | 0.819 (−1.7 dBFS) |
+  | `floor.beat` | 1.935 s | 0.592 s | 0.361 (−8.9 dBFS) |
+  | `boom-bap.beat` | 2.667 s | 0.500 s | 0.489 (−6.2 dBFS) |
+  | `two-step.beat` | 1.818 s | 0.500 s | 0.423 (−7.5 dBFS) |
+  | `half-time.beat` | 3.429 s | 0.635 s | 0.593 (−4.5 dBFS) |
+  | `stutter.beat` | 2.000 s | 0.826 s | 0.508 (−5.9 dBFS) |
+  | `backbeat-and-fill.beat` | 9.600 s | 0.783 s | 0.423 (−7.5 dBFS) |
+
+  The peaks are `BANK.md`'s. The tails are not: `BANK.md`'s scratch program measured 0.889 to
+  0.989 s. Here the tail ends on the frame that completes half a second in a row under 1e-4,
+  counted from `PLAY 0`; boom-bap's and two-step's last sound is under 1e-4 before the chain
+  ends, so their tail is exactly the half second. ⚠ How the scratch program counted is not
+  recorded; this file's words ("then `PLAY 0`, and the render runs on until half a second in a
+  row stays under −80 dBFS") are what was built.
+- **Planted, each built and run, each failing a named test of `beat/beat.test.mjs` (the
+  unplanted copy passing first):** the tail's quiet run halved ("every bank file exits 0 ...
+  the chain plus a tail"); every firing one column late in the grid ("the grids worked by hand
+  ..." and "without --trace the grid of every bar ..."); exit 0 on a refused file ("a refused
+  text exits 1 ..." and "refusals and misuse ..."); the data chunk's length four bytes short
+  ("every bank file ..." and "the worked example, through the command and through the harness
+  ..."); the starter pack not given ("the worked example ...").
+- **Not tested by any file:** effect 4's lent line, since no bank beat and not the worked
+  example uses effect 4; it is lent by the same `renderKit` the P7 renders use.
+- **Readings where this section is silent,** each ⚠ for Kenny, each built and tested:
+  1. A grid's rows are the keys with a step on, inside the pattern's length, in the bar's
+     pattern, and any key that fired in the bar; its columns are the pattern's length, in
+     fours (a pattern of length 6 prints `|....|..|`). A column that fired ten times or more
+     prints `+`. A bar is one chain entry; with `--times n` every bar of the n passes prints.
+  2. `check`'s line leaves out the quoted name when the beat has none, and says `patterns
+     none` when no pattern is written.
+  3. `check` prints every file's line, refusals too, on standard output; `render` and `pack`
+     print a refusal on standard error. With several files, one that cannot be read (2)
+     outranks one refused (1).
+  4. Under `--trace`, the WAV's line goes to standard error, so standard output is the trace
+     alone. The WAV is still written.
+  5. The default WAV is the repository's `target/beat/<name>.wav`, wherever the command is run
+     from; the line names it from the folder the command ran in. `-o` writes where it says and
+     makes no folder.
+  6. `--help` prints the usage and exits 0; a flag given twice, a second file to `render` or
+     `pack`, and a flag another verb takes are misuse (2). `--link` is taken by `pack` only.
+  7. A text longer than `PIB_TEXT_MAX` is still given to `pib_read` (in pages added for it),
+     so the reader decides: a beat with long comments reads.
+  8. The core saving other bytes than `pib_read` gave it, or `pib_write` refusing them, would
+     be a refusal (1). Neither has been seen.
