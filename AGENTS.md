@@ -16,7 +16,7 @@ Not affiliated with Teenage Engineering; their names are used only to describe.
 | Path | What it holds |
 |---|---|
 | `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies. Tests in `core/src/tests/`. The C contract is `core/include/pi_engine.h` |
-| `rack/` | One VCV Rack plugin, slug `PocketInstruments`. A module an instrument: `src/Rhythm.cpp`. `src/Probe.cpp` is a test module, not an instrument |
+| `rack/` | One VCV Rack plugin, slug `pocket-instruments`. A module an instrument: `src/Rhythm.cpp`. `src/Probe.cpp` is a test module, not an instrument |
 | `web/` | One site, a page an instrument: `rhythm.html`. `worklet.js` runs the engine; `pi_core.wasm` is committed so GitHub Pages can serve it |
 | `term/` | The terminal host (`docs/TERMINAL.md`): its own crate and Cargo workspace, one command, `pocket-instruments`, with a menu of instruments (D125), on the core's static library through the C ABI. Tests in `term/tests/` |
 | `harness/` | The same fixtures through the `.wasm` in Node and through C++ on the static library; the bench, the fuzz, the race harness |

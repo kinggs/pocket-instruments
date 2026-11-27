@@ -53,13 +53,13 @@ make --no-print-directory -C "$here" install RACK_USER_DIR="$user" >/dev/null
 printf '{"sampleRate": %s.0, "autoCheckUpdates": false}\n' "$rate" > "$user/settings.json"
 # The third argument is the Sounds menu's mask: 65535 puts every track on its sample (D50).
 # The fourth, if any, is a saved snapshot, as base64, the way Rack keeps it in a patch.
-probe() { printf '{"id":%s,"plugin":"PocketInstruments","model":"Probe","version":"2.0.0","params":[],"pos":[%s,0],"data":{"fixture":"%s","track":0,"samples":%s%s}}' "$1" "$(($1 * 4 + 6))" "$2" "${3:-0}" "${4:+,\"snapshot\":\"$4\"}"; }
+probe() { printf '{"id":%s,"plugin":"pocket-instruments","model":"Probe","version":"2.0.0","params":[],"pos":[%s,0],"data":{"fixture":"%s","track":0,"samples":%s%s}}' "$1" "$(($1 * 4 + 6))" "$2" "${3:-0}" "${4:+,\"snapshot\":\"$4\"}"; }
 # straight-sixteenths' version 1 snapshot, written by the ABI 4 core (fixtures/snapshots-v1.txt).
 old=$(sed -n 's/^straight-sixteenths //p' "$here/../fixtures/snapshots-v1.txt" | tr a-f A-F | basenc --base16 -d | base64 -w0)
 [ -n "$old" ] || { echo "selftest: no version 1 snapshot for straight-sixteenths"; exit 2; }
 cable() { printf '{"id":%s,"outputModuleId":1,"outputId":3,"inputModuleId":%s,"inputId":0,"color":"#ffffff"}' "$1" "$1"; }
 # The Rhythm modules: id, fixture (or none), and x. Their CLOCK is input 0, RETURN input 2; VOICES output 1.
-rhythm() { printf '{"id":%s,"plugin":"PocketInstruments","model":"Rhythm","version":"2.0.0","params":[],"pos":[%s,1],"data":{%s}}' "$1" "$(($1 * 24))" "$2"; }
+rhythm() { printf '{"id":%s,"plugin":"pocket-instruments","model":"Rhythm","version":"2.0.0","params":[],"pos":[%s,1],"data":{%s}}' "$1" "$(($1 * 24))" "$2"; }
 edge() { printf '{"id":%s,"outputModuleId":6,"outputId":3,"inputModuleId":%s,"inputId":0,"color":"#ffffff"}' "$1" "$2"; }
 loop() { printf '{"id":%s,"outputModuleId":%s,"outputId":1,"inputModuleId":%s,"inputId":2,"color":"#ffffff"}' "$1" "$2" "$2"; }
 # A module's own output into its own input: cable id, module, output, input. Outputs: FX SEND 4,

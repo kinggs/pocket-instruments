@@ -1,6 +1,6 @@
 {"version":"2.6.6","zoom":1.0,
  "modules":[
-  {"id":1,"plugin":"PocketInstruments","model":"Probe","version":"2.0.0","params":[],"pos":[0,0],"data":{"fixture":"straight-sixteenths","track":0}},
+  {"id":1,"plugin":"pocket-instruments","model":"Probe","version":"2.0.0","params":[],"pos":[0,0],"data":{"fixture":"straight-sixteenths","track":0}},
   {"id":2,"plugin":"Core","model":"AudioInterface2","version":"2.6.6","params":[],"pos":[4,0]}
  ],
  "cables":[

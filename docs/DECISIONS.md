@@ -2883,16 +2883,39 @@ they follow is Kenny's ⚠.
 4. **The Rack plugin's slug** is `PocketInstruments` today, and a slug cannot change once the
    VCV Library has it (D110 item 1). Whether it becomes `pocket-instruments` is O37.
 
+### D128 — The Rack plugin's slug is `pocket-instruments`
+**2026-11-27 · decided (Kenny, answering O37: "Yes, pocket-instruments") · carries out D127 item 3 in Rack · the plugin's name and brand stay "Pocket Instruments"; the modules' slugs (`Rhythm`, `Probe`) stay · nothing published**
+
+1. **The slug becomes `pocket-instruments`,** the name as it is written everywhere else (D127
+   item 3). VCV allows hyphens in a slug, and a slug must never change after release (R84), so
+   it changes now, before the Library has it (D110 item 1).
+2. **What it costs:** a patch saved with the old slug no longer finds the module; none is
+   published. The repository's own patches (`rack/patch/`) and the self-test change with it,
+   and a Rack that has the old build installed holds both until the old folder goes.
+3. The `.vcvplugin` files and CI's artifacts take the slug in their names
+   (`pocket-instruments-<version>-<platform>`), as Rack's `plugin.mk` names them.
+
+### D129 — Three ways to write the name, `pocket-instruments` first
+**2026-11-27 · decided (Kenny: "I feel like we could have 'three' ways to Write Pocket Instruments. 'Pocket Instruments', 'pocket-instruments' and PocketInstruments. Since some things will be finicky with dashes and spaces and things. With a 'preferred' one perhaps? I like when things are close to the github names in open source world.") · refines D127 item 3 · nothing renamed**
+
+| Form | Where | Today |
+|---|---|---|
+| `pocket-instruments` | **Preferred**, the repository's own name: any identifier that allows a hyphen | the repository, the command and its package (D125), the data and config folders, the Rack slug (D128), the window's app-id (`org.omarchy.pocket-instruments`) |
+| Pocket Instruments | Prose and display: what a person reads | titles, the README, the Rack plugin's name and brand; lower-case `pocket instruments` where Loom's words are lower-case (the intro page) |
+| `PocketInstruments` | The fall-back where neither a space nor a hyphen is allowed and case is | none today |
+
+A tool that turns the hyphen into its own form does so by its own rule (Rust's `pocket_instruments` for a crate named `pocket-instruments`); that is the preferred form read by that tool, not a fourth name. ⚠ A reverse-DNS ID (a Flatpak's, say), if one is ever needed, is chosen then.
+
 ## Open
 
 | ID | Question | Needs |
 |---|---|---|
 | O1 | ~~What do the front-face drawings of the design patents actually claim?~~ | Answered 2026-11-18: R4, R5, R6. Led to D20 |
 | O2 | Will the VCV Library build or accept a plugin with Rust in it? | Watch Phona (R16a, R16b: not submitted yet, 2026-11-19). **Asked 2026-11-19:** the owner emailed support@vcvrack.com with four questions (can the Library build a Rust part; would prebuilt static libraries do; is macOS 10.12 a problem; is self-hosting the route) and P3's results. ~~No reply yet~~ **Answered 2026-11-23: R46.** The Library will not build it; it takes binary packages from an identity-verified author, by email. 10.12 is fine. Left: whether to ask VCV for the submission details (the owner's) |
-| O3 | Is the name "Pocket Instruments" free, and is it too close to POCKET OPERATOR? | A register search; a decision on a family name. **The name chosen 2026-11-27: D127 item 3.** The register search stays open (issue 45) |
+| O3 | Is the name "Pocket Instruments" free, and is it too close to POCKET OPERATOR? | A register search; a decision on a family name. **The name chosen 2026-11-27: D127 item 3.** A first look found no such mark in WIPO's Global Brand Database (R85); the rest of the search stays open (issue 45) |
 | O4 | ~~How does swing behave on an external clock?~~ | Answered 2026-11-19: D24 |
 | O5 | ~~Saved state: one readable format shared by both hosts, or a versioned binary snapshot each host wraps?~~ | Answered 2026-11-19: D25 |
-| O6 | EU and UK registered designs and marks | A search of EUIPO and UKIPO |
+| O6 | EU and UK registered designs and marks | A search of EUIPO and UKIPO. **Marks, 2026-11-27:** POCKET OPERATOR is registered in the EU (018268254) and the UK (UK00918268254), classes 9 and 35 (R85). Designs not searched |
 | O7 | A lawyer's view of the mockup before public release | P9 |
 | O8 | ~~Answered by D23.~~ The hardware is played with two fingers: hold a function key, press a grid key or turn a knob. A mouse has one pointer. How are combinations made in Rack? Proposed: a click on a function key latches it (it glows) until the next grid press or a second click; computer keys held while hovering also work. The phone browser has real multi-touch and needs neither | Session 1, with D22 in mind; try it at P8 |
 | O11 | ~~On the hardware each grid key is its own sound in play mode (R26, R27). Sixteen tracks from the start, or four and twelve dead keys?~~ | Answered 2026-11-19: D30 |
@@ -2923,4 +2946,4 @@ they follow is Kenny's ⚠.
 | O34 | ~~Layout B (D114): 24 HP or 27 HP? By arithmetic from `design/make_panel.py`'s own clearances one row of ten fits at 24 HP, but the display narrows to about 88 mm and the weave cannot keep its 78 cells without a change in the core (§16). At 27 HP the display is about 103 mm, the weave keeps 78 cells and the groups stand about 7 mm apart. The tempo's column narrows to about 20 mm either way. ⚠ Nothing was run through `make_panel.py --check`~~ | **Answered 2026-11-26: D119 item 1.** Was: The owner. Recommended by the design session: 27 HP. `design/DESIGN.md`, "Layout B" |
 | O35 | ~~Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way~~ | **Answered 2026-11-26: D119 item 2.** Was: The owner |
 | O36 | ~~The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed?~~ | **Answered 2026-11-26: D119 item 3.** Was: The owner, one by one. ⚠ First check each against what Rack and a browser already do with it |
-| O37 | The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)? Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
+| O37 | ~~The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)?~~ **Answered 2026-11-27: D128, `pocket-instruments`.** Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
