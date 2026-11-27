@@ -263,6 +263,19 @@
   <div class="sounds" id="sounds"></div>
   <p id="status">Loading…</p>
 
+  <!-- The beat file (docs/BEAT.md; D134; issue 141). ⚠ A stand-in until Kenny rules a look: two
+       buttons, a question before a beat is replaced, a line of words. -->
+  <h2>Beat</h2>
+  <p>Save the beat as a <b>.beat</b> file, a text you can read, keep or send. Open one to play
+  it here: you are asked first, because it replaces the beat that is here.</p>
+  <div class="two"><button id="beatOpen">Open a beat</button><button id="beatSave">Save the beat</button></div>
+  <input type="file" id="beatFile" hidden>
+  <div id="beatAsk" hidden>
+    <p id="beatAskText"></p>
+    <div class="two"><button id="beatYes">Open it</button><button id="beatNo">Keep this one</button></div>
+  </div>
+  <p id="beatMsg" role="status"></p>
+
   <h2>Playing it</h2>
   <p>Hold <b>sound</b> and tap a key to choose a sound. <b>write</b> turns the keys into the
   chosen sound's sixteen steps. <b>play</b> starts and stops. Hold <b>bpm</b>: a key sets the
@@ -832,9 +845,108 @@ function draw() {
 addEventListener("resize", schedule);
 schedule();
 
+// --- The beat file (docs/BEAT.md; D134): text to snapshot bytes and back by the beat crate's
+// .wasm (web/pi_beat.wasm; beat/include/pi_beat.h), on this main thread, never in the worklet.
+// The page reads no text itself: one pair of calls, beatRead and beatWrite, and the bytes go to
+// and come from the engine by the page's ordinary load and save (§8). ---
+const PIB = { TEXT_MAX: 98304, MSG_MAX: 192, SNAPSHOT_MAX: 22100 };
+let beatLib = null;                    // the module, loaded on the first open or save
+async function beatModule() {
+  if (!beatLib) beatLib = (async () => {
+    const { instance } = await WebAssembly.instantiate(await (await fetch("pi_beat.wasm")).arrayBuffer(), {});
+    const pib = instance.exports, base = pib.memory.grow(2) * 65536; // pi_beat.h: two pages hold every buffer
+    return { pib, text: base, snap: base + PIB.TEXT_MAX, msg: base + PIB.TEXT_MAX + PIB.SNAPSHOT_MAX, own: base + PIB.TEXT_MAX + PIB.SNAPSHOT_MAX + PIB.MSG_MAX };
+  })();
+  return beatLib;
+}
+// Text (bytes) to a snapshot: { snap, own } (own: bit k − 1, key k's own sample), or { code, msg }.
+async function beatRead(text) {
+  const b = await beatModule();
+  if (text.length > PIB.TEXT_MAX) return { code: -1, msg: `the file is ${text.length} bytes; a beat is at most ${PIB.TEXT_MAX}` };
+  new Uint8Array(b.pib.memory.buffer, b.text, text.length).set(text);
+  const n = b.pib.pib_read(b.text, text.length, b.snap, PIB.SNAPSHOT_MAX, b.own, b.msg, PIB.MSG_MAX);
+  const mem = new Uint8Array(b.pib.memory.buffer);
+  if (n < 0) return { code: n, msg: new TextDecoder().decode(mem.subarray(b.msg, mem.indexOf(0, b.msg))) };
+  return { snap: mem.slice(b.snap, b.snap + n), own: new DataView(b.pib.memory.buffer).getUint32(b.own, true) };
+}
+// A snapshot (version 5, at the length pi_save returned) to text: bytes, or a code below zero.
+async function beatWrite(snap, own) {
+  const b = await beatModule();
+  new Uint8Array(b.pib.memory.buffer, b.snap, snap.length).set(snap);
+  const n = b.pib.pib_write(b.snap, snap.length, own >>> 0, b.text, PIB.TEXT_MAX);
+  return n < 0 ? n : new Uint8Array(b.pib.memory.buffer).slice(b.text, b.text + n);
+}
+const beatSay = (s) => { $("beatMsg").textContent = s; };
+// D34: a key whose writer played their own sample plays the starter pack's here (BEAT.md's words).
+const ownWords = (own) => [...Array(16).keys()].filter((k) => (own >> k) & 1)
+  .map((k) => `Key ${k + 1} used its writer's own sample; playing the starter pack's.`).join(" ");
+// The beat's name (snapshot bytes 112 to 143, UTF-8, zero-padded), for a file's name and a line.
+const beatName = (snap) => { const n = snap.subarray(112, 144); const end = n.indexOf(0); return new TextDecoder().decode(n.subarray(0, end < 0 ? 32 : end)).trim(); };
+// A snapshot holding everything sent so far (§8), asked for now.
+function freshSnapshot() {
+  return new Promise((res) => {
+    const want = sent;
+    listeners.push(function f(d) { if (d.snapshot && d.taken >= want) { listeners.splice(listeners.indexOf(f), 1); res(new Uint8Array(d.snapshot)); } });
+    post({ save: true }, 0);
+  });
+}
+// Save: the latest snapshot as text, given as a download named for the beat. This page loads no
+// sample of the player's own, so `own` is 0 (⚠ BEAT.md: `own` marks keys playing the writer's own).
+$("beatSave").addEventListener("click", async () => {
+  wake();
+  if (!node) return beatSay("The engine has not started yet.");
+  const snap = await freshSnapshot();
+  const text = await beatWrite(snap, 0);
+  if (typeof text === "number") return beatSay(`The beat could not be written as text (${text}).`);
+  const file = `${(beatName(snap).replace(/[^A-Za-z0-9 _-]/g, "").trim().replace(/\s+/g, "-") || "rhythm").toLowerCase()}.beat`;
+  rhythm.onSave?.(file, text);
+  if (!auto) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    a.download = file;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }
+  beatSay(`Saved ${file}.`);
+});
+// Open: the file is read first; a refused one changes nothing and says why, in the crate's
+// words. A good one is not loaded until the player says so, since it replaces the beat here.
+let pendingBeat = null;
+$("beatOpen").addEventListener("click", () => { wake(); $("beatFile").value = ""; $("beatFile").click(); });
+$("beatFile").addEventListener("change", async () => {
+  const f = $("beatFile").files[0];
+  if (!f) return;
+  const got = await beatRead(new Uint8Array(await f.arrayBuffer()));
+  pendingBeat = null;
+  $("beatAsk").hidden = true;
+  if (got.code !== undefined) return beatSay(`${f.name} was not opened: ${got.msg}`);
+  pendingBeat = { ...got, file: f.name };
+  const name = beatName(got.snap);
+  $("beatAskText").textContent = `Open ${name ? `"${name}" from ` : ""}${f.name}? It replaces the beat here; save this one first to keep it.`;
+  $("beatAsk").hidden = false;
+  beatSay("");
+});
+$("beatNo").addEventListener("click", () => { pendingBeat = null; $("beatAsk").hidden = true; beatSay("Kept the beat that is here."); });
+$("beatYes").addEventListener("click", () => {
+  const b = pendingBeat;
+  if (!b) return;
+  pendingBeat = null;
+  $("beatAsk").hidden = true;
+  wake();
+  listeners.push(function f(d) {
+    if (!d.snapshot || d.result === null || d.result === undefined) return;
+    listeners.splice(listeners.indexOf(f), 1);
+    const name = beatName(b.snap);
+    beatSay(d.result === 0 ? [`Opened ${name || b.file}.`, ownWords(b.own)].filter(Boolean).join(" ") : `${b.file} was not opened: the engine refused it (${d.result}).`);
+  });
+  post({ load: b.snap.slice().buffer }, 1);
+});
+
 // What the checks reach (web/play.mjs). The page itself uses none of it.
 const rhythm = {
-  ctx, keys, fkeys, ticks, sliders, sounds, latched, latest, listeners, slide, send, drawn: null, afterDraw: null, onPost: null,
+  ctx, keys, fkeys, ticks, sliders, sounds, latched, latest, listeners, slide, send, drawn: null, afterDraw: null, onPost: null, onSave: null, // onSave(file, text): what a save gives
   cloth, paints: 0,                    // the weave's canvas, and how often it has been painted
   reduced: () => still.matches,        // a check may ask for reduced motion without the browser's setting
   get sent() { return sent; },
