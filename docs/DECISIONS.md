@@ -3437,8 +3437,8 @@ Not chosen:
    Operations (O29), from a Teenage Engineering unit (D137), or from a pattern book or product.
    Kenny chooses by ear which stay.
 2. **The Amen Break is written out from its commonly described notation,** on our own voices:
-   Elephant Drums' tab (R98), read against Wikipedia (R97) and MusicRadar (R99), which agree on
-   every step. Bars one and two the same (patterns 1 and 2); bar three's backbeat moved from step
+   Elephant Drums' tab (R98), read against Wikipedia (R97) and MusicRadar (R99), whose words
+   (no grid) describe the same structure and contradict no step of it. Bars one and two the same (patterns 1 and 2); bar three's backbeat moved from step
    13 to 15; bar four's first beat empty, its kick on 3, 4 and 11, an early crash on 11. **The
    format has no level for a step,** so a ghost snare is a short one (slider B 0.2 kept on the
    step), as the reference patch's one bar already has it; ⚠ which snares are ghosts is our

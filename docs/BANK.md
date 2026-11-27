@@ -107,7 +107,8 @@ and an early crash cymbal" (R97).
 of the four bars (R98), read against Wikipedia's description (R97) and MusicRadar's (R99: kick
 in "groups of two 16th-notes", "eighth-notes on the ride", a "2 and 4 backbeat along with
 filling in some 16th-note ghost notes"; in bars three and four "the final backbeat of the bar
-played an eighth-note later"). The three agree on every step below. No recording of the record
+played an eighth-note later"). Only the tab gives steps; the two descriptions give
+no grid, and nothing in them contradicts a step of it. No recording of the record
 and no sample of it was played, opened or consulted, and none is in the repository.
 
 The file's rows (`beats/amen-break.beat`; tempo 136; chain `1 2 3 4`):
