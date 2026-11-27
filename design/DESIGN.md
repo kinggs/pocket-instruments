@@ -167,6 +167,9 @@ with fx and key 6 down; Rack's effect 4 beside ours, effect 2 in its place),
 `rack-lights-sound-held-100.png` and `-200.png` (the sounds in use, samples on 3, 4 and 9,
 RETURN taking 9 and 12).
 
+**Accepted (D122 item 1, 2026-11-26).** Kenny, after seeing the page and Rack built: "Happy
+with the looks." On those two hosts these lights are no longer stand-ins.
+
 **The source mark (D112 item 4).** Shown only while sound or fx is held or latched.
 
 | | No mark | A short dash | A ring | A solid disc |
@@ -645,7 +648,9 @@ under 16 px.
   not looked at. The page reads physical keys (`CODES`), so it does not care.
 - In a terminal without the kitty keyboard protocol Shift+`7` arrives as a character
   (`&` on a US layout), not as Shift and `7`.
-- The step a slider moves for one press of `t`, `g`, `y` or `h` is not drawn.
+- ~~The step a slider moves for one press of `t`, `g`, `y` or `h` is not drawn.~~ The steps
+  are D122 item 2's defaults, to be tuned in use: a slider 4096, the tempo 1 bpm, the swing
+  1, the volume 1.
 
 ## Loom in a terminal (D115, D117; proposed 2026-11-26; no terminal host exists)
 
