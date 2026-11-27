@@ -3361,6 +3361,172 @@ Not chosen:
   RESET 26.25, PLAY 39.0) is what Kenny chose, moved up as item 3 says. A relayout of the
   whole panel: for the later design session.
 
+### D140 — The agent's command: `node beat/beat.mjs`, checking, rendering and packing a beat file over the committed `.wasm`; the beat file itself is what Rack takes
+**2026-11-27 · proposed, for Kenny to rule (O40) · designs issue 6 (D110 item 7, D131 item 2, D134 item 6) · `docs/BEAT.md`, "The agent's command" · no file of the engine changes · nothing built; the build is issue 163**
+
+Issue 6: "A small command checks a beat file, renders it to sound, and makes a link or a Rack
+paste." Its acceptance example is Kenny's: "Please create a 4-pattern Amen Break on my pocket
+instrument rhythm". Weighed by what an agent given only the repository must do before the
+command runs, and by "nothing generic until a second instrument needs it":
+
+1. **One Node script, `beat/beat.mjs`, over the two committed `.wasm` files** (`web/pi_core.wasm`,
+   `web/pi_beat.wasm`). It needs Node and nothing else: no Rust toolchain, no C++ compiler, no
+   ALSA headers, no build. Its bits are the native ones, since `make test` holds the `.wasm` to
+   the static library's report (P2) and refuses a stale committed copy; `--built` takes
+   `target/`'s instead. It reuses the Node harness (`harness/beat.mjs` for the beat calls;
+   `harness/trace.test.mjs`'s starter pack, effect 4's line and render loop, moved into one
+   module both import, no byte of any report moving), so the render is not written twice. It
+   sits beside the reader it drives; `beat/` stays a `no_std` crate and Cargo ignores the file.
+2. **Three verbs, the exits 0 (good), 1 (a file refused) and 2 (misuse or a file that cannot
+   be read or written):** `check <file>...` reads each with `pib_read`, loads it into a fresh
+   engine and saves it again, and prints one line a file: a summary (name, tempo, chain, bars,
+   seconds, snapshot size), or the crate's own message, `line L, column C: ...`. `render
+   <file>` writes a WAV and prints every bar of one pass as a sixteen-step grid per sound, so a
+   beat can be read without ears (`--trace` prints the fixtures' trace lines instead). `pack
+   <file>` writes the canonical text. Invocations, output and the CI checks are `BEAT.md`'s.
+3. **The sound file: WAV, 32-bit IEEE float, mono, 48 000 Hz** (`--rate` 44 100 or 96 000, the
+   harness's three). The engine renders 32-bit floats and a float WAV holds them bit for bit:
+   the data is a harness `.f32`'s bytes, no dither to choose, and players and editors open it.
+   **The length:** the chain once from its first step to where it would start over (each
+   entry's pattern length times a step), or `--times <n>` passes; **the tail:** `PLAY 0`, then
+   on until half a second stays under −80 dBFS, at most 4 s. The starter pack is given to every
+   key and effect 4 is lent its line, as `harness --render` does.
+4. **What is packed: the canonical text. For the link** (issue 7) that text's UTF-8 bytes,
+   after a check passes; the link's form is issue 7's, and `--link` exits 2 until it is built.
+   **For Rack: the `.beat` file itself,** opened from the Rhythm module's beat menu (issue
+   142), as the page opens it (issue 141) and the terminal (`:e`, issue 143). One file for three
+   hosts, and the player's own patch is kept: the beat goes into the module they chose.
+5. **In CI, in `make test`:** `check` on every `.beat` in `fixtures/` and `beats/`; a refused text
+   held to the crate's message; `render --trace` on `fixtures/beat-four-and-a-fill.beat` against
+   that fixture's hand-worked trace; `render` on every bank file (peak under 1, the chain's
+   length plus a tail, the same WAV from the committed and the built `.wasm`); `pack` giving
+   every bank file back unchanged.
+6. **`AGENTS.md`'s "Playing the instrument"** is replaced, when the command is built, by the
+   draft in `BEAT.md`: the format, the keys, no velocity but a shorter hit, the bank, the three
+   commands, read the grid before calling it done, the D137 and O29 rule, and never writing over
+   a player's saved beat unasked. **The acceptance example** is `BEAT.md`'s: write `amen.beat`,
+   `check`, `render` (read the four grids against the structure meant, fix, again), `pack`,
+   and answer with the file, the WAV and how to open it on each host.
+
+Not chosen:
+
+- **A subcommand of the terminal binary** (`pocket-instruments beat check ...`): one binary
+  already links the core and, with issue 143, the beat crate. But to run it an agent must build
+  a player's program with ALSA's headers and `cpal`, for a tool that plays nothing aloud, and
+  the binary is not packaged (O3). It can gain the verbs later by calling the same crate.
+- **A Rust binary in `beat/` or a new crate:** `beat/` must stay a `no_std` library; a second
+  crate with `std` needs a Rust build before the first check, and would write a render loop the
+  harnesses already have.
+- **A `make` target over the C++ harness** (`make beat F=...`): needs a C++ compiler and a build;
+  the harness is test code whose failures are `die()` messages, and `make` blurs exit codes.
+- **A `.vcv` patch from a template as the Rack form:** opening a `.vcv` replaces the player's
+  whole patch, a paste of a module (Rack's clipboard JSON) is a form we would have to track
+  against Rhythm's data and Rack's versions ⚠ (not read), and it would be a second carrier of
+  the beat beside the file the page and the terminal already take.
+- **16-bit WAV or FLAC:** a rounding step and a choice of dither between the engine's floats and
+  the file, for no gain to an agent or a person who opens it.
+
+### D141 — The bank: seven beats of our own in `beats/`, the Amen Break in four patterns first; one set of files every host reads at run time; a load keeps the beat it replaced once
+**2026-11-27 · proposed, for Kenny to rule (O40) · designs D131 item 3 and answers issue 134's questions · `docs/BANK.md` · the seven files committed in `beats/` and proved through the crate and the core; nobody has heard them · R97 to R100 · no file of the engine changes · the hosts' build is issue 164**
+
+1. **Seven beats, every one written for this bank** (`docs/BANK.md` has each one's grid): Amen
+   Break (136 bpm, four patterns, chain `1 2 3 4`), Floor (124, a four on the floor with hats at
+   60%), Boom Bap (90, swung), Two Step (132, heavy swing, a skipping kick), Half Time (140, two
+   patterns, the bass tone following the kick), Stutter (120, the effects lane: high-pass then
+   repeat 8, the hat dry), Backbeat and Fill (100, chain `1 1 1 2`). None is taken from Pocket
+   Operations (O29), from a Teenage Engineering unit (D137), or from a pattern book or product.
+   Kenny chooses by ear which stay.
+2. **The Amen Break is written out from its commonly described notation,** on our own voices:
+   Elephant Drums' tab (R98), read against Wikipedia (R97) and MusicRadar (R99), which agree on
+   every step. Bars one and two the same (patterns 1 and 2); bar three's backbeat moved from step
+   13 to 15; bar four's first beat empty, its kick on 3, 4 and 11, an early crash on 11. **The
+   format has no level for a step,** so a ghost snare is a short one (slider B 0.2 kept on the
+   step), as the reference patch's one bar already has it; ⚠ which snares are ghosts is our
+   reading (R98 marks none; R99 says "some"). The ride is the closed hat, the crash the cymbal;
+   kick and snare on their samples. No recording of the record was played, opened or consulted.
+   **What is relied on, said and not ruled:** a rhythm written out on our own sounds, credited
+   (in the file, `CREDITS.md`, R97 to R100); R97 records who owned the copyright of the track
+   "including the Amen break". No legal conclusion; Kenny rules (D131 item 7). ⚠ The Amen's
+   credit carries no licence word, unlike the other six (CC0), until he does.
+3. **Named and credited in the file:** `name` (title case, 32 bytes, unique in the bank; the
+   menu shows it) and `credit` (128 bytes: who, the year, and what it is from), carried in every
+   snapshot (D134 item 4). A beat after another's work also gets a row in `REFERENCES.md` and
+   `CREDITS.md`.
+4. **The bank lives in `beats/`,** the folder the beat build already reads in `make test` (issue
+   140: every `.beat` there through `pib_read`, `pi_load`, `pi_save` and `pib_write` in three
+   hosts), with `beats/bank.txt` giving the menu's order, one file a line, **the first line the
+   default for a new player** (D142). A test holds the list to the folder.
+5. **One set of files, one reader, at run time, on every host:** the page fetches `beats/` beside
+   it (`pages.yml` adds the folder to what it publishes); Rack copies it into the plugin as
+   `res/beats/` at build, as it does `res/samples/`; the terminal compiles it in, as it does the
+   starter pack. Each turns the chosen file into a snapshot with `pib_read` off the audio thread
+   and loads it by its ordinary load (§8). No host keeps a converted copy, so none can drift.
+6. **Offered from a menu on each host:** the page's Beats list beside Open and Save (issue 141),
+   Rack's Beat submenu (issue 142), the terminal's `:bank` and `:bank <n>` ⚠ (words for Kenny).
+   **A load replaces the whole beat,** only when chosen, and **the beat it replaced is kept
+   once**: the page in a second storage key, offered as Your last beat; Rack through its undo
+   history ⚠ (the build tries it); the terminal in `rhythm.previous.beat`, opened with `:e`.
+
+Not chosen:
+
+- **The bank inside the core,** as snapshots in a table: the core holds no text and no name
+  list, and a snapshot table compiled into every host's core is a second copy of each beat.
+- **Snapshots generated at build time and committed** (`beats/*.snap`): a second form of each
+  beat that a forgotten regeneration lets fall behind its text; the text read at run time costs
+  microseconds.
+- **The bank in `fixtures/designed/`** until ruled: that folder is for traces worked by hand
+  before a core can run them; these files run today and `beats/` is where issue 140's tests
+  already look.
+- **Ghost notes by probability** (a snare at 50%): that makes them sometimes absent, not
+  quieter. **Ghost notes on another sound** (the synth snare, key 5): a different drum, and the
+  bar would not read as one snare part.
+- **More beats** (eight): seven already cover the feels issue 134 lists; Kenny's ear decides
+  whether any goes or comes.
+
+### D142 — A new player opens on the Amen Break: each host loads the bank's first beat when it has none of the player's; `pi_init` stays empty, so no test or trace moves
+**2026-11-27 · proposed, for Kenny to rule (O40) · answers Kenny's "want to have a default amen break pattern linked for any new user" (issue 134, 2026-11-27) · `docs/BANK.md`, "The beat a new player opens on" · no core change, no ABI, no `ENGINE.md` change · nothing built; the builds are issue 164 (the hosts) and issue 165 (the reference patch)**
+
+1. **What new is, on each host:** the page with no beat in its storage (or storage that cannot
+   be read); a Rhythm module added from Rack's browser, whose data never carried a snapshot; the
+   terminal with no file at its beat path (`rhythm.beat`, or `--beat`). **A player's saved work
+   is never replaced:** a stored beat, a patch's, a duplicate's, a preset's (the user's own
+   default preset included) and a beat file of any version all load as today, and so does a
+   refused one, as today.
+2. **The default is the first line of `beats/bank.txt`,** `amen-break.beat`, read by `pib_read`
+   on that host when it is needed, exactly as a menu pick. Not a snapshot built at compile time:
+   one file and one reader cannot drift; each host's tests hold the snapshot it opened on to
+   `pib_read` of the file, byte for byte. Once opened it is the player's beat and is saved as
+   theirs.
+3. **Rack's way in:** the constructor queues the default as its pending load and a saved
+   snapshot in `dataFromJson` is queued after it; loads are taken in order and the last wins,
+   so whatever order Rack calls them, a module with a saved beat plays it and only one without
+   plays the Amen. ⚠ From the SDK's headers, not tried.
+4. **An empty instrument in one gesture:** Empty in the page's Beats list, Rack's Initialize
+   (unchanged: it gives an empty beat today), `:new` in the terminal ⚠ (the word for Kenny).
+   ⚠ Rack's convention is that Initialize gives what a fresh module has; this keeps it empty,
+   because a player reaching for it wants a clear instrument, and the Amen is one menu pick away.
+5. **Every test and fixture starts empty; no trace, view or render moves.** `pi_init` is not
+   changed. The default is loaded only on a host's start-up path for a person: not in the core's
+   tests, the harnesses, the race, the bench or the fuzz (which call `pi_init`); not under the
+   page's `?auto` runs; not in Rack's self-test (a fresh engine, as Initialize); not in the
+   terminal's tests (no `main.rs` start-up, or `--beat` at a missing file in a scratch folder).
+6. **The reference patch's DRUMS module holds the bank's Amen,** read from `beats/amen-break.beat`
+   by the patch generator with the beat crate's `.wasm`, plus the patch's own throw (effect 4 on
+   step 13 of patterns 1 and 2) ⚠ (two throws in four bars, for Kenny's ear). So patch and bank
+   cannot drift.
+
+Not chosen:
+
+- **`pi_init` building the Amen,** or a new call that does: every fixture, trace, view and
+  snapshot starts from `pi_init`'s empty engine, so all would move, and the core would carry a
+  beat that is data, not engine.
+- **A first-run prompt** ("Start with the Amen Break, or empty?"): a question before the first
+  sound; Kenny asked for the Amen to be there.
+- **Initialize giving the Amen** (Rack's usual meaning): then there is no one-gesture empty
+  module in Rack, and Initialize changes meaning for every existing user.
+- **Loading the default when a saved beat is refused:** a refused beat may be a newer version
+  from a newer build; replacing it would lose it at the next save.
+
 ## Open
 
 | ID | Question | Needs |
@@ -3404,3 +3570,4 @@ Not chosen:
 | O37 | ~~The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)?~~ **Answered 2026-11-27: D128, `pocket-instruments`.** Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
 | O38 | ~~Patterns as designed (D133 to D135)? Above all: the sixteen in the engine and every host's room at 32 KiB (D133 item 1); the beat file read and written by one crate beside the core (D134 item 2); snapshot version 5 variable in length (D133 item 4); the view at 88 bytes (D133 item 5); the length each pattern's (D133 item 3); Shift keeping a latched pattern and latching write (D135); write mode put back after a copy (D133 item 6); the terminal's saved beat as text (D134 item 5). And the two lights R90 did not show: during a chain, and an empty chosen pattern~~ | **Answered 2026-11-27: D136** (all eight as recommended; the two lights at their defaults, ⚠). Was: Kenny. Recommended: accept as designed; the two lights at their defaults until Kenny's PO-12 shows them |
 | O39 | What D138 left open for Kenny (its items 4, 7 and 8; the jack, its place and the button were ruled the same day): PLAY in's one rule, a gate plays while high and a trigger under 10 ms toggles, with no menu; a finger on play wins; unpatching is not a stop; a cable patched while high starts a stopped module; and the warning about a clock that saves its running state. The build follows them until he rules | Kenny, in Rack once built. Recommended: accept as designed |
+| O40 | What D140 to D142 propose for the agent's command, the bank and the default, most consequential first: (1) a new player on every host opens on the Amen Break, and what is relied on to ship it (a rhythm written out from public notation on our own sounds, credited, no recording; R97 notes who owned the track's copyright; no legal conclusion), with no licence word in its credit until ruled; (2) the command is `node beat/beat.mjs` over the committed `.wasm`, not a terminal subcommand; (3) what Rack takes is the `.beat` file through its beat menu, not a `.vcv`; (4) the bank lives in `beats/`, ordered by `beats/bank.txt` whose first line is the default, carried by each host and read by `pib_read` at run time; (5) which of the seven beats stay, by ear; (6) the empty instrument: Rack's Initialize stays empty, Empty on the page, `:new` in the terminal; (7) a load keeps the replaced beat once (page storage, Rack's undo, `rhythm.previous.beat`), and the terminal's words `:bank`, `:bank <n>`; (8) the Amen's readings: ghosts as short snares, the ride on the closed hat, the crash on the cymbal, tempo 136, and two effect 4 throws in the reference patch's four bars | Kenny, by ear for (5) and (8). Recommended: accept as proposed. The builds (issues 163, 164 and 165) follow the proposals until he rules |
