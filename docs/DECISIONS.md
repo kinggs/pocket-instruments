@@ -3220,6 +3220,126 @@ from it. No legal conclusion is drawn here.
 
 Not chosen: waiting for their answer before writing the patterns rule down.
 
+### D138 — PLAY in and PLAY out: one press starts and stops several instruments in Rack, in step; the module presses play, the core is untouched
+**2026-11-27 · designed (issue 147's design pass); Kenny's steer and the facts below are not proposals, the rest is proposed, for Kenny to rule (O39) · `ENGINE.md` §19, "designed 2026-11-27"; §13 points to it · no core change, no ABI · nothing built**
+
+How we got here: building the reference patch (pull request 145) with a drums module and a
+melodic one, Kenny found that each has its own play key: "this tells me something is
+missing! We need a 'run' interface so that we can start and stop the sequencers together
+from a common clock." And: "It looks like we will be able to fit it in under the reset plug
+in our rack design?" Asked through the coordinator while this was designed: "I really do
+think we need the 'run' / 'play' input. Probably 'play' since that is what we have now. But
+then we need some button interface to start them at the same time as well." The reference
+patch clocks both modules from one Fundamental LFO.
+
+**The facts: what two modules do today.** Worked through two engines frame by frame on the
+core's own library, as two Rack modules run them (a scratch C program, 48 kHz, an edge every
+6 000 frames, or 24 000 on one edge a beat; not committed):
+
+- **On one external clock, play pressed on each at different moments:** each starts at the
+  next edge after its own press. Presses with an edge between them leave the two a step
+  apart (one edge a step: A's step 1 on frame 6 000, B's on 12 000), or a beat apart (one
+  edge a beat), for good.
+- **A RESET to both, once both play, puts them in step** (step 1 of each on the next edge,
+  on both sources; on the table, on the reset's frame).
+- **A clock that stops pauses both** (nothing fires; each still says playing) and they go on
+  together when it starts, from where they were, not from step 1.
+- **On their own table clocks** each starts on the frame of its press; a shared RESET aligns
+  them, and at one tempo they do not drift.
+
+So with only Core and Fundamental, two modules can be put in step today (press both, then a
+shared RESET), and paused together, but only by stopping the clock, and a Fundamental LFO
+cannot stop. **Nothing starts or stops both at once**: each play key must be pressed, and a
+press that lands on the wrong side of an edge leaves them a step apart until a RESET. For a
+first-time user of the reference patch that is not enough. A jack is needed, as Kenny says.
+
+**The facts: what Rack and its clocks send** (R92 to R96). VCV's manual has no rule for a
+run signal; it has triggers (10 V, 1 ms) and gates (10 V while on), and one frame of delay
+a cable. Fundamental 2.6.4's SEQ3 takes RUN as a trigger that toggles and sends RUN out as a
+1 ms trigger on each change (R93); so does Impromptu's Clocked, whose menu can make its RUN
+in a gate instead (R95). Rack's MIDI to CV sends start, stop and continue as three triggers
+(R96). Fundamental has one manual button, Push: a GATE out (latched by HOLD) and a TRIG out
+(R94). No Fundamental module but SEQ3 has a run, and the issue's guess (none has a run
+output) was wrong: SEQ3 has one, a trigger.
+
+1. **Two jacks, PLAY in and PLAY out,** one channel each. Named PLAY because the key is
+   play (Kenny: "Probably 'play' since that is what we have now"); PLAY on the panel, in
+   capitals (Loom), `PLAY_INPUT` and `PLAY_OUTPUT` in code, "Play" in the tooltips (Rack
+   adds input and output, R35). **PLAY out lets one instrument lead the others with no
+   other module:** its play key is the one press that starts them all, and a patch of Rack's
+   own modules needs nothing more.
+2. **PLAY out is a gate: 10 V while playing.** A follower patched late, or opened from a
+   patch, can read the state, and two modules cross-patched cannot set each other off: a
+   trigger on each change, as SEQ3's RUN out sends, would echo back as a second toggle.
+3. **PLAY in: a gate plays while high and stops when low; a trigger (high for under
+   10 ms) toggles.** A rise starts a stopped module; a fall after a gate stops a playing
+   one; a fall after a trigger stops it only if it was playing at the rise. So our own PLAY
+   out, Push's GATE, SEQ3's and Clocked's RUN out and MIDI start and stop all work as they
+   are, with no setting. The 10 ms is ours ⚠ (ten of Rack's triggers).
+4. **The module presses play: `KEY_DOWN` then `KEY_UP`, on one frame,** after `RESET` and
+   before `CLOCK` and the scanned keys. **The core is not told anything new.** D51: the core
+   decides what a key means, and §13's row for play already says what a press does on each
+   clock and to a chain: on the table `RESET` then `PLAY 1`, step 1 at once; on edges and on
+   one edge a beat `PLAY 1`, step 1 at the next edge; playing, `PLAY 0`; a chain restarts
+   from its first pattern (§21, R90, D133). Before `CLOCK`, so that a follower pressed a
+   frame after its leader, on the frame an edge reaches both, still starts on that edge.
+   Why no core change: the rule is the play key's own, so it cannot drift from it on any
+   clock; and no ABI, fixture or report moves while the patterns build (issue 139) is in
+   the core.
+5. **In step, as worked:** on one shared CLOCK, the follower starts on the leader's edge with
+   the edge 0, 1 or 2 frames after the leader's press, on one edge a step and on one edge a
+   beat, and both stop before the same edge. On their own table clocks a follower plays one
+   frame behind (21 µs at 48 kHz) and does not drift; Push's GATE into every PLAY in starts
+   them on one frame on any clock. ⚠ A chain of followers is a frame later each link; fan
+   one PLAY out to every follower.
+6. **A finger wins:** while the play key is held, PLAY in presses nothing. **Unpatching
+   PLAY in presses nothing;** patching a high cable starts a stopped module. **Nothing is
+   saved:** every module opens stopped, as it does today. ⚠ All three are ours.
+7. **On the panel:** PLAY in under RESET at (9.5, 39.0) mm, as Kenny suggested; RESET moves
+   up 1.25 mm to (9.5, 26.25) so CLOCK, RESET and PLAY share the column evenly; PLAY out
+   under AUDIO at (126.58, 36.65) on an ecru plate as wide as AUDIO's. Inputs left of the
+   display, outputs right, as D114. `make_panel.py --check` passes: 1.20 mm between CLOCK
+   and RESET and between RESET and PLAY in, 1.15 mm from PLAY in to key 1, 1.65 mm from
+   AUDIO's plate to PLAY out's and from it to the function keys, 0.50 mm from the display's
+   frame. Pictures: `design/play-jack-options.png`. **Port numbers:** PLAY in is input 6
+   and PLAY out output 7, each at the end of its enum; nothing moves, so an old patch keeps
+   every cable.
+8. **The other hosts get nothing.** The page and the terminal play one instrument each and
+   have no cables. ⚠ Not asked.
+
+**What the reference patch does with it:** the LFO's square into both CLOCKs, as now; the
+drums module's PLAY out into the melodic one's PLAY in, and the melodic one's PLAY out into
+the drums one's PLAY in, so either play key starts and stops both. Or, with no
+cross-patch, Push's GATE (HOLD) into both PLAY ins, when a separate button is wanted.
+
+Not chosen:
+
+- **No jack** (press both, then RESET): two presses and a reset where one should do, and no
+  way to stop both with an LFO for a clock. The facts above.
+- **An input only, pressed by Push** (option b of the coordinator's brief): it works with the
+  same PLAY in, but needs a module beside the instruments, and their own play keys would no
+  longer start the others. Kept possible.
+- **An output only:** a follower still needs an input.
+- **PLAY out as a trigger on each change** (as SEQ3's and Clocked's RUN out, R93, R95):
+  cross-patched, each toggle comes back as another; and a follower patched late cannot know
+  the state.
+- **PLAY in as a gate only:** SEQ3's or Clocked's RUN trigger would start a module and stop
+  it 1 ms later. **As a trigger only:** our own gate would start it on the rise and nothing
+  would stop it but the next rise. **A menu choosing gate or trigger** (Clocked's way, R95):
+  one more setting, and the wrong one silences the patch; the rule in item 3 needs none.
+- **The name RUN,** what SEQ3, Clocked and most clock modules call it (R93, R95): Kenny chose
+  PLAY, the key's name. A RUN out patched into PLAY in works by item 3.
+- **`PLAY 1` or `PLAY 0` sent straight to the core, or a new command "play if stopped":** the
+  module would decide what play means on each clock (on the table, a `RESET` first), which is
+  the core's (D51); a new command is an ABI change while patterns are being built.
+- **A clock out, so one Rhythm can clock another:** not asked; the reference patch has an
+  LFO, and a module's table clock already starts on its press.
+- **Other places on the panel:** PLAY in under RESET with nothing moved, at y 39.6, passes
+  `--check` by 0.55 mm over RESET's socket and under key 1, against 2.45 between CLOCK and
+  RESET: cramped (`design/play-jack-options.png`, 1). PLAY out in the bottom row: the row is
+  full. Both on the left: four jacks need about 48 mm and the column has 37. PLAY out beside
+  PLAY in: the column is one jack wide.
+
 ## Open
 
 | ID | Question | Needs |
@@ -3262,3 +3382,4 @@ Not chosen: waiting for their answer before writing the patterns rule down.
 | O36 | ~~The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed?~~ | **Answered 2026-11-26: D119 item 3.** Was: The owner, one by one. ⚠ First check each against what Rack and a browser already do with it |
 | O37 | ~~The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)?~~ **Answered 2026-11-27: D128, `pocket-instruments`.** Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
 | O38 | ~~Patterns as designed (D133 to D135)? Above all: the sixteen in the engine and every host's room at 32 KiB (D133 item 1); the beat file read and written by one crate beside the core (D134 item 2); snapshot version 5 variable in length (D133 item 4); the view at 88 bytes (D133 item 5); the length each pattern's (D133 item 3); Shift keeping a latched pattern and latching write (D135); write mode put back after a copy (D133 item 6); the terminal's saved beat as text (D134 item 5). And the two lights R90 did not show: during a chain, and an empty chosen pattern~~ | **Answered 2026-11-27: D136** (all eight as recommended; the two lights at their defaults, ⚠). Was: Kenny. Recommended: accept as designed; the two lights at their defaults until Kenny's PO-12 shows them |
+| O39 | PLAY in and PLAY out as designed (D138)? Above all: both jacks, so one instrument's play key leads the others (item 1); PLAY out a gate (item 2); PLAY in's one rule, a gate plays while high and a trigger under 10 ms toggles, with no menu (item 3); the module pressing play and the core untouched (item 4); a finger wins, unpatching is not a stop (item 6); the places, RESET moved up 1.25 mm (item 7) | Kenny, in Rack once built. Recommended: accept as designed; judge the look at 100% zoom with cables in |
