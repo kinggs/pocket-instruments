@@ -859,15 +859,17 @@ fn the_generation_moves_exactly_when_the_snapshot_does_over_20_000_presses_with_
             8 => fxsound(rnd(17) as u8, rnd(2)),
             _ => cmd(CMD_PARAM, rnd(2) as u8, 0, rnd(65_536)),
         };
-        let (snap, g) = (h.save(), h.generation());
+        // §21: version 5 as written. Pattern held chooses and chains here, playing, so next
+        // chains land and chains move on in the stretches; neither moves what is saved.
+        let (snap, g) = (h.snap(), h.generation());
         h.block(1, &[c]);
-        let changed = h.save() != snap;
+        let changed = h.snap() != snap;
         assert_eq!(h.generation() != g, changed, "command {i}: type {} a {} value {}", c.kind, c.a, c.value);
         if changed { moved += 1 } else { still += 1 }
 
-        let (snap, g) = (h.save(), h.generation());
+        let (snap, g) = (h.snap(), h.generation());
         h.run(rnd(3000) as u64 + 1, 128, &[]);
-        let changed = h.save() != snap;
+        let changed = h.snap() != snap;
         assert_eq!(h.generation() != g, changed, "the stretch after command {i}");
         by_time += changed as u32;
     }

@@ -171,6 +171,8 @@ fn a_write_mode_key_that_turns_a_step_on_keeps_the_chosen_sound_s_own_as_they_ar
 #[test]
 fn a_grid_key_that_writes_nothing_keeps_nothing() {
     // Write off (a tap), or with sound, fx, pattern, function or bpm held: no step, no keep.
+    // Since §21 pattern held chooses pattern 3 there; in no pattern is a step or a keep, so
+    // version 5 writes no pattern at all.
     for held in [None, Some(SOUND), Some(FX), Some(PATTERN), Some(FUNCTION), Some(BPM)] {
         let mut h = fresh();
         let mut c = vec![param(0, 4242)];
@@ -179,7 +181,7 @@ fn a_grid_key_that_writes_nothing_keeps_nothing() {
         }
         c.extend([down(2), up(2)]);
         h.block(1, &c);
-        assert!((0..16).all(|t| h.save()[404 + 2 * t] == 0 && h.save()[405 + 2 * t] == 0), "{held:?}");
+        assert_eq!(h.snap().len(), SNAP5_MIN, "{held:?}");
     }
 }
 
@@ -498,7 +500,11 @@ fn the_generation_moves_exactly_when_the_snapshot_does_over_20_000_edits_and_key
     let (mut moved, mut still) = (0, 0);
     for i in 0..20_000 {
         let small = |r: u32| r as u8 & 3; // few tracks and steps, so they meet often
-        let c = match rnd(9) {
+        // §21 (issue 139): with pattern, chain, copy and clear in it, by keys (pattern held
+        // chooses and chains, with write held too it copies, after function it clears) and by
+        // the three edits, over four patterns so they meet often. The bytes compared are
+        // version 5's as written, every pattern and the chain.
+        let c = match rnd(10) {
             0 => keep(small(rnd(4)), small(rnd(4)), rnd(3) as u16, rnd(3) as u16),
             1 => step(small(rnd(4)), small(rnd(4)), rnd(2)),
             2 => sound(small(rnd(4)), rnd(2) as u8, rnd(3) * 30_000),
@@ -506,11 +512,12 @@ fn the_generation_moves_exactly_when_the_snapshot_does_over_20_000_edits_and_key
             4..=5 => down(small(rnd(4))),
             6 => up(small(rnd(4))),
             7 => [down(SOUND), up(SOUND), down(WRITE), up(WRITE), down(FUNCTION), up(FUNCTION)][rnd(6) as usize],
-            _ => [down(PATTERN), up(PATTERN)][rnd(2) as usize],
+            8 => [down(PATTERN), up(PATTERN)][rnd(2) as usize],
+            _ => cmd([CMD_PATTERN, CMD_CHAIN, CMD_COPY][rnd(3) as usize], 0, 0, rnd(5)), // 4: past these four, still a pattern
         };
-        let (snap, g) = (h.save(), h.generation());
+        let (snap, g) = (h.snap(), h.generation());
         h.block(1, &[c]);
-        let changed = h.save() != snap;
+        let changed = h.snap() != snap;
         assert_eq!(h.generation() != g, changed, "command {i}: type {} a {} b {} value {}", c.kind, c.a, c.b, c.value);
         if changed { moved += 1 } else { still += 1 }
     }

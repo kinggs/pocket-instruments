@@ -1,13 +1,17 @@
-//! The core's C ABI (`core/include/pi_engine.h`, version 15), as this host calls it. Only what
+//! The core's C ABI (`core/include/pi_engine.h`, version 16), as this host calls it. Only what
 //! the terminal uses. `pi_engine.h` is the contract; where this differs from it, it is right.
 //!
 //! SPDX-License-Identifier: MIT
 
-pub const PI_ABI_VERSION: u32 = 15;
+pub const PI_ABI_VERSION: u32 = 16;
 pub const PI_TRACKS: usize = 16;
 pub const PI_STEPS: usize = 16;
-pub const PI_VIEW_SIZE: usize = 64;
-pub const PI_SNAPSHOT_SIZE: usize = 1464;
+/// ABI 16 (ENGINE.md §21): 88 bytes (64 until then); the weave reads the first 64.
+pub const PI_VIEW_SIZE: usize = 88;
+/// ABI 16: snapshot version 5's most, sixteen patterns written. A save is as long as `pi_save`
+/// says: `PI_SNAPSHOT_SIZE_MIN` and 1 364 a pattern written.
+pub const PI_SNAPSHOT_SIZE: usize = 22100;
+pub const PI_SNAPSHOT_SIZE_MIN: usize = 276;
 pub const PI_SWING_MAX: u32 = 48;
 pub const PI_TICKS_PER_STEP: u64 = 96;
 
@@ -31,6 +35,10 @@ pub const PI_CMD_VOICE: u8 = 22;
 pub const PI_CMD_FX: u8 = 23;
 pub const PI_CMD_FXSOUND: u8 = 24;
 pub const PI_CMD_KEEP: u8 = 26;
+/// ABI 16 (§21): the patterns' three edits.
+pub const PI_CMD_PATTERN: u8 = 27;
+pub const PI_CMD_CHAIN: u8 = 28;
+pub const PI_CMD_COPY: u8 = 29;
 pub const PI_CMD_KEY_DOWN: u8 = 32;
 pub const PI_CMD_KEY_UP: u8 = 33;
 pub const PI_CMD_PARAM: u8 = 34;
@@ -65,6 +73,14 @@ pub const PI_VIEW_FX_STEPS: usize = 56;
 pub const PI_VIEW_FX_SOUNDS: usize = 58;
 pub const PI_VIEW_HIT_A: usize = 60;
 pub const PI_VIEW_HIT_B: usize = 62;
+/// ABI 16 (§21): the patterns' bytes, 64 to 87.
+pub const PI_VIEW_PATTERN: usize = 64;
+pub const PI_VIEW_POS: usize = 65;
+pub const PI_VIEW_CHAIN_LEN: usize = 66;
+pub const PI_VIEW_NEXT_LEN: usize = 67;
+pub const PI_VIEW_USED: usize = 68;
+pub const PI_VIEW_CHAIN: usize = 72;
+pub const PI_VIEW_NEXT: usize = 80;
 
 pub const PI_VIEW_FLAG_PLAYING: u8 = 1;
 pub const PI_VIEW_FLAG_WRITE: u8 = 2;
@@ -212,11 +228,20 @@ impl Engine {
         unsafe { pi_generation(self.raw) }
     }
 
-    pub fn save(&self) -> [u8; PI_SNAPSHOT_SIZE] {
-        let mut b = [0u8; PI_SNAPSHOT_SIZE];
-        let n = unsafe { pi_save(self.raw, b.as_mut_ptr(), b.len() as u32) };
-        assert_eq!(n as usize, PI_SNAPSHOT_SIZE);
+    /// A snapshot, version 5 since ABI 16 (§21): as long as `pi_save` returns.
+    pub fn save(&self) -> Vec<u8> {
+        let mut b = vec![0u8; PI_SNAPSHOT_SIZE];
+        let n = self.save_into(&mut b);
+        b.truncate(n);
         b
+    }
+
+    /// The same into `buf`, which allocates nothing (the audio thread's): the length written,
+    /// or 0 if `buf` is too short.
+    pub fn save_into(&self, buf: &mut [u8]) -> usize {
+        let n = unsafe { pi_save(self.raw, buf.as_mut_ptr(), buf.len() as u32) } as usize;
+        assert!(n == 0 || n >= PI_SNAPSHOT_SIZE_MIN);
+        n
     }
 
     pub fn load(&mut self, bytes: &[u8]) -> i32 {

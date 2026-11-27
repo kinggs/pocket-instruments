@@ -9,7 +9,11 @@
 //! first value, for Kenny's eye.
 
 use crate::clock::TICKS_PER_STEP;
-use crate::keys::{FLAG_PLAYING, FLAG_STEP, VIEW_SIZE};
+use crate::keys::{FLAG_PLAYING, FLAG_STEP};
+
+/// §21 (ABI 16): the view grew to 88 bytes; the weave reads only bytes 0 to 63, and takes any
+/// view of at least these (`PI_WEAVE_VIEW_MIN`), so no weave moves.
+pub const VIEW_MIN: usize = 64;
 
 /// The weave's area on the display in whole mm (`design/loom/frames.html`: 468 by 92 px at
 /// 6 px a mm).
@@ -64,7 +68,7 @@ const FLASH_TICKS: u32 = TICKS_PER_STEP / 4;
 const FLASH_FROM: u8 = 2;
 
 #[inline(never)]
-pub fn weave(v: &[u8; VIEW_SIZE], flags: u32, out: &mut [u8; CELLS]) {
+pub fn weave(v: &[u8; VIEW_MIN], flags: u32, out: &mut [u8; CELLS]) {
     let tick = u32::from_le_bytes([v[0], v[1], v[2], v[3]]);
     let woven = u32::from_le_bytes([v[48], v[49], v[50], v[51]]);
     let wove = u16::from_le_bytes([v[52], v[53]]);

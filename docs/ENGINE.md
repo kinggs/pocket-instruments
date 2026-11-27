@@ -3099,7 +3099,7 @@ words; where they are silent the build is the baseline (no byte moved in Session
   outputs move on every hit in any layout and are written only in the 50. The tour switches
   layouts mid-run, and the build agrees with the model on all three.
 
-## 21. Patterns: sixteen, chosen, chained, copied and cleared; snapshot version 5 (ABI 16; designed 2026-11-27; D133, D135; issue 4; not built)
+## 21. Patterns: sixteen, chosen, chained, copied and cleared; snapshot version 5 (ABI 16; designed 2026-11-27; D133, D135; issue 4; built in the core 2026-11-27, issue 139: "Built" at the end)
 
 Sixteen patterns in place of one (D12's "one pattern first" ends). Every host gets them
 through the core: the keys mean the same everywhere (D51), and a host draws what the view
@@ -3409,3 +3409,45 @@ generation test with pattern, copy and clear in it; a snapshot with all sixteen 
 written saved, loaded and saved again to the same bytes; planted faults caught by name.
 Every host's fixed room for the engine, the view and a snapshot searched for (`LEARNINGS.md`,
 Session 8: "Search for every fixed room when a size bound moves").
+
+**Built (issue 139, 2026-11-27; ABI 16; D133 to D135, accepted by Kenny on 2026-11-27, recorded
+in D136).** The core: `Bank` in `core/src/seq.rs` (the sixteen, `active`, the chain and the next
+chain; `wrap` is the pseudo-code above), the three edits in `core/src/engine.rs`, the keys and
+the view's bytes 64 to 87 in `core/src/keys.rs`, version 5 in `core/src/snapshot.rs` (one
+pattern reader for versions 1 to 5), `PI_WEAVE_VIEW_MIN`. The four `fixtures/patterns-*.json`
+moved up unchanged and passed at their first run in Rust, C++, Node and the terminal host. Every
+trace and render file is the same bytes. Two views of format 2 moved, which the sentence "every
+existing fixture's views stay the same bytes" above did not foresee: the pattern-held row's
+stitch (and, with a grid key, its choice) reaches `keys-bpm-family` at 10 and
+`keys-tap-and-choose` at 13; worked again by hand before the core, `fixtures/README.md` says
+which and why ⚠ (for Kenny: the row stands; that sentence is what was wrong).
+- **Measured** (AMD Ryzen 9 7950X3D, release): `pi_size` **24 320** natively and **24 312** in
+  the `.wasm`, inside 32 KiB (`core/src/tests/rules.rs`). The `.wasm` is **53 840** bytes (45 121
+  at ABI 15): over the 50 000 this section and issue 139 name ⚠, under P1's bar of 64 KB since
+  D104. `pi_save`, mean of 2 000: **7.8 µs** at one pattern written (1 640 bytes), **21.7 µs** at
+  four, **77.5 µs** at sixteen (22 100), most of it the bit-by-bit CRC.
+- **The cost a frame** (`make pairs`, ten rounds interleaved, CPU 2, medians in ns): every case
+  that runs 128 frames a call within the rounds' spread of ABI 15's (idle 3.5 and 3.5, beat 12.1
+  and 12.0, all 36.0 and 36.1, repeat 22.6 and 22.4, both 13.1 and 12.7, loop 16.9 and 16.8; fx 1
+  16.9 and 17.4). **One frame a call costs more ⚠:** `rack` **18.8 to 20.5**, `rack lp` **22.6 to
+  26.1**: about 1.7 and 3.5 ns a call, which the Rack module pays every frame. Not explained:
+  laying the engine out with the bank last (`repr(C)`) changed neither; the bank's small fields
+  first made it worse. A follow-up's to find.
+- **Readings built on, each ⚠:** a copy onto the active pattern puts write mode back too (the
+  row says the copy "does nothing"; the reason given for putting it back holds either way). A
+  firing carries its pattern in the column's high four bits (`Out::trig`), so a step fired on
+  the frame of a change (an early edge's flush) plays what its own pattern keeps, not the new
+  one's. A next chain is "playing" by `PLAY` (between play and the first step it is a next
+  chain, and lands on that step).
+
+**Built on the page (issue 141, 2026-11-27).** `web/rhythm.html` sends the keys and holds no
+rule of its own (D51). While held bit 17 is set or the page holds pattern latched it draws
+field, stitch, bar and pressed from the view and no frame, core or twill, and flickers the
+active pattern's key from the moment pattern went down, a quarter of a second lit, then dark,
+used or not (both ⚠ open lines at their defaults). The display's stand-in line says `pattern
+3`, `2/4` while a chain of more than one runs and `→ 5` while one waits. D135 by a mouse and
+the keys: Shift on a grid key keeps pattern's latch, Shift latches write. The worklet already
+held the 32 KiB room, the 88-byte view and a snapshot of whatever length `pi_save` returns,
+and saved at most once a quarter second (§8): `make play` measured a drag of 150 changes in
+about 1.5 s saving 8 times, the last holding the drag's last value. The beat file's open and
+save wait on the `beat/` crate (issue 140). Since built on the page too, the same day (`docs/BEAT.md`, "Built on the page").

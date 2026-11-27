@@ -4,7 +4,9 @@
 //! any drawing. `fixtures/weave-views.txt` is the set of views every harness weaves.
 
 use super::*;
-use crate::keys::VIEW_SIZE;
+// §21 (ABI 16): the view is 88 bytes; the weave reads its first 64 and takes 64 or more, so
+// these views stay 64 bytes long.
+use crate::weave::VIEW_MIN as VIEW_SIZE;
 use crate::weave::{CELLS, DISPLAY, ECRU, H, MADDER, OCHRE, REDUCED, THREAD, TILE, W, WHITE};
 
 const SR: u32 = 48_000; // at 120 bpm a step is 6000 frames

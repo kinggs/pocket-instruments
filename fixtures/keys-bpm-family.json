@@ -1,7 +1,7 @@
 {
   "format": 2,
   "name": "keys-bpm-family",
-  "about": "The bpm key and clear, stopped, starting at 120 bpm. Nothing fires and nothing plays, so the trace is empty and the harness's frames stay true to mbpm while the engine's tempo moves. A clean press and release of bpm steps the preset: 140, 80, 120. Held, the fields show the volume (all sixteen), slider A shows swing (0) and B the tempo (60 of 180 bpm up: 21845). B to 40000 is 170 bpm and shows as 40049; A to 20000 is swing 15 and shows as 20479; key 8 is volume 8. That hold was used, so letting go does not step the preset. The next hold sends each slider the value it already shows: nothing changes and the hold is not used, so letting go steps 170 to 80, the lowest preset above it being none. Function + pattern clears every step (the field and the stitch go out); swing, tempo and volume stay.",
+  "about": "The bpm key and clear, stopped, starting at 120 bpm. Nothing fires and nothing plays, so the trace is empty and the harness's frames stay true to mbpm while the engine's tempo moves. A clean press and release of bpm steps the preset: 140, 80, 120. Held, the fields show the volume (all sixteen), slider A shows swing (0) and B the tempo (60 of 180 bpm up: 21845). B to 40000 is 170 bpm and shows as 40049; A to 20000 is swing 15 and shows as 20479; key 8 is volume 8. That hold was used, so letting go does not step the preset. The next hold sends each slider the value it already shows: nothing changes and the hold is not used, so letting go steps 170 to 80, the lowest preset above it being none. Function + pattern clears every step (the field goes out, no pattern being used; since ABI 16 the stitch marks the chain, pattern 1: ENGINE.md section 21, D133); swing, tempo and volume stay.",
   "ticks_per_step": 96,
   "seed": 1,
   "mbpm": 120000,
@@ -43,7 +43,7 @@
     {"at": 7, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=170000 len=16 swing=15 held=040000 field=00ff stitch=0000 bar=0001 sampled=0000 a=20479 b=40049 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
     {"at": 8, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=170000 len=16 swing=15 held=000000 field=0001 stitch=0008 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
     {"at": 9, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=000000 field=0001 stitch=0008 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
-    {"at": 10, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=0a0000 field=0000 stitch=0000 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
+    {"at": 10, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=0a0000 field=0000 stitch=0001 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},
     {"at": 11, "view": "view play=0 write=1 edges=0 sounds=0 step=- sel=0 vol=8 tempo=80000 len=16 swing=15 held=000000 field=0000 stitch=0000 bar=0001 sampled=0000 a=32768 b=32768 fires=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"}
   ],
   "expect": [

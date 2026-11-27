@@ -36,7 +36,7 @@ fn fresh() -> Host {
 }
 
 /// The view's fields by name, for tests to read.
-struct V([u8; 64]);
+struct V([u8; VIEW]);
 
 impl V {
     fn of(h: &Host) -> V {
@@ -167,8 +167,10 @@ fn sound_held_a_grid_key_chooses_that_sound_and_fires_it() {
 }
 
 #[test]
-fn pattern_fx_or_function_held_a_grid_key_does_nothing() {
-    for holder in [PATTERN, FX, FUNCTION] {
+fn fx_or_function_held_a_grid_key_does_nothing() {
+    // Pattern was in this list until ABI 16: since §21 pattern held chooses and chains
+    // (`patterns.rs`).
+    for holder in [FX, FUNCTION] {
         for write in [false, true] {
             let mut h = fresh();
             if write {
@@ -642,9 +644,10 @@ fn the_generation_moves_exactly_when_a_key_changes_what_a_snapshot_holds() {
             6 => param(rnd(2) as u8, rnd(65_536)),
             _ => down([SOUND, PATTERN, BPM, FUNCTION, WRITE][rnd(5) as usize]),
         };
-        let (snap, g) = (h.save(), h.generation());
+        // §21: version 5 as written, with whatever patterns and chain the keys made.
+        let (snap, g) = (h.snap(), h.generation());
         send(&mut h, &[c]);
-        let changed = h.save() != snap;
+        let changed = h.snap() != snap;
         assert_eq!(h.generation() != g, changed, "command {i}: type {} key {} value {}", c.kind, c.a, c.value);
         if changed { moved += 1 } else { still += 1 }
     }
@@ -850,14 +853,16 @@ fn write_on_the_field_is_the_chosen_sound_s_steps_and_the_stitch_every_other_sou
 }
 
 #[test]
-fn pattern_held_the_bar_is_on_key_1() {
+fn pattern_held_the_grid_shows_the_patterns() {
+    // §21 (R90; ABI 16): the used patterns, the chain's stitched, the bar on the active one.
+    // Until ABI 16 the bar on key 1 alone, "the one pattern", and the field and stitch dark.
     for write in [false, true] {
         let mut h = patterned();
         if write {
             send(&mut h, &[down(WRITE), up(WRITE)]);
         }
         send(&mut h, &[down(PATTERN)]);
-        assert_eq!(V::of(&h).grid(), (0, 0, 1, false), "write {write}");
+        assert_eq!(V::of(&h).grid(), (1, 1, 1, false), "write {write}: pattern 1 used, the chain pattern 1, pattern 1 active");
         send(&mut h, &[up(PATTERN)]);
         assert_eq!(V::of(&h).grid().2, CHOSEN, "D121: back to the chosen sound's bar");
     }
@@ -924,7 +929,7 @@ fn bpm_held_the_fields_show_the_volume() {
 #[test]
 fn the_view_at_pi_init() {
     let h = fresh();
-    let mut want = [0u8; 64];
+    let mut want = [0u8; VIEW];
     want[4..8].copy_from_slice(&120_000u32.to_le_bytes());
     want[20..22].copy_from_slice(&32768u16.to_le_bytes());
     want[22..24].copy_from_slice(&32768u16.to_le_bytes());
@@ -935,6 +940,7 @@ fn the_view_at_pi_init() {
     want[58..60].copy_from_slice(&0xFFFFu16.to_le_bytes()); // §17: every sound through the effects
     want[60..62].copy_from_slice(&32768u16.to_le_bytes()); // §20: no hit yet, so its own
     want[62..64].copy_from_slice(&32768u16.to_le_bytes());
+    want[66] = 1; // §21: pattern 1 active, the chain pattern 1 alone, at its first; nothing used
     assert_eq!(h.view(), want);
     assert_eq!(
         view_text(&h.view()),
@@ -969,7 +975,9 @@ fn the_view_follows_edits_as_well_as_keys() {
     // are the weave's (§16; held in tests/weave.rs): nothing has played, so nothing is woven.
     assert_eq!(v.0[48..55], [0; 7], "no cloth before any play");
     assert_eq!(v.0[55..60], [0, 0, 0, 0xff, 0xff], "nothing heard, an empty lane, every sound in");
-    assert_eq!(v.0[60..], [77, 0, 88, 0], "the second mark: its own until hit");
+    assert_eq!(v.0[60..64], [77, 0, 88, 0], "the second mark: its own until hit");
+    // §21 (ABI 16): pattern 1 active, at the chain's first of one, none waiting, none used.
+    assert_eq!(v.0[64..], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "the patterns' bytes");
 }
 
 #[test]
@@ -1094,17 +1102,19 @@ fn pi_view_moves_nothing_and_refuses_a_buffer_that_is_too_small() {
     other.run(STEP, 128, &[(0, down(PLAY))]);
     assert_eq!(trace(&h.run(4 * STEP, 128, &[])), trace(&other.run(4 * STEP, 128, &[])));
 
-    let mut small = [0xAAu8; 64];
+    // §21 (ABI 16): 88 bytes. Until then 64, which is now too small.
+    let mut small = [0xAAu8; VIEW];
     unsafe {
-        assert_eq!(pi_view(h.e, small.as_mut_ptr(), 63), 0);
-        assert_eq!(small, [0xAA; 64], "and writes nothing");
-        assert_eq!(pi_view(h.e, core::ptr::null_mut(), 64), 0);
-        assert_eq!(pi_view(core::ptr::null(), small.as_mut_ptr(), 64), 0);
-        // A bigger one is written to 64 bytes and no further.
-        let mut big = [0xAAu8; 80];
-        assert_eq!(pi_view(h.e, big.as_mut_ptr(), 80), 64);
-        assert_eq!(big[64..], [0xAA; 16]);
-        assert_eq!(big[..64], h.view());
+        assert_eq!(pi_view(h.e, small.as_mut_ptr(), VIEW as u32 - 1), 0);
+        assert_eq!(pi_view(h.e, small.as_mut_ptr(), 64), 0, "ABI 15's 64 is short");
+        assert_eq!(small, [0xAA; VIEW], "and writes nothing");
+        assert_eq!(pi_view(h.e, core::ptr::null_mut(), VIEW as u32), 0);
+        assert_eq!(pi_view(core::ptr::null(), small.as_mut_ptr(), VIEW as u32), 0);
+        // A bigger one is written to 88 bytes and no further.
+        let mut big = [0xAAu8; 104];
+        assert_eq!(pi_view(h.e, big.as_mut_ptr(), 104), VIEW as u32);
+        assert_eq!(big[VIEW..], [0xAA; 16]);
+        assert_eq!(big[..VIEW], h.view());
     }
 }
 
@@ -1138,7 +1148,7 @@ fn the_block_size_does_not_change_what_keys_do() {
     }
     cmds.sort_by_key(|c| c.0); // stable: commands of one frame keep their order
     let frames = at + 2 * STEP;
-    let runs: Vec<(String, [u8; 64], [u8; SNAP])> = [1u32, 7, 128, 512, 4096]
+    let runs: Vec<(String, [u8; VIEW], [u8; SNAP])> = [1u32, 7, 128, 512, 4096]
         .iter()
         .map(|block| {
             let mut h = fresh();

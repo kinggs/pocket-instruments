@@ -1,6 +1,7 @@
 # The beat file
 
-**Status:** designed 2026-11-27 in issue 4's design pass (D134), for Kenny. Nothing built.
+**Status:** designed 2026-11-27 in issue 4's design pass (D134), accepted by Kenny (D136).
+Built 2026-11-27 in issue 140: "Built", at the end.
 The readable text form of a beat (D110 items 6 and 7): one thing that an agent can write, a
 link can carry, a host can save and load, and a bank of our own beats ships in (D131).
 
@@ -241,3 +242,72 @@ version 4 snapshot, binary, at `~/.local/share/pocket-instruments/rhythm.beat`).
 a person can open the beat in an editor. A file that starts with the bytes `PKIN` is read as
 a snapshot, as now, and written back as text at the next save. ⚠ Kenny to rule; the other
 reading keeps the binary file and adds `:w file.beat`.
+
+## Built (issue 140, 2026-11-27)
+
+`beat/`, beside `core/` in the root workspace: `no_std`, no allocator, no dependencies, stable
+Rust. The C ABI is `beat/include/pi_beat.h`: `pib_read` and `pib_write` as designed above, with
+the results below zero named (`PIB_ERR_TEXT` -1, `PIB_ERR_ROOM` -2, `PIB_ERR_NEWER` -3,
+`PIB_ERR_SNAPSHOT` -4). Built as `target/release/libpi_beat.a` and `web/pi_beat.wasm` (39 999
+bytes, imports nothing; exports `memory`, `pib_read`, `pib_write`), for size (`opt-level = "s"`:
+59 871 bytes at the core's level 3). Nothing in the core changed but where its snapshot code
+finds its offsets.
+
+- **The one table:** `core/src/snapshot_layout.rs`, constants only, a module of the core and
+  `include!`d by `beat/src/lib.rs`. Compile-time checks in it tie each field to the next; the
+  core asserts the table's counts are its own. Planted: the core saving the name one byte late
+  (a literal in place of the table) failed four of `core/src/tests/beat.rs`'s tests by name.
+- **The tests this file asks for,** in `make test`: `core/src/tests/beat.rs` (1, 2 and 4, with
+  `pi_load` and `pi_save` as the referee; the crate is a dev-dependency of the core's tests only)
+  and `fixtures.rs` (3: `beat-four-and-a-fill` moved up unchanged and passed at its first run, in
+  Rust, C++, Node and the terminal host). The Rust tests also write the cases (every core
+  snapshot, a share of the fuzz's, every `.beat`, refusals, edited texts); the C++ harness on
+  `libpi_beat.a` and Node on `pi_beat.wasm` run them, and the three reports must be the same
+  bytes. `beat/src/tests/` holds the crate's own: the worked example against the table above,
+  every refusal's message in full, random snapshots through text and back, 20 000 random edits
+  of good text with never a panic.
+- **`PIB_TEXT_MAX` is 98 304 (96 KiB), not 64 KiB.** The worst text measured is 94 349 bytes:
+  sixteen patterns, every step on with its own pair and a probability of 99, every sound apart
+  from the rest; the bound summed line by line is 95 038 (`beat/src/tests/size.rs`). The
+  arithmetic above, "under 64 KiB", left out the `prob` lists and the 46 value lines.
+- **Readings where this file is silent,** each ⚠ for Kenny, each built round and tested:
+  1. `sliders` gives the value most sounds have, a tie to the lowest key's; the rest are `sound`
+     lines' `a` and `b`.
+  2. A line that comes once (`tempo`, `name`, a `sound` key, a `value` letter, a `pattern`, a
+     row's key in a pattern, `fx` in a pattern, `prob` and `keep` in a row, a step in a list) is
+     refused the second time, with the line of the first.
+  3. The beat's own lines may stand anywhere after the first line, also after a `pattern`: a
+     row and `fx` are told apart by their first word. Rows and `fx` before any `pattern` are
+     refused.
+  4. A `pattern` named with nothing in it is a cleared one: no block, as the core would save it.
+  5. `name` and `credit`: the spaces at either end dropped, and again after a cut; no tabs or
+     control characters; `name` with no text refused. `pib_write` refuses a snapshot whose name
+     or credit the text could not carry back to the same bytes.
+  6. `own`: a key it names plays its sample; `own` with `sound <key> code` is refused. Written
+     after the `sound` lines, and only for keys that play a sample.
+  7. Letters are given to steps that are on; a kept step that is off is always in `keep`.
+  8. The first line must be line 1. Line ends `\n` or `\r\n`; words are separated by spaces, a
+     tab is refused. Numbers may have leading zeros (`seed 0001`); `tempo 120.000` reads.
+  9. A refusal's message is `line L, column C: ...` (C in characters), or `line L: ...` where no
+     one column is wrong; a word quoted is cut after 24 bytes.
+  10. `pib_write` refuses any snapshot the core would not write (a field outside its range, a
+      cleared pattern written, bytes after a chain's length, a value kept where nothing is):
+      so whatever it writes reads back to the same bytes.
+
+## Built on the page (issue 141, 2026-11-27)
+
+`web/rhythm.html`'s sheet has a **Beat** section with two buttons, **Open a beat** and **Save the beat**. Its look is a stand-in ⚠ until Kenny rules one. `pi_beat.wasm` runs on the page's main thread and loads on the first open or save. The worklet never sees text.
+
+- **Open:** the browser's file picker, with no filter on the file's type ⚠, because a phone knows no type for `.beat`. The page reads the text before anything is loaded.
+  - A refused file changes nothing. The page shows the crate's message after the file's name.
+  - A good file is not loaded until the player answers "Open it" or "Keep this one". ⚠ This file says nothing on it: the page always asks, even when the beat here is empty.
+  - Once opened, the page says the beat's name. For each key in `own` it adds, for example, "Key 9 used its writer's own sample; playing the starter pack's."
+- **Save:** the page asks the worklet for a fresh snapshot and writes it with `pib_write`, `own` 0, because the page loads no sample of the player's own. It is given as a download named for the beat (`four-and-a-fill.beat`, or `rhythm.beat` when the beat has no name). ⚠ A download, not the share sheet: the plainest way that works on both a phone and a desktop.
+- **`make play` proves, in Chromium and Firefox:**
+  - a refused file and a newer one show the crate's message and change nothing;
+  - "Keep this one" changes nothing;
+  - the worked example, opened, plays `beat-four-and-a-fill`'s views and trace;
+  - saved again, it is the file byte for byte;
+  - `own 9` is said on opening.
+
+  Four planted faults each failed a named check.

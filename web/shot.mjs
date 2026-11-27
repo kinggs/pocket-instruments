@@ -98,6 +98,33 @@ await shoot("page-sound-held-grey.png", true);
 // 3. The keys helper.
 await run(`${prelude} delete performance.now; await r.ctx.resume(); r.send([33, 16, 0, 0]); document.getElementById("helpmark").click(); await sleep(200);`);
 await shoot("page-helper.png");
+// 4. Patterns (issue 141, ENGINE.md §21): patterns 1 to 3 hold steps, the chain 1 2 plays and
+// pattern 2 is playing; pattern held, key 3 pressed and let go: the next chain, pattern 3
+// alone, waits. The grid is the patterns: fields the used ones, the bar on the active one, the
+// stitch on the next chain, no frame, core or twill; key 2 flickers, caught lit and then dark.
+// The display: `pattern 2 2/2 → 3`.
+await run(`${prelude}
+  delete performance.now; await r.ctx.resume();
+  document.getElementById("helpclose").click();
+  r.send([5, 0, 0, 0], [32, 19, 0, 0], [32, 17, 0, 0], [33, 17, 0, 0], [33, 19, 0, 0]);
+  const cmds = [];
+  for (const s of [0, 4, 8, 12]) cmds.push([16, 0, s, 1]);
+  cmds.push([27, 0, 0, 1]);
+  for (const s of [0, 6, 8, 14]) cmds.push([16, 0, s, 1]);
+  cmds.push([16, 2, 2, 1], [16, 2, 10, 1], [23, 4, 0, 6], [27, 0, 0, 2], [16, 1, 4, 1], [16, 1, 12, 1], [27, 0, 0, 0], [28, 0, 0, 1], [5, 0, 0, 1]);
+  r.send(...cmds);
+  await until((v) => v[24] & 1 && v[64] === 1 && v[25] === 3);
+  r.send([32, 17, 0, 0], [32, 2, 0, 0], [33, 2, 0, 0]);
+  await until((v) => v[67] === 1 && (v[8] | v[9] << 8 | v[10] << 16) === 1 << 17);
+  await sleep(40);
+  await r.ctx.suspend();
+  const t = performance.now(); performance.now = () => t;
+  await sleep(100);`);
+await shoot("page-pattern-held.png");
+await shoot("page-pattern-held-grey.png", true);
+await run(`const t = performance.now(); performance.now = () => t + 260; dispatchEvent(new Event("resize")); await new Promise((res) => setTimeout(res, 100));`);
+await shoot("page-pattern-held-dark.png");
+await shoot("page-pattern-held-dark-grey.png", true);
 ws.close();
 chrome.kill();
 server.close();

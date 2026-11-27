@@ -1,7 +1,8 @@
-# One crate for now (CONTRIBUTING.md: nothing generic until a second instrument needs it). The workspace exists so target/ and the profiles sit
-# at the top of the folder, beside rust-toolchain.toml.
+# The core, and the beat file's reader and writer beside it (docs/BEAT.md, D134 item 2): no
+# dependency between them. The workspace exists so target/ and the profiles sit at the top of
+# the folder, beside rust-toolchain.toml.
 [workspace]
-members = ["core"]
+members = ["core", "beat"]
 # The terminal host is its own workspace (term/Cargo.toml, D123 item 2).
 exclude = ["term"]
 resolver = "3"
@@ -28,3 +29,8 @@ inherits = "release"
 debug-assertions = true
 strip = false
 debug = "line-tables-only"
+
+# The beat file's reader and writer are never on the audio path: built for size, not speed. Its .wasm
+# is 40 KB so, against 60 KB at opt-level 3 (measured 2026-11-27, issue 140).
+[profile.release.package.pi-beat]
+opt-level = "s"
