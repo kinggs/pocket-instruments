@@ -50,6 +50,8 @@ pub struct Keys {
     pub volume: u8,
     /// Something has used the bpm key since it went down, so letting go is not a press.
     bpm_used: bool,
+    /// §13 (D130): the engine's frame bpm last went down on.
+    bpm_at: u64,
     /// §17: the grid keys punched, in the order they went down; the last is `punch`.
     punched: [u8; 16],
     npunched: u8,
@@ -66,6 +68,7 @@ impl Keys {
             sel: 0,
             volume: VOLUME_MAX,
             bpm_used: false,
+            bpm_at: 0,
             punched: [0; 16],
             npunched: 0,
             lane_write: NO_WRITE,
@@ -130,7 +133,10 @@ impl Engine {
             }
             KEY_WRITE => self.keys.write = !self.keys.write, // on the press, not the release ⚠
             KEY_PATTERN if self.keys.down(KEY_FUNCTION) => self.clear(),
-            KEY_BPM => self.keys.bpm_used = false,
+            KEY_BPM => {
+                self.keys.bpm_used = false;
+                self.keys.bpm_at = self.frames_run.wrapping_add(out.frame as u64);
+            }
             KEY_FX => self.keys.update_lane_write(), // only held; fx alone empties arriving steps
             KEY_SOUND | KEY_PATTERN | KEY_FUNCTION => {} // only held
             n => self.grid_down(n, out),
@@ -223,7 +229,9 @@ impl Engine {
                 k.update_lane_write();
             }
         }
-        if key == KEY_BPM && !self.keys.bpm_used {
+        // D130: down for fewer than half a second of frames is a press; longer is a hold.
+        let held = self.frames_run.wrapping_add(out.frame as u64).wrapping_sub(self.keys.bpm_at);
+        if key == KEY_BPM && !self.keys.bpm_used && held < (self.sample_rate / 2) as u64 {
             // A clean press: the next preset, on the release and at once ⚠.
             let now = self.clock.mbpm;
             let next = PRESETS.iter().copied().find(|p| *p > now).unwrap_or(PRESETS[0]);
