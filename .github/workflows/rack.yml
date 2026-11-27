@@ -2,7 +2,9 @@
 # Each job links the plugin with its Rust core on that platform's own toolchain, checks the
 # finished .vcvplugin against what Rack's toolchain builds for (rack/check-dist.sh), and
 # uploads it. The four files are under "Artifacts" on the run's page.
-# They are unsigned test builds for loading by hand, not releases.
+# They are unsigned test builds for loading by hand. The Linux job also builds the reference
+# patch, Showcase.vcv. A version tag runs these same jobs from release.yml (workflow_call),
+# which attaches the five files to a pre-release (docs/DECISIONS.md D132).
 # Native runners, as Phona does (docs/REFERENCES.md R16a); Linux inside Ubuntu 16.04 for
 # glibc 2.23, from an image with the tools already in it (rack/ci-linux.Dockerfile).
 name: Rack plugin
@@ -34,6 +36,7 @@ on:
       - Makefile
       - .github/workflows/rack.yml
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -162,4 +165,17 @@ jobs:
         with:
           name: pocket-instruments-${{ matrix.platform }}
           path: rack/dist/*.vcvplugin
+          if-no-files-found: error
+
+      # The reference patch, from rack/patch/showcase.json as committed. Built once, here:
+      # the Makefile reads the SDK's arch.mk, so it needs the SDK even for a patch.
+      - name: Reference patch (Linux)
+        if: runner.os == 'Linux'
+        run: make -C rack showcase RACK_DIR="$PWD/sdk/Rack-SDK"
+
+      - if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: pocket-instruments-showcase
+          path: rack/build/Showcase.vcv
           if-no-files-found: error
