@@ -82,6 +82,16 @@ struct Core {
         e = pi_init(mem.data(), uint32_t(mem.size() * 8), rate, seed);
         if (!e) die("pi_init refused good memory");
     }
+    // A second engine in the state this one is in: the model's two readings of a bpm release
+    // (Other::edit). The engine is plain memory the caller owns (ENGINE.md §8) and this one
+    // holds no pointer (no sample, no delay line is lent here), so a copy of the bytes is a
+    // whole engine; pi_init puts it at the start of the memory it is given.
+    Core(const Core &o) : mem(o.mem), e(reinterpret_cast<pi_engine *>(mem.data())) {}
+    Core &operator=(const Core &o) {
+        mem = o.mem;
+        e = reinterpret_cast<pi_engine *>(mem.data());
+        return *this;
+    }
     void changes() { mark = char(mark + 1); }
     void reads() const {
         volatile char seen = mark;
@@ -217,9 +227,19 @@ static void audio(Shared &s) {
 // The second thread: what a UI and a saver do between them.
 struct Other {
     Shared &s;
-    Core model{48000, 1}, checker{48000, 1};
+    // The model: every state the audio thread's engine may be in, given the messages sent. One,
+    // but for a bpm release: D130 makes it the preset's step when bpm was down under half a
+    // second of the engine's frames and nothing used it, and the frames between two messages
+    // are the audio thread's to count, which runs blocks whether or not a message waits. So at
+    // each bpm release the model keeps both: a press, and a hold of half a second. A round
+    // passes if the snapshot is any model's, and that one goes on. (Until issue 169 there was
+    // one model, a frame a message, which a slow second thread proved wrong: issue 139's
+    // 2 to 10 rounds in 6 400, and after bpm was pressed only as a used hold, one round in
+    // some hundred runs, when the grid key that should have used it was already down.)
+    std::vector<Core> models{Core{48000, 1}};
+    Core checker{48000, 1};
     uint32_t pushedEdits = 0, pushedLoads = 0, x = 2463534242u;
-    uint64_t reads = 0, torn = 0, wrong = 0, rounds = 0, views = 0;
+    uint64_t reads = 0, torn = 0, wrong = 0, rounds = 0, views = 0, holds = 0;
     explicit Other(Shared &shared) : s(shared) {}
 
     uint32_t rnd() {
@@ -282,7 +302,20 @@ struct Other {
         while (!s.msgs.push(Msg{false, c})) read(scratch); // full: the audio thread will catch up
         pushedEdits++;
         pi_event ev[64];
-        model.process(1, &c, 1, ev, 64);
+        if (c.type == PI_CMD_KEY_UP && c.a == PI_KEY_BPM) {
+            // Both readings of the release: as it comes (a press, if nothing used bpm), and after
+            // half a second of frames with nothing sent (a hold).
+            size_t n = models.size();
+            for (size_t i = 0; i < n; i++) {
+                Core held = models[i];
+                for (uint32_t f = 0; f < 48000 / 2; f += 4000) held.process(4000, nullptr, 0, ev, 64);
+                held.process(1, &c, 1, ev, 64);
+                models[i].process(1, &c, 1, ev, 64);
+                models.push_back(held);
+            }
+            if (models.size() > 64) die("the model forked past 64 states");
+        } else
+            for (Core &m : models) m.process(1, &c, 1, ev, 64);
         read(scratch); // a saver may look at any moment
     }
 
@@ -295,7 +328,8 @@ struct Other {
             while (!s.msgs.push(Msg{true, pi_cmd{}})) std::this_thread::yield();
         }
         pushedLoads++;
-        if (model.load(snap) != PI_OK) die("the model refused a snapshot");
+        for (Core &m : models)
+            if (m.load(snap) != PI_OK) die("the model refused a snapshot");
     }
 
     // Wait until the audio thread has taken everything sent, then compare with the model.
@@ -304,16 +338,29 @@ struct Other {
         auto give_up = std::chrono::steady_clock::now() + std::chrono::seconds(20);
         while (!read(got) || got.edits != pushedEdits || got.loads != pushedLoads)
             if (std::chrono::steady_clock::now() > give_up) die("the audio thread never caught up");
-        Snap want;
-        model.save(want);
-        if (!(want == got.snap)) wrong++;
+        // Any state the model allows; that one goes on. A model whose snapshot matches but whose
+        // engine differs (frames run, the playhead) differs only in what the next bpm release
+        // reads, and both readings of that are kept again.
+        size_t match = models.size();
+        for (size_t i = 0; i < models.size() && match == models.size(); i++) {
+            Snap want;
+            models[i].save(want);
+            if (want == got.snap) match = i;
+        }
+        if (match == models.size()) {
+            wrong++;
+            match = 0;
+        } else if (match != 0)
+            holds++;
+        Core kept = models[match];
+        models.assign(1, kept);
         rounds++;
         return got;
     }
 
     void churn(int n) {
         Snap kept;
-        model.save(kept);
+        models[0].save(kept);
         for (int r = 0; r < n; r++) {
             if (r % 5 == 4) {
                 // Load, then edit at once: the edit must land on what was loaded.
@@ -329,21 +376,13 @@ struct Other {
                 // Nor pattern (ABI 16, section 21), for the same reason: the audio thread plays,
                 // so a choice there waits for the end of the bar, and the model, stopped, takes
                 // it at once. Patterns are reached by COPY instead, which does not wait.
-                // And bpm only used (D130): a release under half a second of frames steps the
-                // preset, and the model's frames (one an edit) are not the audio thread's. With
-                // 22 KB snapshots (ABI 16) the second thread is slower, the audio thread runs
-                // more blocks between two messages, and a bpm held alone across them read as a
-                // hold there and a press in the model (found in issue 139's build). Held over a
-                // grid key it sets the volume, and its release is never a press on either.
+                // Bpm is pressed as any key: tapped, held alone over other messages, held over a
+                // slider (swing and tempo). Its release, timed in the engine's frames (D130), is
+                // the one press whose result the model cannot know, so it keeps both (above).
+                // (Issue 139's build pressed bpm only as a used hold, which issue 169 undid.)
                 uint8_t key = uint8_t(rnd() % 22);
                 if (key == PI_KEY_FX || key == PI_KEY_PATTERN) key = PI_KEY_WRITE;
                 uint32_t how = rnd() % 8;
-                if (key == PI_KEY_BPM && how >= 4 && how <= 6) {
-                    for (pi_cmd c : {pi_cmd{0, PI_CMD_KEY_DOWN, PI_KEY_BPM, 0, 0, 0}, pi_cmd{0, PI_CMD_KEY_DOWN, a, 0, 0, 0},
-                                     pi_cmd{0, PI_CMD_KEY_UP, a, 0, 0, 0}, pi_cmd{0, PI_CMD_KEY_UP, PI_KEY_BPM, 0, 0, 0}})
-                        edit(c);
-                    continue;
-                }
                 switch (how) {
                 case 4: edit(pi_cmd{0, PI_CMD_KEY_DOWN, key, 0, 0, 0}); break;
                 case 5: edit(pi_cmd{0, PI_CMD_KEY_UP, key, 0, 0, 0}); break;
@@ -499,9 +538,10 @@ int main(int argc, char **argv) {
     audio_thread.join();
     std::ofstream(argv[2], std::ios::binary) << out;
     std::printf("race (%s, idle %d): %llu rounds, %u edits and %u loads sent, %llu blocks, %llu publishes, %llu snapshots and %llu views taken; "
-                "%llu torn, %llu rounds where the snapshot was not the model's\n",
+                "%llu torn, %llu rounds where the snapshot was not the model's (%llu where a bpm release was a hold)\n",
                 m.c_str(), shared.idle, (unsigned long long)other.rounds, other.pushedEdits, other.pushedLoads,
                 (unsigned long long)shared.blocks, (unsigned long long)shared.publishes,
-                (unsigned long long)other.reads, (unsigned long long)other.views, (unsigned long long)other.torn, (unsigned long long)other.wrong);
+                (unsigned long long)other.reads, (unsigned long long)other.views, (unsigned long long)other.torn, (unsigned long long)other.wrong,
+                (unsigned long long)other.holds);
     return other.torn == 0 && other.wrong == 0 ? 0 : 1;
 }
