@@ -1840,6 +1840,19 @@ const NVGcolor GROUND = nvgRGB(0x14, 0x13, 0x1F), TILE = nvgRGB(0x2B, 0x29, 0x42
 // design/DESIGN.md, "Function key": the band, and latched, the face. fx's band is fern
 // (D112 item 3); its latched face stays ecru, as the other four's.
 const NVGcolor FN_BAND[7] = {MADDER, OCHRE, SKY, ECRU, FERN, ECRU, ECRU};
+
+// D139 (issue 150): larger keys and less empty space. design/DESIGN.md, "Larger keys and less
+// empty space", and design/make_panel.py --positions; until then a key was 11.7 mm at a 12 mm
+// pitch from (18.62, 50), its numeral 3.8 mm, a function key's word 2.8 and band 1.67, a
+// slider's box 5.0 by 43.0 and its cap 5 by 3.
+const float KEY_MM = 13.6f, PITCH_MM = 14.f, KEY1_X = 12.f, KEY1_Y = 51.f;
+const float NUMERAL_MM = 4.4f, FN_WORD_MM = 3.2f, FN_BAND_MM = 1.9f;
+const float SLIDER_X[2] = {68.f, 80.f}, SLIDER_TOP = 44.f, SLIDER_W = 8.f, SLIDER_H = 51.5f;
+const float CAP_W_MM = 8.f, CAP_H_MM = 4.5f;
+// The function keys' centres and sizes: the top three 14.6 by 27.7, the bottom four 10.8 by 27.7,
+// 0.6 apart, from x 87.16 to the right margin and y 44.0 to 100.0.
+const float FN_CX[7] = {94.46f, 109.66f, 124.86f, 92.56f, 103.96f, 115.36f, 126.76f};
+const float FN_CY[2] = {57.85f, 86.15f}, FN_W_MM[2] = {14.6f, 10.8f}, FN_H_MM = 27.7f;
 const NVGcolor FN_COLOUR[7] = {MADDER, OCHRE, SKY, ECRU, ECRU, ECRU, ECRU};
 
 void fillRect(NVGcontext *vg, float x, float y, float w, float h, NVGcolor c) {
@@ -2024,7 +2037,10 @@ struct RhythmKey : app::ParamWidget {
     // design/DESIGN.md, "A key's lights" (D112, D115; D120): frame, twill, field, core,
     // stitch, bar and source mark, from the outside in, each from pi::keyLights. ⚠ Sizes read
     // off a board nobody saw rendered: frame and twill each an eighth of the key, the core two
-    // fifths with a 0.37 mm dark line.
+    // fifths with a 0.37 mm dark line. D139 item 4: the key grew from 11.7 to 13.6 mm and every
+    // light keeps its share of it, so each size below is in u, a millimetre of the 11.7 mm key
+    // (the line 0.43 mm at 13.6, the stitch 1.63, the bar 1.16, the dash 2.09 by 0.58, the
+    // ring and the disc 1.74 across).
     void drawGrid(NVGcontext *vg, float w, float h, bool) {
         const uint8_t *v = face ? face->v : nullptr;
         bool have = face && face->have;
@@ -2048,6 +2064,7 @@ struct RhythmKey : app::ParamWidget {
                               flicker);
         }
         float f = w / 8.f; // the frame: an eighth of the key; the twill as wide again
+        float u = w / 11.7f; // D139: a light's size as a share of the key, in the 11.7 mm key's millimetres
         NVGcolor faceC = l.pressed ? WHITE : l.field ? ECRU : TILE;
         bool lit = l.field || l.pressed;
         fillRect(vg, 0, 0, w, h, l.pressed ? GROUND : TILE);
@@ -2056,7 +2073,7 @@ struct RhythmKey : app::ParamWidget {
             nvgSave(vg);
             nvgScissor(vg, f, f, w - 2 * f, h - 2 * f);
             fillRect(vg, f, f, w - 2 * f, h - 2 * f, FERN);
-            float p = mm2px(0.8f);
+            float p = 0.8f * u;
             nvgBeginPath(vg);
             for (float t = -h; t < w; t += p) {
                 nvgMoveTo(vg, t, h);
@@ -2071,24 +2088,24 @@ struct RhythmKey : app::ParamWidget {
             fillRect(vg, 2 * f, 2 * f, w - 4 * f, h - 4 * f, faceC);
         } else {
             fillRect(vg, f, f, w - 2 * f, h - 2 * f, faceC);
-            if (l.frame && l.field && !l.pressed) band(vg, f, f, w - 2 * f, h - 2 * f, mm2px(0.66f), GROUND);
+            if (l.frame && l.field && !l.pressed) band(vg, f, f, w - 2 * f, h - 2 * f, 0.66f * u, GROUND);
         }
-        float in = f + mm2px(0.3f);
+        float in = f + 0.3f * u;
         if (l.stitch) {
-            float st = mm2px(1.4f);
+            float st = 1.4f * u;
             fillRect(vg, w - in - st, in, st, st, lit ? GROUND : ECRU);
         }
-        if (l.bar) fillRect(vg, f, h - f - mm2px(1.0f), w - 2 * f, mm2px(1.0f), face->held(PI_KEY_PATTERN) ? OCHRE : MADDER);
+        if (l.bar) fillRect(vg, f, h - f - 1.0f * u, w - 2 * f, 1.0f * u, face->held(PI_KEY_PATTERN) ? OCHRE : MADDER);
         if (l.mark != pi::MARK_NONE) { // D112 item 4: a dash, a ring or a disc, top left
             NVGcolor c = lit ? GROUND : ECRU;
-            float r = mm2px(0.75f), cx = in + r, cy = in + r;
-            if (l.mark == pi::MARK_DASH) fillRect(vg, in, in + r - mm2px(0.25f), mm2px(1.8f), mm2px(0.5f), c);
+            float r = 0.75f * u, cx = in + r, cy = in + r;
+            if (l.mark == pi::MARK_DASH) fillRect(vg, in, in + r - 0.25f * u, 1.8f * u, 0.5f * u, c);
             else {
                 nvgBeginPath(vg);
-                nvgCircle(vg, cx, cy, l.mark == pi::MARK_RING ? r - mm2px(0.175f) : r);
+                nvgCircle(vg, cx, cy, l.mark == pi::MARK_RING ? r - 0.175f * u : r);
                 if (l.mark == pi::MARK_RING) {
                     nvgStrokeColor(vg, c);
-                    nvgStrokeWidth(vg, mm2px(0.35f));
+                    nvgStrokeWidth(vg, 0.35f * u);
                     nvgStroke(vg);
                 } else {
                     nvgFillColor(vg, c);
@@ -2097,13 +2114,13 @@ struct RhythmKey : app::ParamWidget {
             }
         }
         if (l.core) { // two fifths of the key, a dark line round it; fern through the effect
-            float c = w * 0.4f, line = mm2px(0.37f);
+            float c = w * 0.4f, line = 0.37f * u;
             fillRect(vg, (w - c) / 2, (h - c) / 2, c, c, GROUND);
             fillRect(vg, (w - c) / 2 + line, (h - c) / 2 + line, c - 2 * line, c - 2 * line, l.fern ? FERN : WHITE);
         }
         char num[12];
         std::snprintf(num, sizeof num, "%d", k + 1);
-        text(vg, w / 2, h / 2, 3.8f, lit || l.core ? GROUND : ECRU, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE, num);
+        text(vg, w / 2, h / 2, NUMERAL_MM, lit || l.core ? GROUND : ECRU, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE, num);
     }
 
     // "Function key": idle, a band across the top; pressed, white pulled in; latched, the face lit.
@@ -2112,7 +2129,7 @@ struct RhythmKey : app::ParamWidget {
         bool ctrlLatched = rm && (rm->latched >> k & 1); // latched (by Shift since D113)
         bool on = (k == int(PI_KEY_PLAY) && face && face->flag(PI_VIEW_FLAG_PLAYING)) ||
                   (k == int(PI_KEY_WRITE) && face && face->flag(PI_VIEW_FLAG_WRITE));
-        float frame = mm2px(11.7f) / 8.f, bandH = mm2px(1.67f);
+        float frame = mm2px(KEY_MM) / 8.f, bandH = mm2px(FN_BAND_MM); // a grid key's frame (1.70 mm); the band 1.9 (D139)
         NVGcolor label = GROUND;
         if (ctrlLatched) {
             fillRect(vg, 0, 0, w, h, FN_COLOUR[i]);
@@ -2130,7 +2147,7 @@ struct RhythmKey : app::ParamWidget {
         nvgSave(vg);
         nvgTranslate(vg, w / 2, h / 2 + (ctrlLatched || on || pressed ? 0 : bandH / 2)); // below the band
         nvgRotate(vg, -M_PI / 2);
-        text(vg, 0, 0, 2.8f, label, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE, FN_NAMES[i]);
+        text(vg, 0, 0, FN_WORD_MM, label, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE, FN_NAMES[i]);
         nvgRestore(vg);
     }
 };
@@ -2164,7 +2181,7 @@ struct RhythmSlider : app::SliderKnob {
     void draw(const DrawArgs &args) override {
         ParamQuantity *q = getParamQuantity();
         float v = q ? q->getValue() / 65535.f : 0.5f;
-        float capH = mm2px(3.f), capW = mm2px(5.f);
+        float capH = mm2px(CAP_H_MM), capW = mm2px(CAP_W_MM); // D139: 8 by 4.5 (5 by 3 until then)
         float y = (1.f - v) * (box.size.y - capH);
         bool held = rm && rm->sliderHeld[which].load();
         NVGcolor c = held ? WHITE : ECRU;
@@ -2392,6 +2409,17 @@ struct RhythmHelper : widget::Widget {
     }
 };
 
+#ifdef PI_HIT_TEST
+// The keys', function keys' and sliders' boxes from design/make_panel.py --positions (rack/hittest.sh).
+struct HitTarget {
+    const char *name;
+    float cx, cy, w, h;
+};
+const HitTarget HIT_TARGETS[] = {
+#include "hit-points.inc"
+};
+#endif
+
 struct RhythmWidget : ModuleWidget {
     Face face;
     std::vector<RhythmKey *> keys;
@@ -2406,21 +2434,20 @@ struct RhythmWidget : ModuleWidget {
         addChild(createWidget<ThemedScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
         // design/DESIGN.md's positions table, in mm from the top left: layout B at 27 HP
-        // (D114, D119; design/make_panel.py --positions). Until issue 101, 24 HP, the display at
-        // 61 and two rows of jacks under the keys. Port numbers do not change (RACK-RULES.md).
-        const float DX = 7.62f, DY = 6.f;
+        // (D114, D119; design/make_panel.py --positions), the keys, sliders and function keys
+        // since D139 (issue 150). Until issue 101, 24 HP, the display at 61 and two rows of jacks
+        // under the keys. Port numbers do not change (RACK-RULES.md).
         RhythmDisplay *d = createWidget<RhythmDisplay>(mm2px(Vec(68.58f - 103.16f / 2, 19.5f - 24.3f / 2)));
         d->box.size = mm2px(Vec(103.16f, 24.3f));
         d->rm = module;
         d->face = &face;
         addChild(d);
-        for (int k = 0; k < 16; k++) addKey(k, 11.f + DX + 12.f * (k % 4), 44.f + DY + 12.f * (k / 4), 11.7f, 11.7f);
-        const float fx[7] = {83.47f, 97.f, 110.53f, 81.78f, 91.93f, 102.08f, 112.23f};
-        for (int i = 0; i < 7; i++) addKey(16 + i, fx[i] + DX, (i < 3 ? 49.85f : 74.15f) + DY, i < 3 ? 12.93f : 9.55f, 23.7f);
+        for (int k = 0; k < 16; k++) addKey(k, KEY1_X + PITCH_MM * (k % 4), KEY1_Y + PITCH_MM * (k / 4), KEY_MM, KEY_MM);
+        for (int i = 0; i < 7; i++) addKey(16 + i, FN_CX[i], FN_CY[i >= 3], FN_W_MM[i >= 3], FN_H_MM);
         for (int s = 0; s < 2; s++) {
             // By its corner: a new widget's size is infinite, so centring it first gives NaN.
-            RhythmSlider *sl = createParam<RhythmSlider>(mm2px(Vec((s ? 70.f : 60.f) + DX - 2.5f, 59.5f + DY - 21.5f)), module, Rhythm::SLIDER_A + s);
-            sl->box.size = mm2px(Vec(5.f, 43.f));
+            RhythmSlider *sl = createParam<RhythmSlider>(mm2px(Vec(SLIDER_X[s] - SLIDER_W / 2, SLIDER_TOP)), module, Rhythm::SLIDER_A + s);
+            sl->box.size = mm2px(Vec(SLIDER_W, SLIDER_H));
             sl->rm = module;
             sl->face = &face;
             sl->which = s;
@@ -2451,7 +2478,89 @@ struct RhythmWidget : ModuleWidget {
         helper->visible = false;
         addChild(helper);
         d->helper = helper;
+#ifdef PI_HIT_TEST
+        hitTest();
+#endif
     }
+
+#ifdef PI_HIT_TEST
+    // A scratch build for Rack's screenshot mode only (rack/hittest.sh; issue 150): every key,
+    // function key and slider must answer a left press at its centre and 0.3 mm inside each
+    // corner of the box design/make_panel.py --positions gives it (HIT_TARGETS, made from that
+    // table at build time); a press in a gap between them must reach none; and a press where
+    // the keys of 11.7 mm at a 12 mm pitch left a gap (until D139) must land on a key. The
+    // press goes through Rack's own dispatch (Widget::onButton: the topmost visible child whose
+    // box holds the point), not a copy of it. The module is null here, so nothing is played.
+    // Never shipped.
+    std::string answer(Vec mm) {
+        widget::EventContext ctx;
+        ButtonEvent e;
+        e.context = &ctx;
+        e.pos = mm2px(mm);
+        e.button = GLFW_MOUSE_BUTTON_LEFT;
+        e.action = GLFW_PRESS;
+        e.mods = 0;
+        Widget::onButton(e);
+        if (auto *k = dynamic_cast<RhythmKey *>(ctx.target)) return k->k < 16 ? string::f("key %d", k->k + 1) : std::string(FN_NAMES[k->k - 16]);
+        if (auto *sl = dynamic_cast<RhythmSlider *>(ctx.target)) return string::f("slider %c (travel)", 'A' + sl->which);
+        return ctx.target ? "another widget" : "nothing";
+    }
+    void hitTest() {
+        int good = 0, bad = 0, oldGaps = 0, oldOnKey = 0, gaps = 0;
+        auto expect = [](Vec p) -> std::string {
+            for (const HitTarget &t : HIT_TARGETS)
+                if (std::fabs(p.x - t.cx) < t.w / 2 && std::fabs(p.y - t.cy) < t.h / 2) return t.name;
+            return "nothing";
+        };
+        auto check = [&](const char *what, Vec p, std::string want) {
+            std::string got = answer(p);
+            if (got == want) good++;
+            else {
+                bad++;
+                WARN("Pocket Instruments hit test: %s at (%.2f, %.2f) mm answered by %s, not %s", what, p.x, p.y, got.c_str(), want.c_str());
+            }
+        };
+        const float in = 0.3f;
+        for (const HitTarget &t : HIT_TARGETS) {
+            check("centre", Vec(t.cx, t.cy), t.name);
+            for (int c = 0; c < 4; c++) {
+                float dx = (c & 1 ? 1 : -1) * (t.w / 2 - in), dy = (c & 2 ? 1 : -1) * (t.h / 2 - in);
+                check("corner", Vec(t.cx + dx, t.cy + dy), t.name);
+            }
+        }
+        // Until D139: keys 11.7 mm at a 12 mm pitch from (18.62, 50), 0.3 mm apart. The middle of
+        // each gap between two keys, across and down, answers as the table says. 21 of the 24
+        // are on a key now; the three between keys 13 to 16, on the old bottom row's centre line
+        // (y 86), fall in the new gap between rows 3 and 4 (85.8 to 86.2), so the log names them.
+        for (int r = 0; r < 4; r++)
+            for (int c = 0; c < 4; c++) {
+                for (int down = 0; down < 2; down++) {
+                    if ((down ? r : c) == 3) continue;
+                    Vec p = down ? Vec(18.62f + 12.f * c, 56.f + 12.f * r) : Vec(24.62f + 12.f * c, 50.f + 12.f * r);
+                    std::string want = expect(p);
+                    check("old gap", p, want);
+                    oldGaps++;
+                    if (want.rfind("key ", 0) == 0) oldOnKey++;
+                    else INFO("Pocket Instruments hit test: the old gap at (%.2f, %.2f) mm is in a gap now, not on a key", p.x, p.y);
+                }
+            }
+        // The gaps between neighbours now (two keys side by side or one over the other, as the
+        // table has them): the middle of the gap, level with their centres, reaches no widget.
+        for (const HitTarget &a : HIT_TARGETS)
+            for (const HitTarget &b : HIT_TARGETS)
+                for (int down = 0; down < 2; down++) {
+                    float across = down ? b.cy - a.cy : b.cx - a.cx, along = down ? b.cx - a.cx : b.cy - a.cy;
+                    float room = across - (down ? a.h + b.h : a.w + b.w) / 2;
+                    if (std::fabs(along) > 0.01f || across <= 0 || room <= 0 || room > 1.f) continue; // neighbours, under 1 mm apart
+                    Vec p = down ? Vec(a.cx, a.cy + a.h / 2 + room / 2) : Vec(a.cx + a.w / 2 + room / 2, a.cy);
+                    check("gap", p, "nothing");
+                    gaps++;
+                }
+        INFO("Pocket Instruments hit test: %d presses answered as make_panel.py --positions says, %d not; %zu widgets at centre and corners, "
+             "%d in the old gaps (%d on a key now), %d in the gaps now",
+             good, bad, sizeof HIT_TARGETS / sizeof HIT_TARGETS[0], oldGaps, oldOnKey, gaps);
+    }
+#endif
 
     void addKey(int k, float cx, float cy, float w, float h) {
         RhythmKey *key = createParam<RhythmKey>(mm2px(Vec(cx - w / 2, cy - h / 2)), getModule<Rhythm>(), Rhythm::KEY_PARAMS + k);

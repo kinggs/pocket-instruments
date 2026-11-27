@@ -28,6 +28,12 @@ FLAGS += -I../core/include -I../beat/include -Ibuild
 ifdef PI_FACE_SHOT
 FLAGS += -DPI_FACE_SHOT=$(PI_FACE_SHOT)
 endif
+# A scratch build for the hit test in screenshot mode (hittest.sh; issue 150): every key, function
+# key and slider pressed through Rack's own dispatch, held to make_panel.py --positions. Never shipped.
+ifdef PI_HIT_TEST
+FLAGS += -DPI_HIT_TEST=1
+build/src/Rhythm.cpp.o: build/hit-points.inc
+endif
 SOURCES += $(wildcard src/*.cpp)
 # After our objects, so the linker takes from the archive only what they ask for.
 OBJECTS += $(PI_LIB) $(PI_BEAT_LIB)
@@ -99,6 +105,14 @@ build/rhythm-beats.inc: $(wildcard ../fixtures/*.beat)
 	for f in ../fixtures/*.beat; do [ -e "$$f" ] || continue; printf '{"%s", R"PIBEAT(' "$$(basename "$$f")"; cat "$$f"; printf ')PIBEAT"},\n'; done > $@.tmp
 	mv $@.tmp $@
 build/src/Rhythm.cpp.o: build/rhythm-beats.inc
+
+# The hit test's boxes (PI_HIT_TEST): the keys', function keys' and sliders' rows of the
+# positions table, as C++ initialisers. Never retyped.
+build/hit-points.inc: ../design/make_panel.py FORCE
+	@mkdir -p build
+	uv run -q ../design/make_panel.py --positions | awk -F' *[|] *' '$$2 ~ /^(key [0-9]+|slider [AB] [(]travel[)]|sound|pattern|bpm|function|fx|play|write)$$/ { printf "{\"%s\", %sf, %sf, %sf, %sf},\n", $$2, $$3, $$4, $$5, $$6 }' > $@.tmp
+	[ "$$(wc -l < $@.tmp)" = 25 ] || { echo "hit-points.inc: not 25 widgets"; exit 1; }
+	mv $@.tmp $@
 
 # The build stamp: the commit, and when the repository holds changes not committed,
 # "-dirty" and the minute it was built. Rack's log says it at load and each module's menu
