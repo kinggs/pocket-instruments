@@ -295,7 +295,7 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
                 }
                 Action::Open(file) => {
                     let said = match std::fs::read(&file).map_err(|e| e.to_string()).and_then(|b| beat::from_file(&b)) {
-                        Ok(bytes) => {
+                        Ok(beat::Read { snapshot: bytes, own }) => {
                             *shared.to_load.lock().unwrap() = Some((bytes, None));
                             let until = Instant::now() + Duration::from_millis(500);
                             let mut r = None;
@@ -305,12 +305,12 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
                             }
                             *shared.to_load.lock().unwrap() = None;
                             match r {
-                                Some(PI_OK) => format!("opened {file}"),
+                                Some(PI_OK) => beat::own_note(own).unwrap_or_else(|| format!("opened {file}")),
                                 Some(code) => format!("{file} is not a beat this engine reads ({code})"),
                                 None => "the engine did not answer".into(),
                             }
                         }
-                        Err(e) => format!("could not read {file}: {e}"),
+                        Err(e) => format!("{file} not opened: {e}"),
                     };
                     host.hand = [None, None];
                     message = Some((said, Instant::now() + Duration::from_secs(4)));
