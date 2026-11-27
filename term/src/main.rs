@@ -3,10 +3,11 @@
 //! SPDX-License-Identifier: MIT
 use pi_term::audio::{self, Shared};
 use pi_term::ffi::*;
-use pi_term::host::{Action, Host, Mode};
+use pi_term::host::{Action, Host, Mode, Overlay};
 use pi_term::input::{Input, KITTY_FLAGS, Reader};
 use pi_term::menu::{self, Choice, Intro, Menu};
 use pi_term::settings::{self, Settings};
+use pi_term::bank::{self, Bank};
 use pi_term::{beat, screen};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -199,7 +200,9 @@ fn main() {
 /// Rhythm, until it is left. Lines for the terminal after it is put back go in `report`.
 fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>) -> Result<Left, String> {
     let beat_path: Option<PathBuf> = s.beat.clone().or_else(beat::default_path);
-    let opened = beat_path.as_deref().map(beat::open);
+    // D142 (proposed): with no file at the beat's path, a new player, so the bank's first beat.
+    let bank_ = Bank::compiled();
+    let opened = Some(beat::open_or_default(beat_path.as_deref(), &bank_));
     let shared = Shared::new();
     let mut load_note = opened.as_ref().and_then(|o| o.note.clone());
     let mut refused = false;
@@ -225,6 +228,8 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
         if let (Some(p), Some(n)) = (&beat_path, &load_note) {
             report.push(format!("{n} ({})", p.display()));
         }
+    } else if let Some(n) = load_note.as_ref().filter(|n| n.starts_with("started empty")) {
+        report.push(n.clone()); // the bank's default did not open: the whole line, after leaving
     }
 
     let mut host = Host::new(t.mode);
@@ -253,21 +258,9 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
     let mut left: Option<Left> = None;
 
     let save_now = |shared: &Shared, path: &PathBuf| -> Result<(), String> {
-        shared.want_save.store(true, Ordering::Release);
-        let until = Instant::now() + Duration::from_millis(500);
-        while Instant::now() < until {
-            let taken = {
-                let mut s = shared.saved.lock().unwrap();
-                let n = std::mem::take(&mut s.1);
-                (n > 0).then(|| s.0[..n].to_vec())
-            };
-            if let Some(b) = taken {
-                let bytes = beat::to_file(&b)?;
-                return beat::write(path, &bytes).map_err(|e| format!("could not write {}: {e}", path.display()));
-            }
-            std::thread::sleep(Duration::from_millis(2));
-        }
-        Err("the engine did not answer the save".into())
+        let b = bank::snapshot_now(shared)?;
+        let bytes = beat::to_file(&b)?;
+        beat::write(path, &bytes).map_err(|e| format!("could not write {}: {e}", path.display()))
     };
 
     while left.is_none() {
@@ -303,15 +296,7 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
                 Action::Open(file) => {
                     let said = match std::fs::read(&file).map_err(|e| e.to_string()).and_then(|b| beat::from_file(&b)) {
                         Ok(beat::Read { snapshot: bytes, own }) => {
-                            *shared.to_load.lock().unwrap() = Some((bytes, None));
-                            let until = Instant::now() + Duration::from_millis(500);
-                            let mut r = None;
-                            while Instant::now() < until && r.is_none() {
-                                std::thread::sleep(Duration::from_millis(2));
-                                r = shared.to_load.lock().unwrap().as_ref().and_then(|(_, r)| *r);
-                            }
-                            *shared.to_load.lock().unwrap() = None;
-                            match r {
+                            match bank::load(&shared, bytes) {
                                 Some(PI_OK) => beat::own_note(own).unwrap_or_else(|| format!("opened {file}")),
                                 Some(code) => format!("{file} is not a beat this engine reads ({code})"),
                                 None => "the engine did not answer".into(),
@@ -321,6 +306,33 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
                     };
                     host.hand = [None, None];
                     message = Some((said, Instant::now() + Duration::from_secs(4)));
+                }
+                // The bank (docs/BANK.md; D141, D142, proposed): `:bank` lists it on the display;
+                // `:bank <n>` and `:new` load through the same load `:e` uses, after the beat
+                // here is kept in rhythm.previous.beat (`:e` opens it again).
+                Action::Bank(None) => host.overlay = Overlay::Bank(bank_.menu()),
+                Action::Bank(Some(_)) | Action::New => {
+                    let got = match &a {
+                        Action::Bank(Some(n)) => bank_.read(*n).map(|(file, r)| (bank::name_of(&r.snapshot), file, r.snapshot)),
+                        _ => beat::from_file(bank::EMPTY).map(|r| ("the empty beat".to_string(), String::new(), r.snapshot)),
+                    };
+                    let said = match (got, &beat_path) {
+                        (Err(why), _) => format!("not loaded: {why}"),
+                        (Ok(_), None) => "not loaded: there is nowhere to keep the beat here (no beat file)".into(),
+                        (Ok((name, file, snap)), Some(p)) => {
+                            let prev = bank::previous_path(p);
+                            match bank::replace(&shared, &prev, snap) {
+                                Ok(()) => {
+                                    host.hand = [None, None];
+                                    let what = if name.is_empty() { file } else { name };
+                                    let kept = prev.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                                    format!("{what}; the last beat kept: :e {kept}")
+                                }
+                                Err(e) => e,
+                            }
+                        }
+                    };
+                    message = Some((said, Instant::now() + Duration::from_secs(6)));
                 }
             }
         }

@@ -64,6 +64,28 @@ fn main() {
         println!("cargo:rustc-link-search=native={}", beat.parent().unwrap().display());
     }
     println!("cargo:rustc-link-lib=static=pi_beat");
+    // The bank (docs/BANK.md, D141 item 5): compiled in from ../beats, as the starter pack is, so
+    // the binary needs no file beside it. The files go in as they are, text, with bank.txt; the
+    // host reads them with pib_read when it needs one (term/src/bank.rs). No snapshot is made here.
+    let beats = root.join("beats");
+    println!("cargo:rerun-if-changed={}", beats.display());
+    let mut files: Vec<String> = std::fs::read_dir(&beats)
+        .expect("no beats/ folder")
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n.ends_with(".beat") || n == "bank.txt")
+        .collect();
+    files.sort();
+    let mut src = String::from("// Written by build.rs from beats/: every file as it is.\n");
+    let lit = |n: &str| format!("{:?}", beats.join(n).display().to_string());
+    src += &format!("pub static LIST: &[u8] = include_bytes!({});\n", lit("bank.txt"));
+    src += "pub static FILES: &[(&str, &[u8])] = &[\n";
+    for f in files.iter().filter(|n| n.ends_with(".beat")) {
+        println!("cargo:rerun-if-changed={}", beats.join(f).display());
+        src += &format!("    ({f:?}, include_bytes!({})),\n", lit(f));
+    }
+    src += "];\n";
+    println!("cargo:rerun-if-changed={}", beats.join("bank.txt").display());
+    std::fs::write(PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("bank.rs"), src).unwrap();
     // The commit, for --version. Absent outside a git checkout (a source tarball): "unknown".
     let commit = Command::new("git")
         .args(["-C", root.to_str().unwrap(), "rev-parse", "--short=7", "HEAD"])

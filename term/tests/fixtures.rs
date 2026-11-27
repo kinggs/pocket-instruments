@@ -499,3 +499,32 @@ fn every_fixture_through_the_terminal_host() {
     assert!(failed.is_empty(), "{} of {runs} runs did not match: {:?}", failed.len(), &failed[..failed.len().min(10)]);
     assert_eq!(runs, (all.len() - beats) * 2 * 3 * 5 + beats * 2 * 3 * 3);
 }
+
+/// D142 (proposed; issue 164): a first start, with no file at the beat's path, opens the bank's
+/// first beat, and it plays `beat-amen-break`'s trace and views on both sources, from the
+/// snapshot the start-up path gave (`beat::open_or_default`, as main.rs calls it) loaded into an
+/// engine made with the host's own seed, 1. If `bank.txt`'s first line moves, this fixture
+/// must name that beat: the test says so.
+#[test]
+fn a_first_start_with_no_beat_file_plays_beat_amen_break() {
+    let d = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("fixtures-first-start");
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(&d).unwrap();
+    let path = d.join("rhythm.beat");
+    let o = pi_term::beat::open_or_default(Some(&path), &pi_term::bank::Bank::compiled());
+    let snap = o.snapshot.expect("the default");
+    let all = fixtures();
+    let (_, fx) = all.iter().find(|(n, _)| n == "beat-amen-break").expect("fixtures/beat-amen-break.json");
+    let Some(Json::Str(file)) = fx.get("beat") else { panic!() };
+    let first = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../beats/bank.txt")).unwrap();
+    assert_eq!(file.as_str(), format!("../beats/{}", first.lines().next().unwrap()), "the default is bank.txt's first line: the fixture must be its beat");
+    assert_eq!(snap, read_beat(file), "the start-up's snapshot is pib_read of the file");
+    let want: String = fx.arr("expect").iter().map(|l| if let Json::Str(s) = l { format!("{s}\n") } else { panic!() }).collect();
+    for source in [PI_SOURCE_TABLE, PI_SOURCE_EDGES] {
+        let (cmds, views, end) = schedule(fx, 48000, source, true);
+        let mut e = Engine::new(48000, 1);
+        assert_eq!(e.load(&snap), PI_OK);
+        let (got, _, ok) = run(&mut e, &cmds, end, 128, &views, fx.n("format"));
+        assert!(ok && got == want, "source {source}: the default did not play beat-amen-break");
+    }
+}

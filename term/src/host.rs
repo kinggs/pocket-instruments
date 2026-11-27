@@ -26,6 +26,8 @@ pub enum Overlay {
     Helper,
     Sheet,
     Command(String),
+    /// `:bank`: the bank's beats, numbered (docs/BANK.md; D141, proposed). Esc closes.
+    Bank(Vec<String>),
 }
 
 /// Something for the program around the host to do.
@@ -38,6 +40,11 @@ pub enum Action {
     Save(Option<String>),
     Open(String),
     Say(String),
+    /// `:bank` (None): list the bank; `:bank <n>`: load its n-th beat, keeping the one it
+    /// replaces (D141, D142, proposed; the words are for Kenny ⚠).
+    Bank(Option<usize>),
+    /// `:new`: the empty beat, keeping the one it replaces.
+    New,
 }
 
 /// Who holds a key down, as the page's `holders` sets: the keyboard, or a latch.
@@ -320,6 +327,12 @@ impl Host {
                 return;
             }
             Overlay::Sheet => return self.sheet_key(e),
+            Overlay::Bank(_) => {
+                if e.kind == Kind::Press && e.key == Key::Esc {
+                    self.overlay = Overlay::None;
+                }
+                return;
+            }
             Overlay::None => {}
         }
         if self.shortcut(e) {
@@ -460,7 +473,8 @@ impl Host {
         }
     }
 
-    /// The command line (D116 item 2, proposed ⚠): `w [file]`, `e <file>`, `q`.
+    /// The command line (D116 item 2, proposed ⚠): `w [file]`, `e <file>`, `q`; and since issue
+    /// 164 (D141, D142, proposed ⚠) `bank`, `bank <n>`, `new`.
     fn command_key(&mut self, e: KeyEvent, mut text: String) {
         if e.kind == Kind::Release {
             return;
@@ -482,8 +496,14 @@ impl Host {
                         Some(f) => self.actions.push(Action::Open(f)),
                         None => self.actions.push(Action::Say("open what? :e <file>".into())),
                     },
+                    "bank" => match arg.as_deref().map(str::parse::<usize>) {
+                        None => self.actions.push(Action::Bank(None)),
+                        Some(Ok(n)) => self.actions.push(Action::Bank(Some(n))),
+                        Some(Err(_)) => self.actions.push(Action::Say("which beat? :bank lists them, :bank <n> loads one".into())),
+                    },
+                    "new" => self.actions.push(Action::New),
                     "" => {}
-                    other => self.actions.push(Action::Say(format!("not a command: {other} (w, e, q)"))),
+                    other => self.actions.push(Action::Say(format!("not a command: {other} (w, e, q, bank, new)"))),
                 }
             }
             Key::Backspace => {

@@ -138,6 +138,32 @@ pub fn open(path: &Path) -> Opened {
     }
 }
 
+/// The beat at start (D142, proposed): the file at `path` as `open` reads it; and when there is
+/// no file there (or no path at all: nothing was ever saved), a new player, so the bank's first
+/// beat (`bank.txt`'s first line) read by `pib_read` now, as `:bank 1` would. It is written to
+/// the path at the next save, as any beat is. A file that is there is never replaced, whatever
+/// its version and whether or not it reads. A default that cannot be read leaves the instrument
+/// empty and says why.
+pub fn open_or_default(path: Option<&Path>, bank: &crate::bank::Bank) -> Opened {
+    let opened = path.map(open);
+    let new = match (&opened, path) {
+        (None, _) => true,
+        (Some(o), Some(p)) => o.snapshot.is_none() && o.writable && o.note.is_none() && !p.exists(),
+        _ => false,
+    };
+    if !new {
+        return opened.unwrap();
+    }
+    match bank.default_beat() {
+        Ok((file, r)) => {
+            let name = crate::bank::name_of(&r.snapshot);
+            let name = if name.is_empty() { file } else { name };
+            Opened { snapshot: Some(r.snapshot), writable: true, note: Some(format!("a new beat: {name}, from the bank (:bank lists it, :new empties)")) }
+        }
+        Err(why) => Opened { snapshot: None, writable: true, note: Some(format!("started empty: the bank's first beat did not open: {why}")) },
+    }
+}
+
 /// What the host says of a file it did not read, and leaves alone (it then starts empty; `:w`
 /// says where else to save). Kept short: the footer has 78 cells.
 pub fn left_alone(path: &Path, why: &str) -> String {

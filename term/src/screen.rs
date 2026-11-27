@@ -767,6 +767,20 @@ fn helper(g: &mut Grid, y0: usize, h: usize) {
     g.text(w.saturating_sub(16), y0, "esc or ? closes", Tok::Lilac, Tok::Display);
 }
 
+/// `:bank`: the bank's beats, numbered (docs/BANK.md; D141, proposed). Words only, a stand-in
+/// until Kenny rules a look: a title, one beat a line, and how to load one.
+fn bank(g: &mut Grid, lines: &[String], y0: usize, h: usize) {
+    let w = g.w;
+    g.fill(0, y0, w, h, Tok::Display);
+    g.text(1, y0, "the bank", Tok::Ochre, Tok::Display);
+    let help = if w >= 80 { ":bank <n> loads one, keeping this beat   esc closes" } else { ":bank <n> loads   esc closes" };
+    g.text(w.saturating_sub(help.chars().count() + 1), y0, help, Tok::Lilac, Tok::Display);
+    for (i, l) in lines.iter().enumerate().take(h.saturating_sub(1)) {
+        let l: String = l.chars().take(w.saturating_sub(3)).collect();
+        g.text(2, y0 + 1 + i, &l, Tok::Ecru, Tok::Display);
+    }
+}
+
 fn sheet(g: &mut Grid, s: &Scene, y0: usize, h: usize) {
     let w = g.w;
     let v = s.view;
@@ -810,6 +824,7 @@ pub fn main_screen(s: &Scene) -> Grid {
     match s.host.overlay {
         Overlay::Helper => helper(&mut g, 1, 22),
         Overlay::Sheet => sheet(&mut g, s, 1, 22),
+        Overlay::Bank(ref l) => bank(&mut g, l, 1, 22),
         _ => {
             g.fill(0, 1, 80, 10, Tok::Ground);
             g.fill(1, 1, 78, 10, Tok::Display);
@@ -851,6 +866,7 @@ pub fn pocket_screen(s: &Scene) -> Grid {
     match s.host.overlay {
         Overlay::Helper => helper(&mut g, 1, 8),
         Overlay::Sheet => sheet(&mut g, s, 1, 8),
+        Overlay::Bank(ref l) => bank(&mut g, l, 1, 8),
         _ => {
             g.fill(0, 1, 48, 1, Tok::Display);
             marks(&mut g, s, None, 1, 1, 1, 2);

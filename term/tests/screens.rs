@@ -352,6 +352,21 @@ fn the_helper_and_the_sheet_open_over_the_instrument() {
     assert!(text.contains("bass drum") && text.contains("sample") && text.contains("code") && text.contains("through fx"));
 }
 
+/// `:bank` (D141, proposed): the bank's beats, numbered, on the display at both sizes; words only.
+#[test]
+fn the_bank_s_list_opens_over_the_instrument_at_both_sizes() {
+    let mut h = host();
+    let menu = pi_term::bank::Bank::compiled().menu();
+    h.overlay = Overlay::Bank(menu.clone());
+    let d = draw(&blank(), 0, &h);
+    for text in [d.main.plain(), d.pocket.plain()] {
+        assert!(text.contains("the bank") && text.contains("esc closes"), "{text}");
+        for l in &menu {
+            assert!(text.contains(l.as_str()), "{l} not drawn:\n{text}");
+        }
+    }
+}
+
 #[test]
 fn colour_is_truecolour_and_no_colour_sends_no_colour() {
     let d = draw(&blank(), 0, &host());

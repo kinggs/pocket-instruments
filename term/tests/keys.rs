@@ -659,3 +659,24 @@ fn a_change_lands_at_the_end_of_the_bar_in_hold_and_in_tap() {
     lands_at_the_end_of_the_bar(Mode::Hold, &hold.iter().map(|b| b.as_slice()).collect::<Vec<_>>());
     lands_at_the_end_of_the_bar(Mode::Tap, &[b"8", b"3"]);
 }
+
+/// The bank's words (D141, D142, proposed; the words are for Kenny ⚠): `:bank` lists it,
+/// `:bank <n>` loads one, `:new` empties; the list closes on esc and takes no key.
+#[test]
+fn colon_bank_bank_n_and_new() {
+    let mut t = T::new(Mode::Tap);
+    t.tap(':');
+    t.bytes(b"bank\r");
+    assert_eq!(t.host.take_actions(), vec![Action::Bank(None)]);
+    t.bytes(b":bank 3\r");
+    assert_eq!(t.host.take_actions(), vec![Action::Bank(Some(3))]);
+    t.bytes(b":new\r");
+    assert_eq!(t.host.take_actions(), vec![Action::New]);
+    t.bytes(b":bank amen\r");
+    assert!(matches!(&t.host.take_actions()[..], [Action::Say(m)] if m.starts_with("which beat?")));
+    t.host.overlay = Overlay::Bank(vec!["1  Amen Break".into()]);
+    t.tap('1');
+    assert_eq!(t.host.take_cmds(), vec![], "keys do nothing under the bank's list");
+    t.bytes(b"\x1b[27u");
+    assert_eq!(t.host.overlay, Overlay::None);
+}
