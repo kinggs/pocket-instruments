@@ -2929,6 +2929,53 @@ hold.
 Not chosen: a time in steps (it would change with the tempo); timing in the hosts (each would
 need it, and the core decides what a key means, D51).
 
+### D131 — Patterns on every host; then the agent's command, a bank of our own beats, the link; a pre-release now; no lawyer's view; the backlog pruned
+**2026-11-27 · decided (Kenny, in a planning session, answering seven questions) · answers D110 item 9 (the order after patterns; the four conditional fixes), issues 54 and 82, O7, and issue 74's question · widens issue 4 to the terminal host · nothing built; no file of the engine changes**
+
+Kenny, opening the session: "I feel like functionally finishing the functionality around
+patterns first, and maaaybe shipping with some pre-built patterns linked together. An Amen
+Break?" And later in it: "I want to race towards showpiece."
+
+1. **Patterns (issue 4) is finished on every host:** the core, the page, Rack and the
+   terminal. Choose, copy, chain and clear with the hardware's gestures, snapshot version 5
+   and the readable beat file. Issue 4 was written before the terminal host existed. The lane
+   and chain editor (issue 5) is not part of it.
+2. **The order after patterns:** the agent's command (issue 6), the bank of beats (item 3),
+   then the link that carries a beat (issue 7). Asked again after "race towards showpiece",
+   Kenny kept it. Sampler (D111) and the rest come after, not placed.
+3. **A small bank of our own beats ships with the instrument** (issue 134): four to eight,
+   written by us as beat files, an Amen Break across four chained patterns as its headline,
+   loaded from a menu and never replacing a player's work unasked. ⚠ Not ruled: which beats,
+   where the bank lives, and what is relied on to ship the Amen Break's rhythm; issue 134
+   carries them. Pocket Operations' patterns stay blocked (O29).
+4. **The four conditional fixes are parked until the ear asks** (issues 24 to 27; issue 82).
+5. **The backlog is pruned.** Three milestones: Patterns, Showpiece, Later. Kenny's checks are
+   folded into four sitting issues by where they are done (in Rack, 129; on the phone and the
+   listening page, 130; with the PO-12, 131; at the desk, 132), each box as it stood. The
+   parked issues are closed as not planned and listed in issue 133. A closed issue keeps its
+   text and is reopened when its condition is met.
+6. **A pre-release now** (issue 74's question): a tagged GitHub pre-release with the four
+   plugin files is within "public and quiet" (D110 item 1). Attestations may follow. ⚠ Not
+   ruled: the tag's name against the plugin's version (2.0.0 in `rack/plugin.json`). There is
+   still no announcement and no VCV Library submission.
+7. **No lawyer's view.** Kenny: "We won't do lawyers view." O7 is closed and issue 46 with it;
+   that gate of P9 no longer applies. ⚠ `docs/PROOFS.md` P9 is not edited here: its other
+   gates stand.
+8. **When Teenage Engineering is approached.** Kenny: "I think we have something good once we
+   have the patterns and a nice reference patch." That is D19's "something good to show".
+   ⚠ Not ruled: whether proof P8 (D22) must pass first, and that the page has never run on
+   iOS Safari (P4). The notes to VCV (issue 37) and to Pocket Operations' author (issue 44)
+   wait on nothing and may go now.
+
+Found while planning (R86): the maker's guides for the PO-12, PO-32 and PO-33 give choosing,
+chaining and copying in the same words, so the pattern workflow is the family's. None says
+when a pattern change lands while playing, nor whether a copy carries the effects: those two
+stay for the PO-12 (issue 131).
+
+Not chosen: patterns without Rack first; the lane and chain editor inside patterns; the link
+before patterns, carrying today's one-pattern snapshot (the link's form would be designed
+twice); Sampler straight after patterns; milestones with nothing closed.
+
 ## Open
 
 | ID | Question | Needs |
@@ -2939,7 +2986,7 @@ need it, and the core decides what a key means, D51).
 | O4 | ~~How does swing behave on an external clock?~~ | Answered 2026-11-19: D24 |
 | O5 | ~~Saved state: one readable format shared by both hosts, or a versioned binary snapshot each host wraps?~~ | Answered 2026-11-19: D25 |
 | O6 | EU and UK registered designs and marks | A search of EUIPO and UKIPO. **Marks, 2026-11-27:** POCKET OPERATOR is registered in the EU (018268254) and the UK (UK00918268254), classes 9 and 35 (R85). Designs not searched |
-| O7 | A lawyer's view of the mockup before public release | P9 |
+| O7 | ~~A lawyer's view of the mockup before public release~~ | **Answered 2026-11-27: D131 item 7** (none will be sought). Was: P9 |
 | O8 | ~~Answered by D23.~~ The hardware is played with two fingers: hold a function key, press a grid key or turn a knob. A mouse has one pointer. How are combinations made in Rack? Proposed: a click on a function key latches it (it glows) until the next grid press or a second click; computer keys held while hovering also work. The phone browser has real multi-touch and needs neither | Session 1, with D22 in mind; try it at P8 |
 | O11 | ~~On the hardware each grid key is its own sound in play mode (R26, R27). Sixteen tracks from the start, or four and twelve dead keys?~~ | Answered 2026-11-19: D30 |
 | O12 | ~~Answered 2026-11-19: the owner is content with the textile theme ("I think"). It still goes to O7 and D19 at P9.~~ The chosen look, Loom, animates a loom weaving with a shuttle and thread. The original's protected display art (R6) shows a sewing machine and thread spools. Different drawing, neighbouring subject. Is a textile theme far enough away, or should the display's subject move? | The owner, before the look is built on; then O7 and D19 at P9 |
