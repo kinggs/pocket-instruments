@@ -36,7 +36,18 @@
 // A mouse holds a key while the button is down; Shift+click or Shift+key (Ctrl+click until
 // D113) latches sound, pattern, bpm or function until the next press of any key ends, or a
 // second Shift (D60, D61, D113). Shift on fx latches it until it is Shifted again, and while
-// latched fx is down only while a grid key is (D78). esc lets every latch go. The one-key
+// latched fx is down only while a grid key is (D78). esc lets every latch go.
+//
+// Patterns (ABI 16; ENGINE.md §21, D133, D135; WORKFLOW.md, "Patterns, on every way of
+// playing"): the core keeps the sixteen and decides what each key does (D51); the module only
+// sends keys. With one finger: Shift on a grid key keeps a latched pattern latched, so Shift+
+// pattern, Shift+a, Shift+b, then c chains a b c (D135 item 1); Shift latches write too, as a
+// modifier for copy: Shift+write, Shift+pattern, then a key copies (item 2). While pattern is
+// held or latched the grid shows the patterns, with no frame, core or twill, and the active
+// pattern's key flickers (pi::keyLights). The display says the pattern, the chain's place and
+// the pattern waiting (pi::patternText). RESET restarts the chain (the core's). A snapshot is
+// saved at most four times a second, the last move always, and at once when Rack saves the
+// patch (pi::SaveGate; §21, "Saving while playing"). The one-key
 // shortcuts (D119 item 3) and the keys helper, opened by ? or the ? in the display's corner
 // (D116, D119 item 6), play while the pointer is over the module. A key's lights are D120's
 // (ENGINE.md §14 and §17, designed 2026-11-26; pi::keyLights). Right-click keeps Rack's own parameter menu (R47). The computer keys of D57 item 5
@@ -51,7 +62,10 @@
 // with format 1. A patch whose data names a loop ("return", "fx", "sliders") plays a short
 // performance through the module's own cables and holds every frame to a second engine given
 // what those cables should carry ("fx" in whichever of the three settings the patch gives);
-// "latch" plays D78's gestures. rack/selftest.sh.
+// "latch" plays D78's gestures; "patterns" D135's, with a mouse and the keys; "reset" holds
+// RESET restarting a chain, from the module's own TRIGGERS; "save" drags a slider over sixteen
+// patterns and holds the saves to four a second, and each patch save to the last move.
+// rack/selftest.sh.
 //
 // Nothing on the audio thread allocates, locks or logs.
 // SPDX-License-Identifier: MIT
@@ -59,12 +73,14 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "handoff.hpp"
@@ -108,9 +124,10 @@ const char *const FX_NAMES[PI_TRACKS] = {"low sample rate", "distortion", "bit c
     "hipass", "hipass sweep", "repeat, 4 a beat", "repeat, 3 a beat", "repeat, 8 a beat", "repeat, 6 a beat", "note shuffle",
     "feedback", "15 (no sound here yet)", "16 (no sound here yet)"};
 // The loop self-tests (selftest.sh): which of the module's own cables a patch has looped.
-const char *const LOOP_NAMES[5] = {"none", "return", "fx", "sliders", "latch"};
-enum Loop { LOOP_NONE, LOOP_RETURN, LOOP_FX, LOOP_SLIDERS, LOOP_LATCH };
-const uint32_t LATCHING = 1u << PI_KEY_SOUND | 1u << PI_KEY_PATTERN | 1u << PI_KEY_BPM | 1u << PI_KEY_FUNCTION | 1u << PI_KEY_FX;
+const char *const LOOP_NAMES[8] = {"none", "return", "fx", "sliders", "latch", "patterns", "reset", "save"};
+enum Loop { LOOP_NONE, LOOP_RETURN, LOOP_FX, LOOP_SLIDERS, LOOP_LATCH, LOOP_PATTERNS, LOOP_RESET, LOOP_SAVE, LOOP_LAST = LOOP_SAVE };
+// The keys Shift latches (D61, D113); write since D135 item 2, as a modifier for copy.
+const uint32_t LATCHING = 1u << PI_KEY_SOUND | 1u << PI_KEY_PATTERN | 1u << PI_KEY_BPM | 1u << PI_KEY_FUNCTION | 1u << PI_KEY_FX | 1u << PI_KEY_WRITE;
 const uint32_t SEED = 1; // keys cannot set a probability, so no draw depends on it (as the page)
 
 // D57 item 5, by the key's place on a US keyboard (GLFW's key codes are positions).
@@ -206,10 +223,19 @@ struct Rhythm : Module {
     pi::Latest<Snap> inbox;      // Rack's loading thread writes; audio thread reads
     pi::Latest<View> viewOut;    // audio thread writes; the drawing thread reads
     pi::Queue<pi_cmd, 64> menu;  // the menu's edits (VOICE, FIRE), in order, to the audio thread
+    // Saving while playing (ENGINE.md §21; pi::SaveGate): the audio thread saves at most four
+    // times a second. So that a patch saved between two of those saves still holds the last move,
+    // dataToJson, when the engine holds a move not yet saved (`unsaved`), steps `saveAsk` and waits
+    // (50 ms at most) until the audio thread hands that count back in `saveDone`, which it does on
+    // its next frame, after saving.
+    std::atomic<uint32_t> saveAsk{0}, saveDone{0}, savesAsked{0};
+    std::atomic<bool> unsaved{false};
+    std::atomic<uint32_t> patternShown{0}; // the view's pattern, chain and used, for the log (report)
 
     // ---- Rack's other threads only. ----
     uint8_t holders[23] = {};    // who holds each key down (Holder bits)
     uint32_t latched = 0;        // keys latched by Shift (D61, D113); fx stays until the next one (D78)
+    uint32_t shiftKeys = 0;      // D135 item 1: the grid keys pressed with Shift, which keep pattern latched
     std::vector<uint8_t> pendingLoad; // the last snapshot a patch gave, until a save holds it
     uint32_t loadsAsked = 0;
 
@@ -250,6 +276,15 @@ struct Rhythm : Module {
     std::atomic<uint32_t> playStarts{0}, playSteps{0};
     std::atomic<uint64_t> playSum{0};
     bool wasPlaying = false;
+    // The pattern self-tests ("reset", "save"; patternLoop). The save test's second thread plays
+    // Rack's saving thread (saveTester), started only by a patch that names the loop "save".
+    uint64_t resetArmed = 0, saveLast = 0, saveClosest = ~uint64_t(0), saveClosestSent = ~uint64_t(0);
+    uint32_t savePubSeen = 0, saveAskedSeen = 0, saveWait = 0, truthLen = 0;
+    uint8_t truth[PI_SNAPSHOT_SIZE];
+    std::atomic<int> saveTest{0};
+    std::atomic<uint32_t> saveThrottled{0}, saveFramesRun{0}, saveClosestShown{0xffffffffu}, saveHeld{0}, saveNot{0};
+    std::atomic<bool> testerStop{false};
+    std::thread tester;
     uint32_t rate = 0, sinceReset = 0xffffffffu, generation = 0, sincePublish = 0;
     int sourceSent = -1;         // the clock source last sent (pi::source); -1 sends it on the next frame
     bool keyDown[23] = {};       // what the core was last told of each key
@@ -264,6 +299,10 @@ struct Rhythm : Module {
     uint32_t frames = 0, droppedSeen = 0, notFiniteSeen = 0, returnFramesSeen = 0;
     bool viewNow = true;         // something may have moved the view: read it this frame
     bool firstFrame = true, mustPublish = true;
+    pi::SaveGate saveGate;       // §21: at most four saves a second, the last move always
+    uint32_t saveFrames = 12000; // a quarter of a second at the rate
+    uint32_t saveDoneSent = 0;   // the last ask handed back
+    bool unsavedSent = false;    // what `unsaved` was last set to
     uint8_t view[PI_VIEW_SIZE] = {}, shownView[PI_VIEW_SIZE] = {};
     bool viewEverShown = false;
     // The self-test's place in its fixture (the Probe's scheme; fixtures/README.md).
@@ -311,7 +350,44 @@ struct Rhythm : Module {
         givePack();
     }
 
-    ~Rhythm() { report("removed"); }
+    ~Rhythm() {
+        testerStop = true;
+        if (tester.joinable()) tester.join();
+        report("removed");
+    }
+
+    // "save", Rack's saving thread's half (patternLoop): every 370 ms, once the drag has run a
+    // second, stop it, take the patch's snapshot from dataToJson as Rack would, and hold it to the
+    // one the audio thread saves a tenth of a second later, with nothing moved between.
+    void saveTester() {
+        auto waitFor = [&](int phase) {
+            for (int ms = 0; ms < 2000 && !testerStop.load(); ms++) {
+                if (saveTest.load(std::memory_order_acquire) == phase) return true;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            return false;
+        };
+        while (!testerStop.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(370));
+            if (testerStop.load() || saveFramesRun.load(std::memory_order_relaxed) < lastRate.load()) continue;
+            saveTest.store(1, std::memory_order_release);
+            if (!waitFor(2)) break;
+            std::vector<uint8_t> got;
+            json_t *root = dataToJson();
+            if (json_t *j = json_object_get(root, "snapshot")) {
+                try {
+                    got = string::fromBase64(json_string_value(j) ? json_string_value(j) : "");
+                } catch (const std::exception &) {
+                }
+            }
+            json_decref(root);
+            saveTest.store(3, std::memory_order_release);
+            if (!waitFor(4)) break;
+            bool same = got.size() == truthLen && truthLen && !std::memcmp(got.data(), truth, truthLen);
+            (same ? saveHeld : saveNot)++;
+            saveTest.store(0, std::memory_order_release);
+        }
+    }
 
     // As the Probe: res/samples/ in the plugin, in tracks.txt's order (D50).
     void loadPack() {
@@ -358,11 +434,17 @@ struct Rhythm : Module {
              when, fx >= 0 ? FIXTURES[fx].name : "none", fx >= 0 ? (testedEdges.load() ? " on edges" : " on the table") : "",
              passed.load(), failed.load(), aborted.load(), viewsHeld.load(), viewsNot.load(), lastRate.load(), dropped.load(),
              published.load(), loadsOk.load(), loadsRefused.load(), peakMillivolts.load() / 1000.0, notFinite.load(), pulses.load(),
-             returnFrames.load(), gatesHeld.load(), gatesNot.load(), LOOP_NAMES[clamp(loopWanted.load(), 0, 4)],
+             returnFrames.load(), gatesHeld.load(), gatesNot.load(), LOOP_NAMES[clamp(loopWanted.load(), 0, int(LOOP_LAST))],
              loopWanted.load() == LOOP_FX ? string::f(" effect %d ", fxLoopEffect()).c_str() : "",
              loopWanted.load() == LOOP_FX ? fxLoopCase() : "", loopPassed.load(),
              loopFailed.load(), loopHeld.load(), loopNot.load(), loopActed.load(), packLoaded);
         if (haveMismatch.load()) INFO("Pocket Instruments rhythm: first mismatch: %s", firstMismatch);
+        // ABI 16 (§21): the patterns the view last showed, and the saves.
+        uint32_t ps = patternShown.load();
+        INFO("Pocket Instruments rhythm patterns (%s): module %lld: pattern %u, chain length %u, used %04x; %u saves, %u asked by a "
+             "patch save; save loop: %u saves not asked in %u frames, closest %u frames apart; %u patch saves held the last move, %u not",
+             when, (long long)id, (ps & 0xff) + 1, ps >> 8 & 0xff, ps >> 16, published.load(), savesAsked.load(), saveThrottled.load(),
+             saveFramesRun.load(), saveClosestShown.load(), saveHeld.load(), saveNot.load());
         if (playTested.load()) // D138: selftest.sh compares these between modules run from one signal
             INFO("Pocket Instruments rhythm play (%s): module %lld: rate %u Hz, %u starts, %u steps, sum %016llx", when, (long long)id,
                  lastRate.load(), playStarts.load(), playSteps.load(), (unsigned long long)playSum.load());
@@ -384,9 +466,12 @@ struct Rhythm : Module {
         holders[k] = on ? uint8_t(holders[k] | who) : uint8_t(holders[k] & ~who);
         params[KEY_PARAMS + k].setValue(holders[k] ? 1.f : 0.f);
     }
-    void hold(int k, uint8_t who, bool on) {
+    // `shift`: a grid key pressed with Shift, which keeps a latched pattern latched when it is let
+    // go (D135 item 1), so a mouse or one finger can chain.
+    void hold(int k, uint8_t who, bool on, bool shift = false) {
         uint8_t before = holders[k];
         bool fxLatched = latched >> PI_KEY_FX & 1;
+        if (on && k < 16) shiftKeys = shift ? shiftKeys | 1u << k : shiftKeys & ~(1u << k);
         // D78: while fx is latched it is down only while a grid key is. It goes down before the
         // first grid key and comes up after the last, so each click punches for as long as it
         // is held and, between clicks, no arriving step is emptied. (process() sends a frame's
@@ -395,10 +480,15 @@ struct Rhythm : Module {
         set(k, who, on);
         if (!on && k < 16 && fxLatched && !gridHeld()) set(PI_KEY_FX, LATCH, false);
         // D60: a press that ends finishes the gesture, and every latched key lets go. But fx:
-        // its latch stays until it is Shifted again (D78, D113).
-        if (!on && (before & who) && who != LATCH && (latched & ~(1u << PI_KEY_FX)))
+        // its latch stays until it is Shifted again (D78, D113). And pattern, when the press
+        // that ends is a grid key pressed with Shift (D135 item 1): the chain goes on. ⚠ Only
+        // pattern stays: D135 item 1 names it alone, and item 2 has write let go "like the others".
+        if (!on && (before & who) && who != LATCH && (latched & ~(1u << PI_KEY_FX))) {
+            uint32_t keep = 1u << PI_KEY_FX;
+            if (k < 16 && (shiftKeys >> k & 1)) keep |= 1u << PI_KEY_PATTERN;
             for (int j = 0; j < 23; j++)
-                if ((latched >> j & 1) && j != int(PI_KEY_FX)) unlatch(j);
+                if ((latched >> j & 1) && !(keep >> j & 1)) unlatch(j);
+        }
     }
     void unlatch(int k) {
         latched &= ~(1u << k);
@@ -605,7 +695,204 @@ struct Rhythm : Module {
         } else loopFail(what);
     }
 
+    // ---- The pattern self-tests (ABI 16; ENGINE.md §21; issue 142). Each check worked by hand
+    // from §21 and D135 before the code ran. ----
+    //
+    // "patterns": D135's gestures, by the functions a mouse and the computer keys call (as
+    // "latch" does), on the table clock at 120 bpm, stopped, so every choice lands at once (§21).
+    // Patterns 1, 2 and 3 are given a step each by edits. A gesture is made a frame after a step's
+    // boundary; the view is held at the next boundaries:
+    //   1-3  Shift+click pattern, click key 2: pattern 2 chosen, the latch let go. At 2, pattern
+    //        latched: the grid is the patterns (field 1 2 3 used, stitch and bar on pattern 1).
+    //   4-8  Shift+click pattern, Shift+click key 3, Shift+r (key 4 by the keys): the latch kept
+    //        both times; the chain 3 4.
+    //   9-10 a plain click on key 1: the chain 3 4 1, the latch let go.
+    //  11-14 Shift+click write (write mode on), Shift+click pattern, click key 6: pattern 3
+    //        copied to 6, write mode back off, both latches let go.
+    //  15-17 Shift+click function, click pattern: pattern 3 (the active one) cleared, 6 kept.
+    //  18-19 Shift+click pattern, esc: every latch let go.
+    //  20-23 hold 8 (pattern) by the keys, press and let go q (key 5): pattern 5 chosen.
+    // "reset": RESET restarts the chain (§21, "A reset restarts the chain"). The module's own
+    // TRIGGERS go into its own RESET (selftest.sh), so its bass drum is the reset. Pattern 2 (four
+    // steps, a snare) then pattern 3 (four steps, the bass drum on step 3) in a chain, playing on
+    // the table clock: the bass drum on pattern 3's step 3 resets, and the chain starts again from
+    // pattern 2's step 1, two frames later (one for the cable). Pattern 3's step 4 never plays.
+    // "save": §21's saves. Sixteen patterns written (a snapshot of 22 100 bytes) and slider A
+    // dragged, a new value every 16th frame. Every save that was not asked for is a quarter of a
+    // second or more after the one before. And a second thread plays Rack's saving thread: now
+    // and then it stops the drag, calls dataToJson, and holds the snapshot it got to one the audio
+    // thread saves a tenth of a second later: the patch must hold the last move.
+    void patternLoopStart(pi_cmd *cmds, uint32_t &n) {
+        cmds[n++] = pi_cmd{0, PI_CMD_TEMPO, 0, 0, 0, 120000};
+        cmds[n++] = pi_cmd{0, PI_CMD_SOURCE, 0, 0, 0, PI_SOURCE_TABLE};
+        sourceSent = 0;
+        if (loop == LOOP_PATTERNS) {
+            for (uint8_t p = 0; p < 3; p++) {
+                cmds[n++] = pi_cmd{0, PI_CMD_PATTERN, 0, 0, 0, p};
+                cmds[n++] = pi_cmd{0, PI_CMD_STEP, uint8_t(2 + p), p, 0, 1};
+            }
+            cmds[n++] = pi_cmd{0, PI_CMD_PATTERN, 0, 0, 0, 0};
+        } else if (loop == LOOP_RESET) {
+            cmds[n++] = pi_cmd{0, PI_CMD_PATTERN, 0, 0, 0, 1};
+            cmds[n++] = pi_cmd{0, PI_CMD_LENGTH, 0, 0, 0, 4};
+            cmds[n++] = pi_cmd{0, PI_CMD_STEP, 1, 0, 0, 1};
+            cmds[n++] = pi_cmd{0, PI_CMD_PATTERN, 0, 0, 0, 2};
+            cmds[n++] = pi_cmd{0, PI_CMD_LENGTH, 0, 0, 0, 4};
+            cmds[n++] = pi_cmd{0, PI_CMD_STEP, 0, 2, 0, 1};
+            cmds[n++] = pi_cmd{0, PI_CMD_PATTERN, 0, 0, 0, 1};
+            cmds[n++] = pi_cmd{0, PI_CMD_CHAIN, 0, 0, 0, 2};
+            cmds[n++] = pi_cmd{0, PI_CMD_RESET, 0, 0, 0, 0}; // on the table: step 1 on this frame
+            cmds[n++] = pi_cmd{0, PI_CMD_PLAY, 0, 0, 0, 1};
+        } else { // LOOP_SAVE: every pattern written, so a save is the largest there is
+            for (uint8_t p = 0; p < 16; p++) {
+                cmds[n++] = pi_cmd{0, PI_CMD_PATTERN, 0, 0, 0, p};
+                cmds[n++] = pi_cmd{0, PI_CMD_STEP, 0, p, 0, 1};
+            }
+            cmds[n++] = pi_cmd{0, PI_CMD_PATTERN, 0, 0, 0, 0};
+        }
+    }
+    void patternLoop(pi_cmd *cmds, uint32_t &n) {
+        const uint32_t STEPS = loop == LOOP_PATTERNS ? 24 : 28;
+        if (!loopRunning) {
+            if (!rate || (loop == LOOP_RESET && !inputs[RESET_INPUT].isConnected())) return;
+            fresh(SEED);
+            for (int k = 0; k < 23; k++) holders[k] = 0;
+            latched = 0;
+            shiftKeys = 0;
+            patternLoopStart(cmds, n);
+            loopRunning = true;
+            loopBad = false;
+            loopFrame = 0;
+            loopStep = 0;
+            loopActedPass = 0;
+            resetArmed = 0;
+            return;
+        }
+        loopFrame++;
+        bool boundary = loopFrame == stepFrame(loopStep + 1, rate, 120000);
+        if (boundary) loopStep++;
+        bool after = loopFrame == stepFrame(loopStep, rate, 120000) + 1;
+        if (loop == LOOP_PATTERNS) {
+            uint8_t v[PI_VIEW_SIZE];
+            if (boundary) pi_view(e, v, sizeof v);
+            const uint32_t P = 1u << PI_KEY_PATTERN;
+            uint32_t held = boundary ? u32(v, PI_VIEW_HELD) : 0;
+            bool patLatched = latched & P;
+            // The view's chain, as fixture format 5 writes it.
+            char chain[17] = {};
+            if (boundary)
+                for (unsigned i = 0; i < v[PI_VIEW_CHAIN_LEN] && i < 16; i++) chain[i] = "0123456789abcdef"[v[PI_VIEW_CHAIN + i / 2] >> (4 * (i & 1)) & 15];
+            if (after) switch (loopStep) {
+                case 1: toggleLatch(PI_KEY_PATTERN); break;           // Shift+click pattern
+                case 2: hold(1, MOUSE, true); break;                  // click key 2
+                case 3: hold(1, MOUSE, false); break;
+                case 4: toggleLatch(PI_KEY_PATTERN); break;           // Shift+click pattern
+                case 5: hold(2, MOUSE, true, true); break;            // Shift+click key 3
+                case 6: hold(2, MOUSE, false); break;
+                case 7: hold(3, KEYBOARD, true, true); break;         // Shift+r: key 4
+                case 8: hold(3, KEYBOARD, false); break;
+                case 9: hold(0, MOUSE, true); break;                  // click key 1, plain
+                case 10: hold(0, MOUSE, false); break;
+                case 11: toggleLatch(PI_KEY_WRITE); break;            // Shift+click write
+                case 12: toggleLatch(PI_KEY_PATTERN); break;          // Shift+click pattern
+                case 13: hold(5, MOUSE, true); break;                 // click key 6: copy
+                case 14: hold(5, MOUSE, false); break;
+                case 15: toggleLatch(PI_KEY_FUNCTION); break;         // Shift+click function
+                case 16: hold(PI_KEY_PATTERN, MOUSE, true); break;    // click pattern: clear
+                case 17: hold(PI_KEY_PATTERN, MOUSE, false); break;
+                case 18: toggleLatch(PI_KEY_PATTERN); break;          // Shift+click pattern
+                case 19: letGo(); break;                              // esc
+                case 20: hold(PI_KEY_PATTERN, KEYBOARD, true); break; // hold 8
+                case 21: hold(4, KEYBOARD, true); break;              // q: key 5
+                case 22: hold(4, KEYBOARD, false); break;
+                case 23: hold(PI_KEY_PATTERN, KEYBOARD, false); break;
+            }
+            if (boundary) switch (loopStep) {
+                case 2: loopExpect(patLatched && (held & P) && !(v[PI_VIEW_FLAGS] & PI_VIEW_FLAG_SOUNDS) && u16(v, PI_VIEW_FIELD) == 0x0007 &&
+                                       u16(v, PI_VIEW_STITCH) == 0x0001 && u16(v, PI_VIEW_BAR) == 0x0001 && u16(v, PI_VIEW_USED) == 0x0007,
+                                   "pattern latched: the grid is not the patterns (field 1 2 3 used, stitch and bar on 1)"); break;
+                case 4: loopExpect(!patLatched && !(held & P) && v[PI_VIEW_PATTERN] == 1 && !std::strcmp(chain, "1"),
+                                   "Shift+click pattern then key 2 did not choose pattern 2 and let the latch go"); break;
+                case 7: loopExpect(patLatched && (held & P) && v[PI_VIEW_PATTERN] == 2 && !std::strcmp(chain, "2"),
+                                   "Shift+click on key 3 with pattern latched: not pattern 3 chosen with the latch kept (D135 item 1)"); break;
+                case 9: loopExpect(patLatched && !std::strcmp(chain, "23"), "Shift+r with pattern latched: not the chain 3 4 with the latch kept"); break;
+                case 11: loopExpect(!patLatched && !(held & P) && !std::strcmp(chain, "230") && v[PI_VIEW_PATTERN] == 2 && v[PI_VIEW_POS] == 0,
+                                    "a plain click on key 1: not the chain 3 4 1 with the latch let go"); break;
+                case 12: loopExpect((latched >> PI_KEY_WRITE & 1) && (v[PI_VIEW_FLAGS] & PI_VIEW_FLAG_WRITE),
+                                    "Shift+click write: not latched, or write mode not flipped on (D135 item 2)"); break;
+                case 15: loopExpect(latched == 0 && held == 0 && u16(v, PI_VIEW_USED) == 0x0027 && !(v[PI_VIEW_FLAGS] & PI_VIEW_FLAG_WRITE) &&
+                                        !std::strcmp(chain, "230") && v[PI_VIEW_PATTERN] == 2,
+                                    "Shift+write, Shift+pattern, key 6: pattern 3 not copied to 6, write mode not back off, or a latch kept"); break;
+                case 18: loopExpect(latched == 0 && held == 0 && u16(v, PI_VIEW_USED) == 0x0023 && !std::strcmp(chain, "230"),
+                                    "Shift+function, pattern: the active pattern (3) not cleared alone"); break;
+                case 20: loopExpect(latched == 0 && held == 0, "esc did not let the pattern latch go"); break;
+                case 24: loopExpect(v[PI_VIEW_PATTERN] == 4 && !std::strcmp(chain, "4") && held == 0,
+                                    "pattern held by the keys and q: pattern 5 not chosen"); break;
+            }
+        } else if (loop == LOOP_RESET) {
+            // `view` is the last frame's. Armed when pattern 3's bass drum step (its step 3, at
+            // the chain's second place) shows; the restart must show within four frames.
+            const uint8_t *v = view;
+            bool stepped = v[PI_VIEW_FLAGS] & PI_VIEW_FLAG_STEP;
+            if (stepped && v[PI_VIEW_PATTERN] == 2 && v[PI_VIEW_STEP] == 3) loopFail("pattern 3's step 4 played: RESET from the bass drum did not restart the chain");
+            if (stepped && v[PI_VIEW_PATTERN] == 2 && v[PI_VIEW_POS] == 1 && v[PI_VIEW_STEP] == 2 && !resetArmed) resetArmed = loopFrame;
+            if (resetArmed && stepped && v[PI_VIEW_POS] == 0 && v[PI_VIEW_PATTERN] == 1 && v[PI_VIEW_STEP] == 0) {
+                loopExpect(loopFrame - resetArmed <= 4, "RESET restarted the chain, but late");
+                resetArmed = 0;
+            } else if (resetArmed && loopFrame - resetArmed > 4) {
+                loopFail("RESET did not restart the chain from pattern 2's step 1");
+                resetArmed = 0;
+            }
+        } else {
+            saveLoop();
+            return; // no passes: it runs until the module goes
+        }
+        if (boundary && loopStep == STEPS) {
+            uint32_t need = loop == LOOP_PATTERNS ? 10u : 3u;
+            if (!loopBad && loopActedPass >= need) loopPassed++;
+            else {
+                if (!loopBad) noteMismatch("loop: %s%s", "the pass ended short of its checks", "");
+                loopFailed++;
+            }
+            loopRunning = false;
+        }
+    }
+
+    // "save", the audio thread's half. saveTest: 0 dragging; 1 the tester asks the drag to stop; 2
+    // stopped, and the last move taken by the engine; 3 the tester has the patch's snapshot; 4 the
+    // truth is in `truth`. The tester puts it back to 0.
+    void saveLoop() {
+        uint32_t pub = published.load(std::memory_order_relaxed), asked = savesAsked.load(std::memory_order_relaxed);
+        if (pub != savePubSeen) { // a save on the frame before
+            if (asked == saveAskedSeen) { // not asked for: at least a quarter second after the one before
+                if (saveLast) saveClosest = std::min<uint64_t>(saveClosest, loopFrame - 1 - saveLast);
+                saveThrottled.store(saveThrottled.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+            }
+            saveLast = loopFrame - 1;
+            savePubSeen = pub;
+            saveAskedSeen = asked;
+        }
+        saveFramesRun.store(uint32_t(loopFrame), std::memory_order_relaxed);
+        if (saveClosest != saveClosestSent) saveClosestShown.store(uint32_t(std::min<uint64_t>(saveClosestSent = saveClosest, 0xffffffffu)), std::memory_order_relaxed);
+        int phase = saveTest.load(std::memory_order_acquire);
+        if (phase == 0) {
+            if (loopFrame % 16 == 0) params[SLIDER_A].setValue(float(loopFrame / 16 * 257 % 65536));
+            saveWait = 0;
+        } else if (phase == 1) {
+            if (++saveWait > 3 * pi::SCAN_FRAMES) saveTest.store(2, std::memory_order_release); // the last move scanned and sent
+        } else if (phase == 3) {
+            if (++saveWait > rate / 10) {
+                truthLen = pi_save(e, truth, sizeof truth);
+                saveTest.store(4, std::memory_order_release);
+            }
+        }
+    }
+
     void loopTest(pi_cmd *cmds, uint32_t &n) {
+        if (loop == LOOP_PATTERNS || loop == LOOP_RESET || loop == LOOP_SAVE) {
+            patternLoop(cmds, n);
+            return;
+        }
         const uint32_t MBPM = 120000, STEPS = loop == LOOP_LATCH ? 32 : 16;
         if (!loopRunning) {
             // A pass starts once the looped inputs carry what the outputs sent.
@@ -789,6 +1076,7 @@ struct Rhythm : Module {
             msFrames = std::max<uint32_t>(1, r / 1000);
             gateFrames = std::max<uint32_t>(1, r / 100);
             viewFrames = r / 60;
+            saveFrames = std::max<uint32_t>(1, r / 4);
             sendStep = pi::rampStep(r);
         }
         if (freshWanted.load(std::memory_order_relaxed) && freshWanted.exchange(false)) fresh(SEED);
@@ -836,6 +1124,8 @@ struct Rhythm : Module {
         } else if (loop != LOOP_NONE) {
             fixture = -1;
             loopTest(cmds, n);
+            // RESET as the instrument sends it (only "reset" patches it: its own TRIGGERS).
+            if (resetIn && loopRunning) cmds[n++] = pi_cmd{0, PI_CMD_RESET, 0, 0, 0, 0};
             pi_cmd drop;
             while (menu.pop(drop)) {
             } // a loop self-test plays alone too
@@ -1074,24 +1364,36 @@ struct Rhythm : Module {
             std::memcpy(shownView, view, PI_VIEW_SIZE);
             viewEverShown = true;
             sincePublish = 0;
+            uint32_t ps = uint32_t(u16(view, PI_VIEW_USED)) << 16 | uint32_t(view[PI_VIEW_CHAIN_LEN]) << 8 | view[PI_VIEW_PATTERN];
+            if (ps != patternShown.load(std::memory_order_relaxed)) patternShown.store(ps, std::memory_order_relaxed);
         }
 
         // ENGINE.md §8: when what a snapshot would hold has changed, save into our own buffer and
-        // hand it over. The saving thread never touches the engine.
+        // hand it over. The saving thread never touches the engine. Since ABI 16 (§21, "Saving
+        // while playing"; D133 item 9) at most four times a second, the last move always once a
+        // quarter second has passed, and at once when dataToJson asks: a save of sixteen patterns
+        // costs about 78 µs, and a slider drag moves the generation on every 16th frame.
         uint32_t g = pi_generation(e);
-        if (g != generation || mustPublish) {
+        bool moved = g != generation || mustPublish;
+        uint32_t ask = saveAsk.load(std::memory_order_relaxed);
+        bool asked = ask != saveGate.answered;
+        if (saveGate.frame(moved, ask, saveFrames)) {
             generation = g;
             mustPublish = false;
+            moved = false;
             Snap &s = saved.write();
             s.len = pi_save(e, s.b, PI_SNAPSHOT_SIZE);
             s.loads = loadsTaken.load(std::memory_order_relaxed);
             // ABI 16 (§21): version 5 is as long as pi_save says, rarely PI_SNAPSHOT_SIZE; 0 is
-            // the only refusal. (The save throttle §21 asks of every host is issue 142's.)
+            // the only refusal.
             if (s.len != 0) {
                 saved.publish();
                 published++;
+                if (asked) savesAsked++;
             }
         }
+        if (moved != unsavedSent) unsaved.store(unsavedSent = moved, std::memory_order_release);
+        if (ask != saveDoneSent) saveDone.store(saveDoneSent = ask, std::memory_order_release); // after the save it asked for
         uint32_t d = pi_dropped(e);
         if (d != droppedSeen) dropped.store(droppedSeen = d, std::memory_order_relaxed);
     }
@@ -1100,6 +1402,7 @@ struct Rhythm : Module {
         Module::onReset(ev);
         for (int k = 0; k < 23; k++) holders[k] = 0;
         latched = 0;
+        shiftKeys = 0;
         returnChosen = -1;
         aChosen = -1;
         bChosen = -1;
@@ -1112,6 +1415,15 @@ struct Rhythm : Module {
     // Rack calls these on its own thread while process() runs on the audio thread.
     json_t *dataToJson() override {
         json_t *root = json_object();
+        // §21: the audio thread saves at most four times a second. If the engine holds a move it
+        // has not saved, ask for a save and wait for it: the audio thread makes it on its next
+        // frame. 50 ms at most, so a stopped engine (or one never run) costs a patch save little;
+        // then the last save made is written, as before ABI 16. Never the audio thread's wait.
+        if (unsaved.load(std::memory_order_acquire)) {
+            uint32_t want = saveAsk.fetch_add(1, std::memory_order_acq_rel) + 1;
+            for (int ms = 0; ms < 50 && int32_t(saveDone.load(std::memory_order_acquire) - want) < 0; ms++)
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
         const Snap *s = saved.latest();
         // A load asked for and not yet taken by the audio thread is still the beat to keep.
         if (s && s->loads >= loadsAsked)
@@ -1128,7 +1440,7 @@ struct Rhythm : Module {
         if (stillWeave.load()) json_object_set_new(root, "reducedMotion", json_true());
         json_object_set_new(root, "clockBeat", json_boolean(clockBeat.load())); // ABI 15, D100 item 6
         int lp = loopWanted.load();
-        if (lp > LOOP_NONE && lp <= LOOP_LATCH) json_object_set_new(root, "loop", json_string(LOOP_NAMES[lp]));
+        if (lp > LOOP_NONE && lp <= LOOP_LAST) json_object_set_new(root, "loop", json_string(LOOP_NAMES[lp]));
         int fx = fixtureWanted.load();
         if (fx >= 0 && fx < int(FIXTURES.size())) json_object_set_new(root, "fixture", json_string(FIXTURES[fx].name));
         return root;
@@ -1151,8 +1463,9 @@ struct Rhythm : Module {
             fxInPlace = old.inPlace;
         }
         if (json_t *j = json_object_get(root, "loop"))
-            for (int i = LOOP_RETURN; i <= LOOP_LATCH; i++)
+            for (int i = LOOP_RETURN; i <= LOOP_LAST; i++)
                 if (json_is_string(j) && std::string(LOOP_NAMES[i]) == json_string_value(j)) loopWanted = i;
+        if (loopWanted.load() == LOOP_SAVE && !tester.joinable()) tester = std::thread([this] { saveTester(); });
         if (json_t *j = json_object_get(root, "fixture"))
             for (size_t i = 0; i < FIXTURES.size(); i++)
                 if (json_is_string(j) && FIXTURES[i].name == std::string(json_string_value(j))) fixtureWanted = int(i);
@@ -1252,7 +1565,12 @@ struct Face {
     // Rack's beside ours on 4, in its place on 2), the lane on steps 5 to 8.
     // 2: stopped, sound held: the sounds in use, the bar, a dash on each sample, a ring where
     // RETURN takes the sound, cores on 1 and 4.
+    // 3 and 4 (ABI 16, §21): playing on step 5 with effect 6 heard and key 6 sounding, as 1, but
+    // pattern held: patterns 1, 2 and 4 used, pattern 2 playing in the chain 2 4 (at its first
+    // place, "1/2"), the chain 4 waiting ("→ 4") and stitched; no frame, core or twill. 3 with
+    // pattern 2's key in its lit quarter second, 4 in its dark one.
     pi::Routes shotRoutes{};
+    bool shotFlicker = true;
     void shot() {
         std::memset(v, 0, sizeof v);
         auto put16 = [&](unsigned at, uint32_t x) { v[at] = uint8_t(x); v[at + 1] = uint8_t(x >> 8); };
@@ -1277,6 +1595,25 @@ struct Face {
             put16(PI_VIEW_FX_SOUNDS, 0xFFFF & ~(1u << 9));
             shotRoutes = pi::Routes{0u, 1u << 3 | 1u << 1, 1u << 1};
             for (int t : {0, 5, 9}) coreUntil[t] = 1e18;
+        } else if (PI_FACE_SHOT == 3 || PI_FACE_SHOT == 4) {
+            v[PI_VIEW_FLAGS] = PI_VIEW_FLAG_PLAYING | PI_VIEW_FLAG_STEP;
+            v[PI_VIEW_STEP] = 4;
+            put16(PI_VIEW_FIELD, 1u << 0 | 1u << 1 | 1u << 3); // the used patterns
+            put16(PI_VIEW_STITCH, 1u << 3);                    // the next chain, while one waits
+            put16(PI_VIEW_BAR, 1u << 1);                       // the active pattern
+            held32(1u << PI_KEY_PATTERN);
+            v[PI_VIEW_HEARD] = 6;
+            put16(PI_VIEW_FX_STEPS, 0x00F0);
+            put16(PI_VIEW_FX_SOUNDS, 0xFFFF);
+            v[PI_VIEW_PATTERN] = 1;
+            v[PI_VIEW_POS] = 0;
+            v[PI_VIEW_CHAIN_LEN] = 2;
+            v[PI_VIEW_NEXT_LEN] = 1;
+            put16(PI_VIEW_USED, 1u << 0 | 1u << 1 | 1u << 3);
+            v[PI_VIEW_CHAIN] = 0x31; // 2 then 4
+            v[PI_VIEW_NEXT] = 0x03;  // 4
+            for (int t : {0, 5}) coreUntil[t] = 1e18;
+            shotFlicker = PI_FACE_SHOT == 3;
         } else {
             v[PI_VIEW_FLAGS] = PI_VIEW_FLAG_SOUNDS;
             put16(PI_VIEW_FIELD, 1u << 0 | 1u << 1 | 1u << 5 | 1u << 8);
@@ -1299,23 +1636,25 @@ struct RhythmKey : app::ParamWidget {
     const Face *face = nullptr;
     int k = 0;
     bool latchClick = false;
+    bool shiftClick = false; // D135 item 1: a grid key Shift+clicked keeps a latched pattern
 
     void onButton(const ButtonEvent &e) override {
-        // D61, D113: Shift+click latches the five (Ctrl+click until D113). ⚠ Whether Rack gives
-        // Shift+click on a parameter a meaning of its own was not found (R47 was read for Ctrl);
-        // the click is consumed here either way.
-        if (rm && e.button == GLFW_MOUSE_BUTTON_LEFT && e.action == GLFW_PRESS && (e.mods & RACK_MOD_MASK) == RACK_MOD_SHIFT &&
-            (LATCHING >> k & 1)) {
+        // D61, D113: Shift+click latches the five (Ctrl+click until D113), and write since D135
+        // item 2. ⚠ Whether Rack gives Shift+click on a parameter a meaning of its own was not
+        // found (R47 was read for Ctrl); the click is consumed here either way.
+        bool shift = (e.mods & RACK_MOD_MASK) == RACK_MOD_SHIFT;
+        if (rm && e.button == GLFW_MOUSE_BUTTON_LEFT && e.action == GLFW_PRESS && shift && (LATCHING >> k & 1)) {
             rm->toggleLatch(k);
             latchClick = true;
             e.consume(this);
             return;
         }
+        if (e.button == GLFW_MOUSE_BUTTON_LEFT && e.action == GLFW_PRESS) shiftClick = shift && k < 16;
         ParamWidget::onButton(e); // a left press for MIDI-Map's learning; a right-click, Rack's menu
     }
     void onDragStart(const DragStartEvent &e) override {
         if (e.button != GLFW_MOUSE_BUTTON_LEFT || latchClick || !rm) return;
-        rm->hold(k, Rhythm::MOUSE, true);
+        rm->hold(k, Rhythm::MOUSE, true, shiftClick);
     }
     void onDragEnd(const DragEndEvent &e) override {
         if (e.button != GLFW_MOUSE_BUTTON_LEFT || !rm) return;
@@ -1350,7 +1689,15 @@ struct RhythmKey : app::ParamWidget {
 #ifdef PI_FACE_SHOT
             if (!rm) r = face->shotRoutes;
 #endif
-            l = pi::keyLights(v, k, system::getTime() < face->coreUntil[k], rm && (rm->latched >> PI_KEY_FX & 1), r);
+            // §21: while pattern is held or latched, the active pattern's key flickers on this
+            // thread's clock, and the frame, core and twill are not drawn (pi::keyLights).
+            double now = system::getTime();
+            bool flicker = pi::patternFlicker(now);
+#ifdef PI_FACE_SHOT
+            if (!rm) flicker = face->shotFlicker;
+#endif
+            l = pi::keyLights(v, k, now < face->coreUntil[k], rm && (rm->latched >> PI_KEY_FX & 1), r, rm && (rm->latched >> PI_KEY_PATTERN & 1),
+                              flicker);
         }
         float f = w / 8.f; // the frame: an eighth of the key; the twill as wide again
         NVGcolor faceC = l.pressed ? WHITE : l.field ? ECRU : TILE;
@@ -1610,6 +1957,17 @@ struct RhythmDisplay : widget::Widget {
             std::snprintf(s, sizeof s, "fx %u", unsigned(v[PI_VIEW_HEARD]));
             text(vg, rx - right + bw / 2, fxLow, 2.67f, GROUND, NVG_ALIGN_CENTER | NVG_ALIGN_BASELINE, s);
         }
+        // ABI 16 (ENGINE.md §21, "The display"; pi::patternText): which pattern plays, on a line
+        // of its own under the tempo; the chain's place at its right while a chain of more than
+        // one runs; and the pattern waiting at the right of the fx block's row. ⚠ A stand-in, not
+        // drawn on the canvas: how each host draws it waits for Kenny to rule a look.
+        if (have) {
+            pi::PatternText pt = pi::patternText(v);
+            float patY = top + mm2px(3.4f);
+            text(vg, rx - right, patY, 2.67f, ECRU, NVG_ALIGN_LEFT | NVG_ALIGN_BASELINE, pt.pattern);
+            if (pt.place[0]) text(vg, rx, patY, 2.67f, LILAC, NVG_ALIGN_RIGHT | NVG_ALIGN_BASELINE, pt.place);
+            if (pt.next[0]) text(vg, rx, low - bh - mm2px(0.8f), 2.67f, ECRU, NVG_ALIGN_RIGHT | NVG_ALIGN_BASELINE, pt.next);
+        }
         // D119 item 6: the keys helper's ?, 4.2 mm square, 1.3 mm in from the glass's right edge
         // and 1.25 mm down from its top (design/DESIGN.md, "Layout B"; ⚠ the board's numbers).
         Rect q = helpMark();
@@ -1795,8 +2153,10 @@ struct RhythmWidget : ModuleWidget {
             e.consume(this);
             return;
         }
-        if (k >= 0 && (e.action == GLFW_RELEASE || mods == 0)) {
-            if (e.action == GLFW_PRESS) m->hold(k, Rhythm::KEYBOARD, true);
+        // A grid key with Shift is a press that keeps a latched pattern latched (D135 item 1).
+        bool shiftGrid = k >= 0 && k < 16 && mods == RACK_MOD_SHIFT;
+        if (k >= 0 && (e.action == GLFW_RELEASE || mods == 0 || shiftGrid)) {
+            if (e.action == GLFW_PRESS) m->hold(k, Rhythm::KEYBOARD, true, shiftGrid);
             else if (e.action == GLFW_RELEASE) m->hold(k, Rhythm::KEYBOARD, false);
             e.consume(this); // a repeat is consumed and does nothing
             return;
