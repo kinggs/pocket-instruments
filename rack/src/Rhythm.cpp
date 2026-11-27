@@ -229,6 +229,7 @@ struct Rhythm : Module {
     // (50 ms at most) until the audio thread hands that count back in `saveDone`, which it does on
     // its next frame, after saving.
     std::atomic<uint32_t> saveAsk{0}, saveDone{0}, savesAsked{0};
+    std::atomic<uint32_t> asksAnswered{0}, asksLate{0}; // for the log: asks answered in time, and not
     std::atomic<bool> unsaved{false};
     std::atomic<uint32_t> patternShown{0}; // the view's pattern, chain and used, for the log (report)
 
@@ -442,8 +443,8 @@ struct Rhythm : Module {
         // ABI 16 (§21): the patterns the view last showed, and the saves.
         uint32_t ps = patternShown.load();
         INFO("Pocket Instruments rhythm patterns (%s): module %lld: pattern %u, chain length %u, used %04x; %u saves, %u asked by a "
-             "patch save; save loop: %u saves not asked in %u frames, closest %u frames apart; %u patch saves held the last move, %u not",
-             when, (long long)id, (ps & 0xff) + 1, ps >> 8 & 0xff, ps >> 16, published.load(), savesAsked.load(), saveThrottled.load(),
+             "patch save (%u answered in time, %u not); save loop: %u saves not asked in %u frames, closest %u frames apart; %u patch saves held the last move, %u not",
+             when, (long long)id, (ps & 0xff) + 1, ps >> 8 & 0xff, ps >> 16, published.load(), savesAsked.load(), asksAnswered.load(), asksLate.load(), saveThrottled.load(),
              saveFramesRun.load(), saveClosestShown.load(), saveHeld.load(), saveNot.load());
         if (playTested.load()) // D138: selftest.sh compares these between modules run from one signal
             INFO("Pocket Instruments rhythm play (%s): module %lld: rate %u Hz, %u starts, %u steps, sum %016llx", when, (long long)id,
@@ -1424,8 +1425,10 @@ struct Rhythm : Module {
     std::vector<uint8_t> currentSnapshot() {
         if (unsaved.load(std::memory_order_acquire)) {
             uint32_t want = saveAsk.fetch_add(1, std::memory_order_acq_rel) + 1;
-            for (int ms = 0; ms < 50 && int32_t(saveDone.load(std::memory_order_acquire) - want) < 0; ms++)
+            int ms = 0;
+            for (; ms < 50 && int32_t(saveDone.load(std::memory_order_acquire) - want) < 0; ms++)
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            (int32_t(saveDone.load(std::memory_order_acquire) - want) < 0 ? asksLate : asksAnswered)++;
         }
         const Snap *s = saved.latest();
         // A load asked for and not yet taken by the audio thread is still the beat to keep.
