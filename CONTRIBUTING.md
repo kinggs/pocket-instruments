@@ -82,7 +82,7 @@ by side, copy the old build's `target/bench` somewhere before your change (say
 Mark anything unverified with ⚠, in documents, comments and pull requests.
 
 **No Teenage Engineering material.** No samples, firmware, photographs, traced artwork, logos
-or recordings of the hardware. This project is not affiliated with Teenage Engineering. It
+or recordings of the hardware, and none of the patterns a unit ships with (D137). This project is not affiliated with Teenage Engineering. It
 uses their names only to describe.
 
 **Nothing whose licence does not allow it.** The project is MIT. Read a source's licence

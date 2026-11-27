@@ -100,7 +100,7 @@ merges first.
   "Machine state").
 - **Nothing generic until a second instrument needs it.**
 - **No Teenage Engineering material:** no samples, firmware, photos, traced art, logos or
-  recordings of the hardware.
+  recordings of the hardware, and none of the patterns a unit ships with (D137).
 - **Facts, intentions and guesses stay distinct.** A fact has a source in
   `docs/REFERENCES.md`. ⚠ marks anything unverified.
 - No secrets. Small commits, one intent each.
