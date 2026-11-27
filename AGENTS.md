@@ -16,6 +16,7 @@ Not affiliated with Teenage Engineering; their names are used only to describe.
 | Path | What it holds |
 |---|---|
 | `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies. Tests in `core/src/tests/`. The C contract is `core/include/pi_engine.h` |
+| `beat/` | The beat file's reader and writer (`docs/BEAT.md`): its own `no_std` crate beside the core, no dependency between them; the snapshot's offsets from `core/src/snapshot_layout.rs` by `include!`. The C contract is `beat/include/pi_beat.h`; `web/pi_beat.wasm` is committed |
 | `rack/` | One VCV Rack plugin, slug `pocket-instruments`. A module an instrument: `src/Rhythm.cpp`. `src/Probe.cpp` is a test module, not an instrument |
 | `web/` | One site, a page an instrument: `rhythm.html`. `worklet.js` runs the engine; `pi_core.wasm` is committed so GitHub Pages can serve it |
 | `term/` | The terminal host (`docs/TERMINAL.md`): its own crate and Cargo workspace, one command, `pocket-instruments`, with a menu of instruments (D125), on the core's static library through the C ABI. Tests in `term/tests/` |
@@ -115,9 +116,9 @@ and pass `--manifest-path` and `CARGO_TARGET_DIR`.
 | Command | What it does |
 |---|---|
 | `mise install` | Once: the pinned Rust (`rust-toolchain.toml`, `mise.toml`) |
-| `make build` | The static library and the `.wasm` |
+| `make build` | The static library and the `.wasm`, the core's and the beat file's (`libpi_beat.a`, `pi_beat.wasm`) |
 | `make test` | The gate, about 40 seconds. Runs every fixture through Rust, C++ and Node and compares the three reports byte for byte; then checks the display cells, the Rack jack maths and the rendered audio the same way; then a ThreadSanitizer run if `clang++` is there. Needs a C++ compiler, binutils and Node |
-| `make web` | Copies the new `.wasm` to `web/pi_core.wasm`. `make test` fails if the committed copy is stale |
+| `make web` | Copies the new `.wasm` files to `web/pi_core.wasm` and `web/pi_beat.wasm`. `make test` fails if a committed copy is stale |
 | `make bench` | Nanoseconds a frame of `pi_process`. Pinned to one CPU: `BENCH_CPU=<n>` |
 | `make pairs OLD=<a bench>` | This build beside another, ten interleaved rounds |
 | `make fuzz OLD=<an older libpi_core.a>` | Differential fuzz: a change that must move no byte runs this |

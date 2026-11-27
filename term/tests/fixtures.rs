@@ -12,6 +12,22 @@ use pi_term::ffi::*;
 use pi_term::host::{Host, Mode, char_of};
 use pi_term::input::{Input, Kind, Reader, kitty_bytes};
 
+// The beat file's reader (beat/include/pi_beat.h; issue 140), from the static library build.rs
+// links: a fixture with a "beat" starts from its file.
+unsafe extern "C" {
+    fn pib_read(text: *const u8, len: u32, snap: *mut u8, cap: u32, own: *mut u32, msg: *mut u8, msg_cap: u32) -> i32;
+}
+
+fn read_beat(file: &str) -> Vec<u8> {
+    let text = std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures").join(file)).unwrap();
+    let mut snap = vec![0u8; 22_100];
+    let mut msg = [0u8; 192];
+    let n = unsafe { pib_read(text.as_ptr(), text.len() as u32, snap.as_mut_ptr(), snap.len() as u32, std::ptr::null_mut(), msg.as_mut_ptr(), 192) };
+    assert!(n > 0, "{file}: {}", String::from_utf8_lossy(&msg[..msg.iter().position(|b| *b == 0).unwrap()]));
+    snap.truncate(n as usize);
+    snap
+}
+
 // ---- just enough JSON for the fixture formats: objects, arrays, strings, whole numbers ----
 
 #[derive(Clone, Debug)]
@@ -155,7 +171,7 @@ fn fixtures() -> Vec<(String, Json)> {
             let text = std::fs::read(&p).unwrap();
             let fx = Parser { s: &text, i: 0 }.value();
             let format = fx.n("format");
-            assert!((1..=4).contains(&format) && fx.n("ticks_per_step") == PI_TICKS_PER_STEP);
+            assert!((1..=5).contains(&format) && fx.n("ticks_per_step") == PI_TICKS_PER_STEP);
             (p.file_stem().unwrap().to_string_lossy().into_owned(), fx)
         })
         .collect()
@@ -166,7 +182,8 @@ fn is_key(name: &str) -> bool {
 }
 
 fn is_edit(name: &str) -> bool {
-    matches!(name, "step" | "prob" | "swing" | "length" | "fx" | "fxsound" | "keep")
+    // Format 5's three (ENGINE.md §21) are edits too: at step 0 they come from the snapshot.
+    matches!(name, "step" | "prob" | "swing" | "length" | "fx" | "fxsound" | "keep" | "pattern" | "chain" | "copy")
 }
 
 fn to_cmd(c: &Json) -> Cmd {
@@ -182,6 +199,9 @@ fn to_cmd(c: &Json) -> Cmd {
         "fx" => Cmd::new(PI_CMD_FX, step, 0, value),
         "fxsound" => Cmd::new(PI_CMD_FXSOUND, track, 0, value),
         "keep" => Cmd::new(PI_CMD_KEEP, track, step, (c.n("a") as u32) << 16 | c.n("b") as u32),
+        "pattern" => Cmd::new(PI_CMD_PATTERN, 0, 0, value),
+        "chain" => Cmd::new(PI_CMD_CHAIN, 0, 0, value),
+        "copy" => Cmd::new(PI_CMD_COPY, 0, 0, value),
         other => panic!("not an edit: {other}"),
     }
 }
@@ -293,7 +313,32 @@ fn view_text(b: &[u8; PI_VIEW_SIZE], format: u64) -> String {
     if format >= 4 {
         s += &format!(" ea={} eb={}", u16_at(b, PI_VIEW_HIT_A), u16_at(b, PI_VIEW_HIT_B));
     }
+    if format >= 5 {
+        // §21 (ABI 16): the patterns, the chain and the next chain a hex digit an entry.
+        let nibbles = |at: usize, len: u8| -> String { (0..len as usize).map(|i| format!("{:x}", b[at + i / 2] >> (4 * (i & 1)) & 15)).collect() };
+        let next = if b[PI_VIEW_NEXT_LEN] == 0 { "-".to_string() } else { nibbles(PI_VIEW_NEXT, b[PI_VIEW_NEXT_LEN]) };
+        s += &format!(
+            " pat={} pos={} chain={} next={} used={:04x}",
+            b[PI_VIEW_PATTERN],
+            b[PI_VIEW_POS],
+            nibbles(PI_VIEW_CHAIN, b[PI_VIEW_CHAIN_LEN]),
+            next,
+            u16_at(b, PI_VIEW_USED)
+        );
+    }
     s
+}
+
+/// The zip CRC-32, bit by bit (ENGINE.md §8).
+fn crc32(bytes: &[u8]) -> u32 {
+    let mut c = !0u32;
+    for b in bytes {
+        c ^= *b as u32;
+        for _ in 0..8 {
+            c = c >> 1 ^ (0xEDB8_8320 & (c & 1).wrapping_neg());
+        }
+    }
+    !c
 }
 
 /// Runs to `end` in blocks of `block`, ending a block wherever a view is read.
@@ -347,10 +392,14 @@ fn every_fixture_through_the_terminal_host() {
     let mut report = String::new();
     let (mut runs, mut failed) = (0, Vec::new());
     let all = fixtures();
+    let mut beats = 0;
     for (name, fx) in &all {
         let seed = fx.n("seed") as u32;
         let format = fx.n("format");
         let want: String = fx.arr("expect").iter().map(|l| if let Json::Str(s) = l { format!("{s}\n") } else { panic!() }).collect();
+        if let Some(Json::Str(file)) = fx.get("beat") {
+            report += &format!("# {name} beat {}\n", hex(&read_beat(file)));
+        }
         let mut check = |label: String, got: String, seen: String, ok: bool| {
             runs += 1;
             if got != want || !ok {
@@ -358,6 +407,24 @@ fn every_fixture_through_the_terminal_host() {
             }
             report += &format!("# {label}\n{got}{seen}");
         };
+        // A fixture with a beat file (fixtures/README.md, format 5): read by pib_read, loaded
+        // before frame 0, no run from a snapshot; its bytes in the report once.
+        if let Some(Json::Str(file)) = fx.get("beat") {
+            let snap = read_beat(file);
+            for (source_name, source) in [("table", PI_SOURCE_TABLE), ("edges", PI_SOURCE_EDGES)] {
+                for rate in [44100u32, 48000, 96000] {
+                    for block in [1u64, 128, 512] {
+                        let (cmds, views, end) = schedule(fx, rate, source, true);
+                        let mut e = Engine::new(rate, seed + 12345);
+                        assert_eq!(e.load(&snap), PI_OK);
+                        let (got, seen, ok) = run(&mut e, &cmds, end, block, &views, format);
+                        check(format!("{name} {source_name} {rate} {block}"), got, seen, ok);
+                    }
+                }
+            }
+            beats += 1;
+            continue;
+        }
         for (source_name, source) in [("table", PI_SOURCE_TABLE), ("edges", PI_SOURCE_EDGES)] {
             for rate in [44100u32, 48000, 96000] {
                 let where_ = format!("{name} {source_name} {rate}");
@@ -385,29 +452,37 @@ fn every_fixture_through_the_terminal_host() {
                 let (got, seen, ok) = run(&mut b, &cmds, end, 128, &views, format);
                 check(format!("{where_} snapshot {}", hex(&snap)), got, seen, ok);
                 // §20: from the snapshot, every step that is on keeping its sound's own A and B.
+                // Since ABI 16 written into version 5's bytes, in each pattern written, as a
+                // KEEP there would write them; then loaded and saved again, so the bytes are the
+                // core's (core/src/tests/fixtures.rs).
                 let kept = {
-                    let mut a = Engine::new(rate, seed);
-                    assert_eq!(a.load(&snap), PI_OK);
-                    let mut keeps = Vec::new();
-                    for t in 0..16usize {
-                        let on = u16_at(&snap, 24 + 2 * t);
-                        let has = u16_at(&snap, 404 + 2 * t);
-                        let ab = (u16_at(&snap, 312 + 4 * t) as u32) << 16 | u16_at(&snap, 314 + 4 * t) as u32;
-                        for st in 0..16 {
-                            if on >> st & 1 != 0 && has >> st & 1 == 0 {
-                                keeps.push((0u64, Cmd::new(PI_CMD_KEEP, t as u8, st as u8, ab)));
+                    let mut k = snap.clone();
+                    let written = u16_at(&k, 92);
+                    let mut at = PI_SNAPSHOT_SIZE_MIN - 4;
+                    for _ in 0..written.count_ones() {
+                        for t in 0..16usize {
+                            let (on, has) = (u16_at(&k, at + 2 * t), u16_at(&k, at + 304 + 2 * t));
+                            for st in (0..16usize).filter(|st| on >> st & 1 != 0 && has >> st & 1 == 0) {
+                                k.copy_within(24 + 4 * t..28 + 4 * t, at + 336 + 4 * (16 * t + st));
                             }
+                            k[at + 304 + 2 * t..at + 306 + 2 * t].copy_from_slice(&(on | has).to_le_bytes());
                         }
+                        at += 1364;
                     }
-                    run(&mut a, &keeps, 1, 1, &[], format);
-                    a.save()
+                    let n = k.len() - 4;
+                    let crc = crc32(&k[..n]);
+                    k[n..].copy_from_slice(&crc.to_le_bytes());
+                    let mut a = Engine::new(rate, seed);
+                    assert_eq!(a.load(&k), PI_OK);
+                    assert_eq!(a.save(), k, "the core saves the same bytes");
+                    k
                 };
                 let mut c = Engine::new(rate, seed + 12345);
                 assert_eq!(c.load(&kept), PI_OK);
                 let (got, seen, ok) = run(&mut c, &cmds, end, 128, &views, format);
                 check(format!("{where_} kept snapshot {}", hex(&kept)), got, seen, ok);
                 // One flipped bit is refused.
-                let mut bad = snap;
+                let mut bad = snap.clone();
                 bad[40] ^= 1;
                 assert_eq!(b.load(&bad), PI_ERR_CRC);
             }
@@ -417,5 +492,5 @@ fn every_fixture_through_the_terminal_host() {
         std::fs::write(path, &report).unwrap();
     }
     assert!(failed.is_empty(), "{} of {runs} runs did not match: {:?}", failed.len(), &failed[..failed.len().min(10)]);
-    assert_eq!(runs, all.len() * 2 * 3 * 5);
+    assert_eq!(runs, (all.len() - beats) * 2 * 3 * 5 + beats * 2 * 3 * 3);
 }
