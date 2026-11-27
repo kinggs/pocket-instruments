@@ -1840,8 +1840,10 @@ above; these are what only the chain showed.
   `make-showcase.mjs`'s buffers past the 32 KiB engine was right, and its first read-back check
   then refused the beat: it read version 4's offsets from a version 5 snapshot. Run a generator
   after any change to the core it calls, even when its output is not to be committed.
-- **Issue 59's symptom, seen more often under load.** With twelve more modules, several runs
-  while other work loaded the machine had every module meant for an LFO's edges report "on the
-  table" with "1 cut short", and the loop modules report a layout their cables do not need,
-  after they had started on those cables. A clean run shows "0 cut short" there. ⚠ A reading:
-  the cables were seen and later lost, not never seen. Not chased (issue 59).
+- **Issue 59's symptom comes with a larger patch.** With all 52 modules in one patch, 2 or 3 runs
+  in 6 had every module meant for an LFO's edges report "on the table" with "1 cut short", and
+  the loop modules report a layout their cables do not need, after they had started on those
+  cables. The plugin from before issue 142 did the same on that patch, and so did the patch with
+  the new loop modules made plain instruments; the 40-module patch alone, 0 in 6. A clean run
+  shows "0 cut short" there. ⚠ A reading: the cables were seen and later lost, not never seen.
+  Not chased (issue 59): the self-test runs issue 142's modules in a second patch, 12 in 12.
