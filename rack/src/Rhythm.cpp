@@ -1136,7 +1136,8 @@ struct Rhythm : Module {
 
     void dataFromJson(json_t *root) override {
         stillWeave = json_is_true(json_object_get(root, "reducedMotion"));
-        clockBeat = json_is_true(json_object_get(root, "clockBeat")); // a patch from before ABI 15: one edge a step        if (json_t *j = json_object_get(root, "return")) returnChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
+        clockBeat = json_is_true(json_object_get(root, "clockBeat")); // a patch from before ABI 15: one edge a step
+        if (json_t *j = json_object_get(root, "return")) returnChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
         if (json_t *j = json_object_get(root, "a")) aChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
         if (json_t *j = json_object_get(root, "b")) bChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
         json_t *rack = json_object_get(root, "fxRack");
