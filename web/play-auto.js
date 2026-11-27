@@ -1077,6 +1077,101 @@ async function phaseOld() {
   const s = new DataView((await saved).snapshot);
   O.saved = { version: s.getUint16(4, true), size: s.byteLength, written: s.getUint16(92, true) };
 }
+// The beat file (docs/BEAT.md; issue 141's last box), through the page's own buttons and its
+// file input (a file put there as a picker would). The crate's messages are worked out here
+// by this file's own instance of pi_beat.wasm, sharing nothing with the page's. A refused file
+// and a newer one change nothing and show the crate's message; "Keep this one" changes
+// nothing; the worked example opened plays its fixture's views and trace (a reset first: the
+// fixture's swing is by the grid step's parity, as fx-shuffle's); saved, it is the file byte for
+// byte; a file with `own 9` says so on opening.
+const enc = new TextEncoder();
+async function myBeat() {
+  const pib = (await WebAssembly.instantiate(await (await fetch("pi_beat.wasm")).arrayBuffer(), {})).instance.exports;
+  const base = pib.memory.grow(2) * 65536, m = base + 98304 + 22100;
+  return (text) => {
+    new Uint8Array(pib.memory.buffer, base, text.length).set(text);
+    const n = pib.pib_read(base, text.length, base + 98304, 22100, m + 192, m, 192);
+    const mem = new Uint8Array(pib.memory.buffer);
+    return n < 0 ? new TextDecoder().decode(mem.subarray(m, mem.indexOf(0, m))) : null;
+  };
+}
+function pick(name, bytes) {
+  const dt = new DataTransfer();
+  dt.items.add(new File([bytes], name, { type: "text/plain" }));
+  const input = document.getElementById("beatFile");
+  input.files = dt.files;
+  input.dispatchEvent(new Event("change"));
+}
+const beatMsg = () => document.getElementById("beatMsg").textContent;
+async function said(pred, what) {
+  for (let i = 0; i < 500; i++) { if (pred(beatMsg())) return beatMsg(); await sleep(10); }
+  throw new Error(`timed out waiting for ${what}: "${beatMsg()}"`);
+}
+async function asked() {
+  for (let i = 0; i < 500 && document.getElementById("beatAsk").hidden; i++) await sleep(10);
+  return !document.getElementById("beatAsk").hidden;
+}
+async function phaseBeat() {
+  await r.ready;
+  await r.ctx.resume();
+  const B = (out.beat = {});
+  const refuse = await myBeat();
+  const file = new Uint8Array(await (await fetch("../fixtures/beat-four-and-a-fill.beat")).arrayBuffer());
+  const fx = await (await fetch("../fixtures/beat-four-and-a-fill.json")).json();
+  const before = viewText(await settle(), 5);
+  // A refused file, and a newer one: the crate's message, and nothing changed.
+  for (const [key, name, text] of [["bad", "bad.beat", "pocket-instruments beat 1\ntempo 999\n"], ["newer", "newer.beat", "pocket-instruments beat 2\n"]]) {
+    const msg = refuse(enc.encode(text));
+    document.getElementById("beatMsg").textContent = "";
+    pick(name, enc.encode(text));
+    B[key] = { want: `${name} was not opened: ${msg}`, got: await said((t) => t !== "", `the message for ${name}`), ask: !document.getElementById("beatAsk").hidden };
+    await sleep(300);
+    B[key].unchanged = viewText(await settle(), 5) === before && r.latest.loaded === null;
+  }
+  // Asked, and kept: nothing changes.
+  pick("beat-four-and-a-fill.beat", file);
+  B.ask = { shown: await asked(), text: document.getElementById("beatAskText").textContent };
+  document.getElementById("beatNo").click();
+  B.kept = { said: await said((t) => t.startsWith("Kept"), "kept"), hidden: document.getElementById("beatAsk").hidden };
+  await sleep(300);
+  B.kept.unchanged = viewText(await settle(), 5) === before && r.latest.loaded === null;
+  // Opened.
+  pick("beat-four-and-a-fill.beat", file);
+  await asked();
+  document.getElementById("beatYes").click();
+  B.opened = await said((t) => t.startsWith("Opened") || t.includes("not opened"), "opened");
+  B.loaded = r.latest.loaded;
+  await settle((x) => u32(x, 4) === 124000, "the beat's tempo");
+  // Saved: the file again, byte for byte.
+  let saved = null;
+  r.onSave = (name, text) => { saved = { name, text }; };
+  document.getElementById("beatSave").click();
+  B.saveSaid = await said((t) => t.startsWith("Saved"), "saved");
+  B.saved = { name: saved?.name, same: !!saved && saved.text.length === file.length && saved.text.every((x, i) => x === file[i]), length: saved?.text.length, want: file.length };
+  if (saved && !B.saved.same) B.saved.text = new TextDecoder().decode(saved.text);
+  // Played: the fixture's views and trace.
+  const t = runSteps();
+  r.post({ mark: true });
+  r.send([2, 0, 0, 0], [5, 0, 0, 1]);
+  await t.at(fx.steps);
+  t.stop();
+  r.post({ trace: true });
+  const tr = traceLines((await next("trace")).trace);
+  r.send([5, 0, 0, 0]);
+  await settle((x) => !(x[24] & 1), "stopped");
+  const first = tr.length ? +tr[0].split(" ")[0] : 0;
+  B.trace = tr.map((l) => l.replace(/^\d+/, (n) => String(+n - first))).filter((l) => +l.split(" ")[0] < fx.steps * fx.ticks_per_step);
+  B.wantTrace = fx.expect;
+  B.views = fx.views.map((x) => `${x.at} ${t.views[x.at] ? viewText(t.views[x.at], 5) : "no view"}`);
+  B.wantViews = fx.views.map((x) => `${x.at} ${x.view}`);
+  // `own 9`: the starter pack's sample on key 9, and the page says so.
+  const ownText = new TextDecoder().decode(file).replace("sound 9 sample dry\n", "sound 9 sample dry\nown 9\n");
+  pick("own.beat", enc.encode(ownText));
+  await asked();
+  document.getElementById("beatYes").click();
+  B.own = await said((t) => (t.startsWith("Opened") && t !== B.opened) || t.includes("not opened"), "the own notice");
+}
+
 const PREP = { old: async () => { localStorage.setItem("pocket-instruments/rhythm/beat", await oldBeat()); } };
 
 // D78 by a mouse, fx + key by the computer keys, and D69's switch. What each gesture sent is
@@ -1201,7 +1296,7 @@ const PHASES = { 1: [phase1, "reload"], reload: [phaseReload, "bpm"], bpm: [phas
   keep: [phaseKeep, "punch"], punch: [phasePunch, "shuffle"], shuffle: [phaseShuffle, "written"], written: [phaseWritten, "fxlatch"], fxlatch: [phaseFxLatch, "keys"], keys: [phaseKeys, "still"], still: [phaseStill, "pchoose"],
   pchoose: [phasePatterns("patterns-choose-and-play", "pchoose"), "pchain"], pchain: [phasePatterns("patterns-chain", "pchain"), "pcopy"],
   pcopy: [phasePatterns("patterns-copy-and-clear", "pcopy"), "pchange"], pchange: [phasePatterns("patterns-change-playing", "pchange"), "pshift"],
-  pshift: [phaseShift, "old"], old: [phaseOld, null] };
+  pshift: [phaseShift, "old"], old: [phaseOld, "beat"], beat: [phaseBeat, null] };
 const [run, then] = PHASES[phase] || [async () => { throw new Error(`no phase ${phase}`); }, null];
 try {
   await run();

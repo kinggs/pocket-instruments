@@ -125,7 +125,7 @@ if (!reportPath) {
   process.exit(2);
 }
 const browsers = asked.length ? asked : ["chromium", "firefox"];
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".wasm": "application/wasm", ".s16": "application/octet-stream", ".txt": "text/plain" };
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".wasm": "application/wasm", ".s16": "application/octet-stream", ".txt": "text/plain", ".beat": "text/plain" };
 const report = readFileSync(reportPath, "utf8");
 const sixteenths = JSON.parse(readFileSync(join(root, "fixtures/straight-sixteenths.json"), "utf8"));
 
@@ -167,7 +167,7 @@ function judge(phases) {
   const bad = [];
   const p = Object.fromEntries(phases.map((r) => [r.phase, r]));
   for (const r of phases) for (const f of r.failed) bad.push(`phase ${r.phase}: ${f}`);
-  for (const name of ["1", "reload", "bpm", "latch", "keep", "punch", "shuffle", "written", "fxlatch", "keys", "still", "pchoose", "pchain", "pcopy", "pchange", "pshift", "old"]) if (!p[name]) bad.push(`phase ${name} never reported`);
+  for (const name of ["1", "reload", "bpm", "latch", "keep", "punch", "shuffle", "written", "fxlatch", "keys", "still", "pchoose", "pchain", "pcopy", "pchange", "pshift", "old", "beat"]) if (!p[name]) bad.push(`phase ${name} never reported`);
   // Each phase reports under its own name: p.reload.reload, p.bpm.bpm. (A first draft read
   // p.bpm.last, and undefined equalled undefined: the bpm line passed with nothing checked.)
   const one = p["1"] || {}, reload = p.reload?.reload || {}, bpm = p.bpm?.bpm || {};
@@ -317,8 +317,25 @@ function judge(phases) {
   const oldOk = O.loaded === 0 && O.keptVersion === 4 && O.keptSize === 1464 && O.view?.pat === 0 && O.view?.chain === "0" &&
     O.saved?.version === 5 && O.saved?.size === 1640 && O.saved?.written === 1 && O.trace?.join("\n") === want.join("\n");
   if (!oldOk) bad.push(`a version 4 beat from the page's storage: ${JSON.stringify({ ...O, trace: O.trace?.length })}`);
+  // The beat file (docs/BEAT.md; issue 141's last box), through the page's buttons and file input.
+  const B = p.beat?.beat || {};
+  const beatChecks = {
+    "a refused file shows the crate's message and changes nothing": !!B.bad?.want && B.bad.got === B.bad.want && B.bad.ask === false && B.bad.unchanged === true,
+    "a newer beat file shows the crate's message and changes nothing": /this is beat 2/.test(B.newer?.want || "") && B.newer.got === B.newer.want && B.newer.ask === false && B.newer.unchanged === true,
+    "opening asks first; keeping the beat changes nothing": B.ask?.shown === true && /replaces the beat here/.test(B.ask.text) && B.kept?.hidden === true && B.kept.unchanged === true,
+    "the worked example opens": B.opened === "Opened Four and a fill." && B.loaded === 0,
+    "saved, it is the file byte for byte": B.saved?.same === true && B.saved.name === "four-and-a-fill.beat" && B.saveSaid === "Saved four-and-a-fill.beat.",
+    "own 9 is said on opening": B.own === "Opened Four and a fill. Key 9 used its writer's own sample; playing the starter pack's.",
+  };
+  for (const [name, ok] of Object.entries(beatChecks)) if (!ok) bad.push(`${name}: ${JSON.stringify({ ...B, trace: undefined, wantTrace: undefined, views: undefined, wantViews: undefined })}`);
+  if (!B.wantViews?.length || B.views?.join("\n") !== B.wantViews.join("\n"))
+    bad.push(`beat-four-and-a-fill's views:\n${(B.wantViews || []).map((w, i) => `     got  ${B.views?.[i]}\n     want ${w}`).join("\n")}`);
+  if (!B.wantTrace?.length || B.trace?.join("\n") !== B.wantTrace.join("\n")) {
+    const at = (B.trace || []).findIndex((l, i) => l !== B.wantTrace?.[i]);
+    bad.push(`beat-four-and-a-fill's trace: ${B.trace?.length} lines, not ${B.wantTrace?.length}; first difference at line ${at + 1}: "${B.trace?.[at]}" for "${B.wantTrace?.[at]}"`);
+  }
   const p6 = one.p6 || {};
-  const label =p6.hex && new RegExp(`^# straight-sixteenths .* snapshot ${p6.hex}$`, "m").test(report);
+  const label = p6.hex && new RegExp(`^# straight-sixteenths .* snapshot ${p6.hex}$`, "m").test(report);
   if (!p6.playing) bad.push("P6: it was not playing while the keys went in");
   if (!label) bad.push(`P6: the page's snapshot is not one the wasm host ran straight-sixteenths from: ${p6.hex}`);
   if (p6.stored !== p6.hex) bad.push("P6: what the browser kept is not the snapshot the page was sent");
