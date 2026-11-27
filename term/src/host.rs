@@ -28,7 +28,10 @@ pub enum Overlay {
 /// Something for the program around the host to do.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Action {
+    /// `:q`: leave the instrument (back to the menu when the menu started it; D125 item 3).
     Quit,
+    /// Ctrl+Q (or Ctrl+C): leave the program, from anywhere (D125 item 3).
+    QuitAll,
     Save(Option<String>),
     Open(String),
     Say(String),
@@ -256,7 +259,7 @@ impl Host {
     pub fn key(&mut self, e: KeyEvent) {
         if e.ctrl {
             if e.kind != Kind::Release && matches!(e.key, Key::Char('q') | Key::Char('c')) {
-                self.actions.push(Action::Quit);
+                self.actions.push(Action::QuitAll);
             }
             return;
         }

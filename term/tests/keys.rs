@@ -241,7 +241,8 @@ fn m_question_colon_esc_and_ctrl_q() {
     t.bytes(b"\x1b[113;1:1u\x1b[13u");
     assert_eq!(t.host.take_actions(), vec![Action::Quit]);
     t.bytes(b"\x1b[113;5:1u");
-    assert_eq!(t.host.take_actions(), vec![Action::Quit], "Ctrl+Q");
+    // D125 item 3: Ctrl+Q leaves the program, `:q` only the instrument.
+    assert_eq!(t.host.take_actions(), vec![Action::QuitAll], "Ctrl+Q");
     let mut p = T::new(Mode::Tap);
     p.tap(':');
     p.bytes(b"w my.beat\r");
@@ -249,7 +250,7 @@ fn m_question_colon_esc_and_ctrl_q() {
     p.bytes(b":e other.beat\r");
     assert_eq!(p.host.take_actions(), vec![Action::Open("other.beat".into())]);
     p.tap('\x11');
-    assert_eq!(p.host.take_actions(), vec![Action::Quit]);
+    assert_eq!(p.host.take_actions(), vec![Action::QuitAll]);
 }
 
 #[test]

@@ -1,0 +1,24 @@
+[1m[38;2;242;232;208m[48;2;20;19;31m pocket instruments  [38;2;201;194;221m0.1.0[38;2;242;232;208m
+[48;2;11;10;18m pocket-instruments: small instruments, played in a terminal.
+ usage: pocket-instruments [rhythm] [options]   (no instrument: a menu)
+
+   --keys auto|hold|tap  hold: a key is down until it comes up (foot, kitty,
+                         Ghostty, WezTerm). tap: a tap latches a function key;
+                         with fx latched a tap starts an effect, a second stops
+                         it. auto (the default): hold where key-up is real
+   --pocket              the 48 by 10 screen, whatever the size
+   --no-color            normal, bold and reverse only (also: NO_COLOR set)
+   --audio default|pipewire|none   where sound goes; none runs silent
+   --beat FILE           the beat (in ~/.local/share/pocket-instruments/)
+   --reduced-motion      the weave's shuttle jumps; nothing flashes
+   -h, --help   -V, --version
+
+ config: ~/.config/pocket-instruments/config.toml, one key = value a line:
+   keys = "auto"  colour = true  audio = "default"  reduced_motion = false
+   an option wins over the file, the file over NO_COLOR
+
+ rhythm: 1234 qwer asdf zxcv the grid; 7 8 9 sound, pattern, bpm; u i o p
+ function, fx, play, write; shift+key latches; t g y h sliders; space play;
+ , . tempo; < > swing; - = volume; m the sounds; ? every key; esc lets go;
+ : w save, e FILE open, q leave; ctrl+q quits
+[48;2;20;19;31m esc or ? [38;2;201;194;221mback[38;2;242;232;208m

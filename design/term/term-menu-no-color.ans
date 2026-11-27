@@ -1,0 +1,24 @@
+ pocket instruments  0.1.0
+
+  Small calculator-format instruments, free and open source.
+  An homage to Teenage Engineering's pocket operators; not affiliated.
+
+
+  instruments
+  [7m 1  rhythm  a sixteen-step drum machine           [0m
+
+
+
+  settings
+    keys    tap (this terminal reports no key-up)  default
+    sound   default  default
+    colour  off  NO_COLOR
+    motion  full  default
+
+
+
+
+  config …af95afd/scratchpad/e2e/none/pocket-instruments/config.toml not there
+
+
+ 1 or enter play   ? options   q quit   ctrl+q quit from anywhere

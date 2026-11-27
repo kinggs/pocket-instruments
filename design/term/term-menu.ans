@@ -1,0 +1,24 @@
+[1m[38;2;242;232;208m[48;2;20;19;31m pocket instruments  [38;2;201;194;221m0.1.0[38;2;242;232;208m
+
+  Small calculator-format instruments, free and open source.
+  [38;2;201;194;221mAn homage to Teenage Engineering's pocket operators; not affiliated.[38;2;242;232;208m
+
+
+  [38;2;201;194;221minstruments[38;2;242;232;208m
+  [48;2;242;232;208m [38;2;20;19;31m1[38;2;242;232;208m  [38;2;20;19;31mrhythm[38;2;242;232;208m  [38;2;20;19;31ma sixteen-step drum machine[38;2;242;232;208m           [48;2;20;19;31m
+
+
+
+  [38;2;201;194;221msettings[38;2;242;232;208m
+    [38;2;201;194;221mkeys[38;2;242;232;208m    tap (this terminal reports no key-up)  [38;2;201;194;221mdefault[38;2;242;232;208m
+    [38;2;201;194;221msound[38;2;242;232;208m   default  [38;2;201;194;221mdefault[38;2;242;232;208m
+    [38;2;201;194;221mcolour[38;2;242;232;208m  on  [38;2;201;194;221mdefault[38;2;242;232;208m
+    [38;2;201;194;221mmotion[38;2;242;232;208m  full  [38;2;201;194;221mdefault[38;2;242;232;208m
+
+
+
+
+  [38;2;201;194;221mconfig[38;2;242;232;208m …af95afd/scratchpad/e2e/none/pocket-instruments/config.toml [38;2;201;194;221mnot there[38;2;242;232;208m
+
+
+ 1 or enter [38;2;201;194;221mplay[38;2;242;232;208m   ? [38;2;201;194;221moptions[38;2;242;232;208m   q [38;2;201;194;221mquit[38;2;242;232;208m   ctrl+q [38;2;201;194;221mquit from anywhere[38;2;242;232;208m

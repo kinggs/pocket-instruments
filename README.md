@@ -17,7 +17,7 @@ VCV Rack modules and in a Linux terminal, from one shared engine.
 </p>
 
 <p align="center"><em>On a phone, in VCV Rack with the reference patch (<code>rack/patch/showcase.json</code>),
-and in a terminal (<code>pi-rhythm</code> in foot).</em></p>
+and in a terminal (<code>pocket-instruments rhythm</code> in foot).</em></p>
 
 **Play it now:** <https://kinggs.github.io/pocket-instruments/web/rhythm.html> (made for a phone;
 a desktop browser works too).
@@ -29,9 +29,10 @@ to GitHub, and download the artifact for your platform. These are unsigned test 
 loading by hand. Or build it yourself (below).
 
 **In a Linux terminal:** ⚠ there is no release yet; build it from a clone with `make term`
-(below) and run `term/target/release/pi-rhythm`. In a terminal that reports key-up (foot,
-kitty, Ghostty, WezTerm) keys are held as on the hardware; elsewhere, tmux included, they tap.
-`pi-rhythm --help` lists every key. [docs/TERMINAL.md](docs/TERMINAL.md) has the detail.
+(below) and run `term/target/release/pocket-instruments`: it opens on a menu, and
+`pocket-instruments rhythm` goes straight in. In a terminal that reports key-up (foot, kitty,
+Ghostty, WezTerm) keys are held as on the hardware; elsewhere, tmux included, they tap.
+`pocket-instruments --help` lists every key and the config file's settings. [docs/TERMINAL.md](docs/TERMINAL.md) has the detail.
 
 ## Why this exists
 
@@ -157,7 +158,7 @@ flowchart LR
   end
   core -- "static library, C ABI (pi_engine.h)" --> rack["VCV Rack module<br/>rack/ (C++)"]
   core -- "WebAssembly (pi_core.wasm)" --> web["phone and browser<br/>web/ (AudioWorklet)"]
-  core -- "static library, C ABI" --> tui["Linux terminal<br/>term/ (Rust, pi-rhythm)"]
+  core -- "static library, C ABI" --> tui["Linux terminal<br/>term/ (Rust, pocket-instruments)"]
   rack <-- "jacks: triggers, voices,<br/>sliders, FX send and return" --> patch["the rest of your rack"]
   harness["harness/ and fixtures/:<br/>Rust, C++ and Node must agree byte for byte"] --- core
 ```
@@ -175,7 +176,7 @@ second instrument needs it.
 | `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies |
 | `rack/` | One VCV Rack plugin (slug `PocketInstruments`), a module an instrument: Rhythm, plus Probe, a test module |
 | `web/` | One site, a page an instrument: `rhythm.html` |
-| `term/` | The terminal host, `pi-rhythm`: its own Rust crate on the engine's static library |
+| `term/` | The terminal host, `pocket-instruments`: its own Rust crate on the engine's static library |
 | `harness/` | The same fixtures run through Rust, C++ and the `.wasm`, and compared |
 | `fixtures/` | Test inputs and the exact output (the trace) each must produce |
 | `samples/` | The starter drum pack and its origins |
@@ -199,7 +200,7 @@ mise install     # once: the Rust this repository pins
 make build       # the core, as a static library and as a .wasm
 make test        # the fixtures through all three harnesses, compared byte for byte
 make web         # after the core changes: copy the new .wasm into web/
-make term        # the terminal host: term/target/release/pi-rhythm
+make term        # the terminal host: term/target/release/pocket-instruments
 ```
 
 `make test` takes about 40 seconds on the maintainer's laptop. It passed if it exited 0.

@@ -221,7 +221,7 @@ play:
 	node web/play.mjs $(REPORT)-node.txt
 
 # The terminal host (docs/TERMINAL.md, D123): its own crate and workspace in term/, linked to the
-# static library just built and checked. `make term` writes term/target/release/pi-rhythm.
+# static library just built and checked. `make term` writes term/target/release/pocket-instruments (D125).
 # Needs ALSA's headers (libasound2-dev, alsa-lib) for cpal. TERM_FEATURES=pipewire adds cpal's
 # PipeWire host (needs libpipewire and clang).
 TERM_CARGO = PI_CORE_LIB=$(CURDIR)/$(NATIVE) cargo
