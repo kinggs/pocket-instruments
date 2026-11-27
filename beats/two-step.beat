@@ -1,0 +1,13 @@
+pocket-instruments beat 1
+name Two Step
+credit Pocket Instruments contributors, 2026; CC0
+tempo 132
+swing 20
+volume 13
+seed 1
+
+pattern 1
+1  kick   x.........x....x prob 16=50
+3  hat    ..x...x...x...x.
+6  sticks ...x.....x...x..
+9  clap   ....x.......x...

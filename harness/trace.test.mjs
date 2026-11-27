@@ -8,172 +8,18 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { beatRead, loadBeat } from "./beat.mjs";
+import { CMD, EDITS, HOST, RATES, SNAP, SNAP_ROOM, WASM, engine, load, renderKit, run, schedule, toCmd } from "./engine.mjs";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
-const WASM = here("../target/wasm32-unknown-unknown/release/pi_core.wasm");
 const FIXTURES = here("../fixtures/");
 const built = existsSync(WASM);
 const skip = built || process.env.PI_REQUIRE_WASM ? false : "pi_core.wasm is not built (make build)";
 
-const RATES = [44100, 48000, 96000];
 const BLOCKS = [1, 128, 512];
 const SOURCES = [["table", 0], ["edges", 1]];
-const CMD = { clock: 1, reset: 2, source: 3, tempo: 4, play: 5, step: 16, prob: 17, swing: 18, length: 19, sound: 20, voice: 22, fx: 23, fxsound: 24, route: 25, keep: 26, key_down: 32, key_up: 33, param: 34 };
-// Format 2: what a finger did. These land a frame after their step's boundary.
-const KEYS = new Set(["key_down", "key_up", "param"]);
-const EDITS = new Set(["step", "prob", "swing", "length", "fx", "fxsound", "keep"]);
-const PAGE = 65536;
-// Where things sit in the one page the host adds (ENGINE.md §8).
-// The engine gets the first 4 KiB (core/src/tests/rules.rs holds pi_size to it). The snapshot
-// has 1536 bytes (version 4 is 1464: §20; it had 512 until then, for version 3's 408). The
-// audio has room for a 128-frame block at 17 channels (PI_AUDIO_BOTH); it had 768 floats, and
-// the commands began at 11264, until then. Session 21 moved the view, the events and the audio
-// up to make the snapshot's room.
-const SNAP = 4096, SNAP_SIZE = 1464, VIEW = 5632, EVENTS = 5760, CAP = 256, AUDIO = 9216, AUDIO_MAX = 128 * 50;
-const CMDS = AUDIO + 4 * AUDIO_MAX, CMDS_MAX = Math.floor((PAGE - CMDS) / 12);
-
-function load() {
-  const module = new WebAssembly.Module(readFileSync(WASM));
-  const imports = WebAssembly.Module.imports(module);
-  const instance = new WebAssembly.Instance(module, {});
-  const pi = instance.exports;
-  // The host's memory: one page past whatever the module asked for.
-  const base = pi.memory.grow(1) * PAGE;
-  return { pi, base, imports, view: () => new DataView(pi.memory.buffer) };
-}
-
-function engine(m, rate, seed) {
-  const size = m.pi.pi_size();
-  assert.ok(size <= SNAP, `pi_size ${size} fits before the snapshot buffer`);
-  assert.equal(m.base % m.pi.pi_align(), 0);
-  const e = m.pi.pi_init(m.base, size, rate, seed);
-  assert.equal(e, m.base, "pi_init returns the memory it was given");
-  return e;
-}
-
-// D50: the starter pack, in track order, copied once into pages of its own after the host's.
-// Returns [address, frames] a track.
-function starterPack(m) {
-  const dir = here("../samples");
-  const names = readFileSync(`${dir}/tracks.txt`, "utf8").trim().split("\n");
-  assert.equal(names.length, 16);
-  const files = names.map((n) => readFileSync(`${dir}/raw/${n}.s16`));
-  const total = files.reduce((a, f) => a + f.length, 0);
-  let at = m.pi.memory.grow(Math.ceil(total / PAGE)) * PAGE;
-  return files.map((f) => {
-    new Uint8Array(m.pi.memory.buffer, at, f.length).set(f);
-    const placed = [at, f.length / 2];
-    at += f.length;
-    return placed;
-  });
-}
-
-function toCmd(c) {
-  const type = CMD[c.cmd];
-  assert.ok(type && c.cmd !== "clock" && c.cmd !== "source" && c.cmd !== "tempo", `fixture command ${c.cmd}`);
-  // Format 3's fx names a step and nothing else: the step goes in `a` (ENGINE.md §17).
-  if (c.cmd === "fx") return { type, a: c.step ?? 0, b: 0, value: c.value ?? 0 };
-  if (c.cmd === "route") return { type, a: c.what, b: 0, value: c.value ?? 0 }; // P7 only (§19)
-  // Format 4's keep: A in the high sixteen bits of the value, B in the low (ENGINE.md §20).
-  if (c.cmd === "keep") return { type, a: c.track, b: c.step, value: ((c.a << 16) | c.b) >>> 0 };
-  return { type, a: c.track ?? c.key ?? c.slider ?? 0, b: c.step ?? c.param ?? 0, value: c.value ?? 0 };
-}
-
-// What to send and when: [absolute frame, command] in order, the frame the run ends before,
-// and (format 2) each view to read: [the frame its block ends on, the text expected there].
-function schedule(fx, rate, source, fromSnapshot) {
-  const F = (n) => Number((BigInt(n) * BigInt(rate) * 15000n + BigInt(fx.mbpm) - 1n) / BigInt(fx.mbpm));
-  let anchor = 0, anchorStep = 0;
-  const cmds = [], stepFrames = [];
-  if (!fromSnapshot) cmds.push([0, { type: CMD.tempo, a: 0, b: 0, value: fx.mbpm }]);
-  cmds.push([0, { type: CMD.source, a: 0, b: 0, value: source }]);
-  for (let m = 0; m < fx.steps; m++) {
-    const at = anchor + F(m - anchorStep);
-    stepFrames.push(at);
-    for (const c of fx.commands) {
-      if (c.at !== m || KEYS.has(c.cmd)) continue;
-      if (fromSnapshot && m === 0 && EDITS.has(c.cmd)) continue; // the snapshot carries these
-      cmds.push([at, toCmd(c)]);
-      if (c.cmd === "reset") { anchor = at; anchorStep = m; }
-    }
-    if (source === 1) cmds.push([at, { type: CMD.clock, a: 0, b: 0, value: 0 }]);
-    // Keys and sliders: one frame on, so the step's tick 0 is behind them on both sources.
-    for (const c of fx.commands) if (c.at === m && KEYS.has(c.cmd)) cmds.push([at + 1, toCmd(c)]);
-  }
-  const end = anchor + F(fx.steps - anchorStep);
-  // A view is read where its run step ends: on the frame the next one falls on. Written for
-  // the table run; the edges run differs in that one flag.
-  const views = (fx.views ?? []).map((v) => {
-    assert.ok(v.at < fx.steps, "a view past the end of the run");
-    return [stepFrames[v.at + 1] ?? end, source === 1 ? v.view.replace(" edges=0 ", " edges=1 ") : v.view];
-  });
-  return { cmds, end, views };
-}
-
-// ENGINE.md §14's text line for the view block at `p`: what a format 2 fixture holds. For
-// format 3, §17's three fields on its end; for format 4, then §20's two.
-function viewText(v, p, format = 2) {
-  const flags = v.getUint8(p + 24), flag = (bit) => (flags >> bit) & 1;
-  const hex = (n, width) => n.toString(16).padStart(width, "0");
-  const fires = Array.from({ length: 16 }, (_, t) => v.getUint8(p + 32 + t)).join(",");
-  return `view play=${flag(0)} write=${flag(1)} edges=${flag(2)} sounds=${flag(4)} step=${flag(3) ? v.getUint8(p + 25) : "-"}` +
-    ` sel=${v.getUint8(p + 26)} vol=${v.getUint8(p + 27)} tempo=${v.getUint32(p + 4, true)} len=${v.getUint8(p + 28)} swing=${v.getUint8(p + 29)}` +
-    ` held=${hex(v.getUint32(p + 8, true), 6)} field=${hex(v.getUint16(p + 12, true), 4)} stitch=${hex(v.getUint16(p + 14, true), 4)}` +
-    ` bar=${hex(v.getUint16(p + 16, true), 4)} sampled=${hex(v.getUint16(p + 18, true), 4)} a=${v.getUint16(p + 20, true)} b=${v.getUint16(p + 22, true)} fires=${fires}` +
-    (format >= 3 ? ` fx=${v.getUint8(p + 55)} fxsteps=${hex(v.getUint16(p + 56, true), 4)} fxsounds=${hex(v.getUint16(p + 58, true), 4)}` : "") +
-    (format >= 4 ? ` ea=${v.getUint16(p + 60, true)} eb=${v.getUint16(p + 62, true)}` : "");
-}
-
-// With `audio` (a Float32Array of `end * channels` samples) sound is rendered into it as well,
-// in that layout (1 the mix, 16 the tracks, 17 both).
-// With `views` a block ends wherever one is to be read; each is held to its text, labelled
-// `label`, and added to the lines after the trace, as the report has it.
-function run(m, e, cmds, end, block, audio, views = [], label = "", channels = 1, format = 2) {
-  const lines = [], seen = [];
-  assert.ok(!audio || block * channels <= AUDIO_MAX);
-  let next = 0, view = 0;
-  for (let start = 0; start < end; ) {
-    const n = Math.min(block, (view < views.length ? views[view][0] : end) - start);
-    const v = m.view();
-    let count = 0;
-    for (; next < cmds.length && cmds[next][0] < start + n; next++, count++) {
-      assert.ok(count < CMDS_MAX);
-      const [frame, c] = cmds[next];
-      const p = m.base + CMDS + 12 * count;
-      v.setUint32(p, frame - start, true);
-      v.setUint8(p + 4, c.type);
-      v.setUint8(p + 5, c.a);
-      v.setUint8(p + 6, c.b);
-      v.setUint8(p + 7, 0);
-      v.setUint32(p + 8, c.value, true);
-    }
-    // §19: a loop layout is read as well as written. The same numbers harness.cpp gives it.
-    if (audio && channels >= 18) {
-      const io = new Float32Array(m.pi.memory.buffer, m.base + AUDIO, n * channels);
-      for (let f = 0; f < n; f++) for (let c = 0; c < channels; c++) io[f * channels + c] = (((start + f) * 31 + c * 17) % 256) / 256 - 0.25;
-    }
-    const got = m.pi.pi_process(e, n, m.base + CMDS, count, m.base + EVENTS, CAP, audio ? m.base + AUDIO : 0, audio ? channels : 0);
-    if (audio) audio.set(new Float32Array(m.pi.memory.buffer, m.base + AUDIO, n * channels), start * channels);
-    for (let i = 0; i < got; i++) {
-      const p = m.base + EVENTS + 12 * i;
-      const tick = v.getUint32(p + 4, true), type = v.getUint8(p + 8);
-      const track = v.getUint8(p + 9), step = v.getUint8(p + 10);
-      if (type === 1) lines.push(`${tick} step ${step}\n`);
-      else if (type === 2) lines.push(`${tick} trig ${track} ${step}\n`);
-      else assert.fail(`unknown event type ${type}`);
-    }
-    start += n;
-    for (; view < views.length && views[view][0] === start; view++) {
-      assert.equal(m.pi.pi_view(e, m.base + VIEW, 64), 64);
-      const got = viewText(m.view(), m.base + VIEW, format);
-      assert.equal(got, views[view][1], `${label}: the view at frame ${start}`);
-      seen.push(got + "\n");
-    }
-  }
-  assert.equal(view, views.length, "every view was read");
-  assert.equal(m.pi.pi_dropped(e), 0, "no event was dropped");
-  return lines.join("") + seen.join("");
-}
+// The loading, the engine, the starter pack, effect 4's line, the schedule and the run are in
+// engine.mjs, shared with the agent's command (beat/beat.mjs; issue 163).
 
 // A snapshot of the fixture's pattern, from an engine given the tempo and the step-0 edits only.
 function snapshotOf(m, fx, rate) {
@@ -181,24 +27,46 @@ function snapshotOf(m, fx, rate) {
   const cmds = [[0, { type: CMD.tempo, a: 0, b: 0, value: fx.mbpm }]];
   for (const c of fx.commands) if (c.at === 0 && EDITS.has(c.cmd)) cmds.push([0, toCmd(c)]);
   run(m, e, cmds, 1, 1);
-  assert.equal(m.pi.pi_save(e, m.base + SNAP, SNAP_SIZE), SNAP_SIZE);
-  return new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).slice();
+  // §21: version 5, as long as pi_save says: 276 bytes and 1 364 a pattern written.
+  const n = m.pi.pi_save(e, m.base + SNAP, SNAP_ROOM);
+  assert.ok(n >= 276 && (n - 276) % 1364 === 0, `pi_save returned ${n}`);
+  return new Uint8Array(m.pi.memory.buffer, m.base + SNAP, n).slice();
 }
 
-// §20: the fixture's snapshot with every step that is on keeping its sound's own A and B.
-function keptSnapshotOf(m, fx, rate, snap) {
-  const e = engine(m, rate, fx.seed);
-  new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).set(snap);
-  assert.equal(m.pi.pi_load(e, m.base + SNAP, SNAP_SIZE), 0);
-  const u16 = (i) => snap[i] | (snap[i + 1] << 8);
-  const cmds = [];
-  for (let t = 0; t < 16; t++) {
-    const on = u16(24 + 2 * t), has = u16(404 + 2 * t), ab = ((u16(312 + 4 * t) << 16) | u16(314 + 4 * t)) >>> 0;
-    for (let st = 0; st < 16; st++) if ((on >> st) & 1 && !((has >> st) & 1)) cmds.push([0, { type: CMD.keep, a: t, b: st, value: ab }]);
+// The zip CRC-32, bit by bit (ENGINE.md §8).
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (const b of bytes) {
+    c ^= b;
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
   }
-  run(m, e, cmds, 1, 1);
-  assert.equal(m.pi.pi_save(e, m.base + SNAP, SNAP_SIZE), SNAP_SIZE);
-  return new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).slice();
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// §20: the fixture's snapshot with every step that is on keeping its sound's own A and B. Since
+// ABI 16 written into version 5's bytes, in each pattern written, as a KEEP there would write
+// them; then loaded and saved again, so the bytes are the core's (core/src/tests/fixtures.rs).
+function keptSnapshotOf(m, fx, rate, snap) {
+  const kept = snap.slice();
+  const u16 = (i) => kept[i] | (kept[i + 1] << 8);
+  let at = 272;
+  for (let p = 0; p < 16; p++) {
+    if (!((u16(92) >> p) & 1)) continue;
+    for (let t = 0; t < 16; t++) {
+      const on = u16(at + 2 * t), has = u16(at + 304 + 2 * t);
+      for (let st = 0; st < 16; st++) if ((on >> st) & 1 && !((has >> st) & 1)) kept.copyWithin(at + 336 + 4 * (16 * t + st), 24 + 4 * t, 28 + 4 * t);
+      kept[at + 304 + 2 * t] = (on | has) & 0xff;
+      kept[at + 305 + 2 * t] = (on | has) >> 8;
+    }
+    at += 1364;
+  }
+  new DataView(kept.buffer).setUint32(kept.length - 4, crc32(kept.subarray(0, kept.length - 4)), true);
+  const e = engine(m, rate, fx.seed);
+  new Uint8Array(m.pi.memory.buffer, m.base + SNAP, kept.length).set(kept);
+  assert.equal(m.pi.pi_load(e, m.base + SNAP, kept.length), 0);
+  assert.equal(m.pi.pi_save(e, m.base + SNAP, SNAP_ROOM), kept.length);
+  assert.deepEqual(new Uint8Array(m.pi.memory.buffer, m.base + SNAP, kept.length).slice(), kept, "the core saves the same bytes");
+  return kept;
 }
 
 const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -206,8 +74,8 @@ const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0"))
 test("the module imports nothing and its memory grows by a page for the host", { skip }, () => {
   const m = load();
   assert.deepEqual(m.imports, [], "no imports: no glue to write");
-  assert.equal(m.pi.pi_abi_version(), 15); // ABI 15: one edge a beat and the view's ext (D100)
-  assert.equal(m.pi.memory.buffer.byteLength, m.base + PAGE);
+  assert.equal(m.pi.pi_abi_version(), 16); // ABI 16: sixteen patterns, the view at 88, snapshot version 5 (§21)
+  assert.equal(m.pi.memory.buffer.byteLength, m.base + HOST);
   // Memory the module was not given is refused, not written.
   assert.equal(m.pi.pi_init(0, m.pi.pi_size(), 48000, 1), 0, "null");
   assert.equal(m.pi.pi_init(m.base + 1, m.pi.pi_size(), 48000, 1), 0, "misaligned");
@@ -217,17 +85,42 @@ test("every fixture gives its trace on both sources, at every rate and block siz
   const m = load();
   const names = readdirSync(FIXTURES).filter((n) => n.endsWith(".json")).sort();
   assert.ok(names.length >= 10);
-  let report = "", runs = 0;
+  let report = "", runs = 0, beats = 0;
   for (const file of names) {
     const fx = JSON.parse(readFileSync(FIXTURES + file, "utf8"));
     const name = file.replace(/\.json$/, "");
-    assert.ok([1, 2, 3, 4].includes(fx.format));
-    assert.ok(fx.format >= 2 || !fx.views, "views are format 2's to 4's");
-    const format = fx.format; // format 3's views carry §17's fields, format 4's §20's too
+    assert.ok([1, 2, 3, 4, 5].includes(fx.format));
+    assert.ok(fx.format >= 2 || !fx.views, "views are format 2's to 5's");
+    const format = fx.format; // format 3's views carry §17's fields, format 4's §20's too, format 5's §21's
     assert.equal(fx.ticks_per_step, 96);
     // A run's text is its trace, then its views: run() holds each view to its own line.
     const trace = fx.expect.map((l) => l + "\n").join("");
     const wanted = (views) => trace + views.map((v) => v[1] + "\n").join("");
+    // A fixture with a beat file (fixtures/README.md, format 5): read by pib_read from
+    // pi_beat.wasm and loaded before frame 0; no tempo or step-0 edits of the harness's and no
+    // run from a snapshot, since the beat is one. Its bytes go in the report once.
+    if (fx.beat) {
+      const got = beatRead(loadBeat(), readFileSync(FIXTURES + fx.beat));
+      assert.ok(got.snap, `${name}: ${got.msg}`);
+      report += `# ${name} beat ${hex(got.snap)}\n`;
+      for (const [sourceName, source] of SOURCES) {
+        for (const rate of RATES) {
+          for (const block of BLOCKS) {
+            const label = `${name} ${sourceName} ${rate} ${block}`;
+            const e = engine(m, rate, fx.seed + 12345);
+            new Uint8Array(m.pi.memory.buffer, m.base + SNAP, got.snap.length).set(got.snap);
+            assert.equal(m.pi.pi_load(e, m.base + SNAP, got.snap.length), 0, label);
+            const { cmds, end, views } = schedule(fx, rate, source, true);
+            const text = run(m, e, cmds, end, block, null, views, label, 1, format);
+            assert.equal(text, wanted(views), label);
+            report += `# ${label}\n${text}`;
+            runs++;
+          }
+        }
+      }
+      beats++;
+      continue;
+    }
     for (const [sourceName, source] of SOURCES) {
       for (const rate of RATES) {
         for (const block of BLOCKS) {
@@ -241,8 +134,8 @@ test("every fixture gives its trace on both sources, at every rate and block siz
         // Save, load into a fresh engine with another seed, same trace.
         const snap = snapshotOf(m, fx, rate);
         const e = engine(m, rate, fx.seed + 12345);
-        new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).set(snap);
-        assert.equal(m.pi.pi_load(e, m.base + SNAP, SNAP_SIZE), 0);
+        new Uint8Array(m.pi.memory.buffer, m.base + SNAP, snap.length).set(snap);
+        assert.equal(m.pi.pi_load(e, m.base + SNAP, snap.length), 0);
         const { cmds, end, views } = schedule(fx, rate, source, true);
         const got = run(m, e, cmds, end, 128, null, views, `${name} ${sourceName} ${rate} from a snapshot`, 1, format);
         assert.equal(got, wanted(views), `${name} ${sourceName} ${rate} from a snapshot`);
@@ -252,20 +145,20 @@ test("every fixture gives its trace on both sources, at every rate and block siz
         // is on keeping its sound's own A and B (core/src/tests/fixtures.rs says why).
         const kept = keptSnapshotOf(m, fx, rate, snap);
         const k = engine(m, rate, fx.seed + 12345);
-        new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).set(kept);
-        assert.equal(m.pi.pi_load(k, m.base + SNAP, SNAP_SIZE), 0);
+        new Uint8Array(m.pi.memory.buffer, m.base + SNAP, kept.length).set(kept);
+        assert.equal(m.pi.pi_load(k, m.base + SNAP, kept.length), 0);
         const gotKept = run(m, k, cmds, end, 128, null, views, `${name} ${sourceName} ${rate} from a kept snapshot`, 1, format);
         assert.equal(gotKept, wanted(views), `${name} ${sourceName} ${rate} from a kept snapshot`);
         report += `# ${name} ${sourceName} ${rate} kept snapshot ${hex(kept)}\n${gotKept}`;
         runs++;
         // One flipped bit is refused.
-        const bad = new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE);
+        const bad = new Uint8Array(m.pi.memory.buffer, m.base + SNAP, kept.length);
         bad[40] ^= 1;
-        assert.equal(m.pi.pi_load(e, m.base + SNAP, SNAP_SIZE), -4);
+        assert.equal(m.pi.pi_load(e, m.base + SNAP, kept.length), -4);
       }
     }
   }
-  assert.equal(runs, names.length * 2 * 3 * 5);
+  assert.equal(runs, (names.length - beats) * 2 * 3 * 5 + beats * 2 * 3 * 3);
   if (process.env.PI_REPORT) writeFileSync(process.env.PI_REPORT, report);
 });
 
@@ -306,15 +199,8 @@ for (const file of SCENARIOS) {
   test(`P7: ${name} renders from the .wasm`, { skip }, () => {
     const m = load();
     const fx = JSON.parse(readFileSync(here(file), "utf8"));
-    const pack = fx.samples ? starterPack(m) : [];
-    // "delay": 1 lends effect 4 its line (ABI 12, §18): pages of its own after the samples',
-    // room for the highest rate, pi_delay_frames(rate) floats of it lent to each engine.
-    const line = fx.delay ? m.pi.memory.grow(Math.ceil((4 * m.pi.pi_delay_frames(Math.max(...RATES))) / PAGE)) * PAGE : 0;
-    const withPack = (e, rate) => {
-      pack.forEach(([at, frames], t) => assert.equal(m.pi.pi_set_sample(e, t, at, frames), 1));
-      if (line) assert.equal(m.pi.pi_set_delay(e, line, m.pi.pi_delay_frames(rate)), 1);
-      return e;
-    };
+    // "samples" gives every track the starter pack; "delay": 1 lends effect 4 its line (engine.mjs).
+    const withPack = renderKit(m, fx.samples, fx.delay);
     // "layouts": the mix alone unless the scenario asks for more. A layout but the mix is
     // written with its channel count in the name (harness.cpp does the same).
     // "loops": the loop layouts (§19), each rendered with its inputs given (run() says how).
