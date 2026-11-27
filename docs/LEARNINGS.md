@@ -3,6 +3,8 @@
 A dated notebook. Newest at the bottom. Write what surprised us, what broke and why; a result
 belongs in `PROOFS.md`, a change of course in `DECISIONS.md`, an outside fact in `REFERENCES.md`.
 
+**Since D124 (2026-11-26):** "the owner" in an entry written before D124 means Kenny, the maintainer. Those entries are not rewritten.
+
 ## 2026-11-18 — the first review
 
 - **A second AI's brief reads as verified when it is not.** The brief cited the VCV licensing

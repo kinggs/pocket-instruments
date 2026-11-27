@@ -1,0 +1,10 @@
+ rhythm                       [7m fx 5 [0m 13 120 bpm
+ lowpass
+ [7m [4m 1 [0;7m [0m    2▪   [7m  3  [0m    4▪  │ │  [7m [0m 7 sound
+                            │ │  [1;7m [0m 8 pattern
+  ╱[1;7mq[0m╱     w    [7m  e  [0m    r▪  │ │  [7m [0m 9 bpm
+                            [7m [0m [7m [0m  [7m [0m u function
+ [7m  a  [0m    s▪   [7m  d  [0m    f▪  │ │  [7m  [0mi[7m fx        [0m
+                            │ │  [7m  o play      [0m
+ [1;7m [0;7m z [1m [0m    x    [7m  c  [0m    v   │ │  [7m [0m p write
+ tap keys: as asked. sound: no sound (--audio no

@@ -46,7 +46,7 @@
 use crate::clock::TICKS_PER_STEP;
 use crate::seq::TRACKS;
 
-// ---- TUNING THE EFFECTS: every number here is a first value for the owner's ear (§18) ----
+// ---- TUNING THE EFFECTS: every number here is a first value for Kenny's ear (§18) ----
 
 // §18, designed 2026-11-24 (ABI 12; D90, D91): retuned to the PO-12's measurements
 // (REFERENCES.md R64 to R69). Each was, before: 6 000 Hz; SoftLimit(6 × bus) × 0.7; twelve

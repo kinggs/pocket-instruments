@@ -42,13 +42,13 @@ one-pole or two-pole filter and exponential envelopes.
 
 Hats 3 and 4 share a source, and 4 should cut 3 off when both fire, as a real hat does.
 ⚠ Whether the hardware does this is not known. ⚠ Not built: on a real hat it is the other
-way round (closing the hat cuts the open one off). The owner's ruling: neither, for now,
+way round (closing the hat cuts the open one off). Kenny's ruling: neither, for now,
 and keep it a switch (D47).
 
 ## As built
 
 Every number below is the builder's first setting, chosen to sit inside the recipe and
-the rough measurements, not by ear. The owner's ear moves them at P8 (D31). Slider B is
+the rough measurements, not by ear. Kenny's ear moves them at P8 (D31). Slider B is
 always the time to fall 60 dB; a voice is cut to exact zeros at -80 dB (`ENGINE.md` §11).
 Every one is held to the same bytes natively and in WebAssembly by a scenario in
 `harness/render-<name>.json`.
@@ -83,7 +83,7 @@ Every one is held to the same bytes natively and in WebAssembly by a scenario in
 - **The hats do not cut each other off** (D47); a switch for it later.
 - **The tones are in tune by integers:** a table of the twelve semitones from A2 in
   thousandths of a hertz, shifted by octaves, so a note is exact and the same everywhere.
-  Slider A in semitones for 15 and 16 was the recipe's guess; the owner confirmed it (D49).
+  Slider A in semitones for 15 and 16 was the recipe's guess; Kenny confirmed it (D49).
 - **Key 5's noise is shorter than its body,** as the recipe's "short noise" says; a first
   build with one envelope for both sounded as long as it was bright, and its pitch could
   not be measured under the noise.
@@ -94,7 +94,7 @@ Every one is held to the same bytes natively and in WebAssembly by a scenario in
 
 ## How close, and how we judge it
 
-Close in role and character, not a copy. The judge is the owner's ears, with the hardware
+Close in role and character, not a copy. The judge is Kenny's ears, with the hardware
 beside the prototype, at P8. A sound that is recognisably "the snare on key 2" passes; a
 waveform match is not the aim and would be the wrong thing to chase (D31).
 
@@ -187,7 +187,7 @@ What samples change:
   avoided here, whatever the licence says.
 - **They move us away from the hardware's sound**, which is synthetic. (Annotated 2026-11-20: partly. Retail copy says the PO-12 mixes synthesised and sampled sounds, without saying which keys are which: R45.) The `drum_` files are
   an acoustic kit; the `bd_`, `elec_` and `hat_` files are electronic. D31's "close in
-  character" is still the aim, and the owner's ear still decides.
+  character" is still the aim, and Kenny's ear still decides.
 
 ## Individual outputs in Rack (D33, proposed)
 

@@ -1,0 +1,24 @@
+[1m[38;2;242;232;208m[48;2;20;19;31m rhythm  [38;2;201;194;221mpattern 1[38;2;242;232;208m                                               step - 120 bpm
+[48;2;11;10;18m [38;2;240;180;41mthe keys[38;2;242;232;208m                                                       [38;2;201;194;221mesc or ? closes[38;2;242;232;208m
+  1234 qwer asdf zxcv       [38;2;201;194;221mthe grid, keys 1 to 16[38;2;242;232;208m
+  7 8 9                     [38;2;201;194;221msound, pattern, bpm[38;2;242;232;208m
+  u i o p                   [38;2;201;194;221mfunction, fx, play, write[38;2;242;232;208m
+ [38;2;240;180;41mtwo keys at once[38;2;242;232;208m
+  hold one, press the other [38;2;201;194;221mor shift and a function key to latch it[38;2;242;232;208m
+  fx stays latched          [38;2;201;194;221muntil shifted again; the rest let go after a key[38;2;242;232;208m
+  no key-up here?           [38;2;201;194;221ma tap latches; with fx: tap starts, stops, switches[38;2;242;232;208m
+ [38;2;240;180;41mone key each[38;2;242;232;208m
+  t g / y h                 [38;2;201;194;221mslider A / B up, down[38;2;242;232;208m
+  space  , .  < >           [38;2;201;194;221mplay; tempo; swing[38;2;242;232;208m
+  - =  m                    [38;2;201;194;221mvolume; the sounds sheet[38;2;242;232;208m
+  esc  :  ^q                [38;2;201;194;221mlet every latch go; a command (w e q); quit[38;2;242;232;208m
+
+
+
+
+
+
+
+
+
+[48;2;20;19;31m tap keys: as asked. sound: no sound (--audio none). ? for every key

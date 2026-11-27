@@ -45,6 +45,10 @@ jobs:
           jq --version
           command -v clang++ && clang++ --version | sed -n 1p || echo "no clang++: the ThreadSanitizer run will be skipped"
 
+      # The terminal host's sound library (cpal) builds against ALSA's headers.
+      - name: ALSA headers, for the terminal host
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev pkg-config
+
       - run: make test
 
       - run: node --test harness/

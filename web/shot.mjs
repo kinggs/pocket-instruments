@@ -1,4 +1,4 @@
-// Pictures of the phone page for the owner's eye (issue 101): a key's lights in colour and with
+// Pictures of the phone page for Kenny's eye (issue 101): a key's lights in colour and with
 // the colour taken out, sound held with its marks, and the keys helper.
 //
 //   node web/shot.mjs <out dir>      writes page-*.png there (headless Chromium on the PATH)

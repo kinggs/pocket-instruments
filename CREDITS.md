@@ -19,7 +19,7 @@ each fact was checked.
   guide text beyond short quoted phrases in `docs/REFERENCES.md`.
 - What we take: the idea of a pocket-sized sixteen-step instrument, and its workflow (the key
   names, the combinations, the order of doing things), described in our own words in
-  `docs/WORKFLOW.md`. The effects are tuned by measuring the owner's own PO-12; the recordings
+  `docs/WORKFLOW.md`. The effects are tuned by measuring Kenny's own PO-12; the recordings
   and their reports are kept outside the repository.
 - Pocket Instruments is not affiliated with or endorsed by Teenage Engineering. Their names
   are used only to describe. Buy the real ones.
@@ -66,6 +66,22 @@ Not affiliated with Émilie Gillet or Mutable Instruments.
 | [MindMeld MixMaster](https://github.com/MarcBoule/MindMeldModular) | MindMeld | GPL-3.0-or-later | Nothing | Nothing. We read its manual to patch into it well. MixMaster cannot spread one polyphonic cable over its tracks, so today it takes VCV Split and sixteen cables; a breakout is proposed, not built (D70) |
 
 Not affiliated with any of them.
+
+### Linked into the terminal host
+
+`pi-rhythm` (`term/`, `docs/TERMINAL.md`) is built with two libraries from crates.io. Neither is
+in the repository; `term/Cargo.lock` pins the versions. A binary someone distributes carries
+their notices, and cpal's Apache-2.0 licence.
+
+| Source | Author | Licence | What we take |
+|---|---|---|---|
+| [crossterm](https://github.com/crossterm-rs/crossterm) 0.29 | the crossterm contributors | MIT | Raw mode, the alternate screen, the terminal's size |
+| [cpal](https://github.com/RustAudio/cpal) 0.18 | the RustAudio contributors | Apache-2.0 | Sound out: ALSA and PipeWire on Linux |
+
+Their own dependencies are listed by `cargo tree --manifest-path term/Cargo.toml`. On
+2026-11-26 every one was MIT, Apache-2.0, or either (`alsa`, `alsa-sys`, `bitflags`, `cfg-if`,
+`dasp_sample`, `document-features`, `libc`, `linux-raw-sys`, `litrs`, `lock_api`, `parking_lot`,
+`parking_lot_core`, `rustix`, `scopeguard`, `smallvec`).
 
 ## Admired, asked about, or being read
 

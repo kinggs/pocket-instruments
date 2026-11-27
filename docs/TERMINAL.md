@@ -1,6 +1,7 @@
 # The terminal host
 
-**Status (2026-11-26):** designed in issue 8 (D123), for Kenny. Not built. Rhythm in a Linux
+**Status (2026-11-26):** designed in issue 8 (D123), for Kenny; built the same day ("Built",
+at the end). The look is a stand-in until Kenny rules it. Rhythm in a Linux
 terminal, from the same core as the page and Rack. The engine does not change: this host
 sends what a finger did and draws the 64-byte view (`ENGINE.md` §13, §14), as the others do.
 
@@ -266,3 +267,35 @@ is Loom in cells and draws nothing of anyone else's.
 - Packaging, store listings, a plugin for any host program: Kenny's, after the demos.
 - More than one pattern (issue 4).
 - MIDI, a clock in or out, recording to a file.
+
+## Built (issue 8, 2026-11-26)
+
+`term/`: `src/input.rs` reads the bytes, `src/host.rs` is the page's press, release and latch
+logic with the tap fallbacks, `src/screen.rs` draws both screens, `src/audio.rs` runs the
+engine in cpal's callback, `src/samples.rs` compiles in the starter pack, `src/beat.rs` keeps
+the beat. `make term` builds it; `make test` runs its tests (`make term-test`).
+
+What was checked, and how:
+
+| Check | Result |
+|---|---|
+| P2 through the host's key path (`term/tests/fixtures.rs`) | 360 runs, the same report as Rust's, C++'s and Node's, byte for byte (`cmp` in `make test`) |
+| Every key of the map, hold and tap (`term/tests/keys.rs`) | 18 tests: the protocol and plain bytes, Shift's latch, fx latched, the one-key shortcuts at D122's steps, the sheet, `:` and Ctrl+Q, D119 item 5's three cases, herdr's releases ignored |
+| Every light, both screens, colour and none (`term/tests/screens.rs`) | 16 tests: frame, field, core (white, fern, its dark neighbours), twill, stitch, bar, pressed, the dash; each light alone differs from an unlit key with no colour; truecolour out, and no colour sends no colour |
+| Planted faults, each built and caught by a named test | Shift dropped from the protocol (9 tests); two keys swapped in the map (9); no twill (2); fx let up between keys in a tap switch (1); a release read as a press (the fixtures: 150 of 360 runs) |
+| Hold, end to end in foot | Keys sent with Hyprland's `send_key_state` to a hidden foot window (R78's method): a plain `7` let go before a key is no hold; Shift+`7` latches and lets go after the next key; `7` held over `s` chooses sound 10. The beat file read back held exactly those steps |
+| Tap, end to end in tmux | `i`, then taps on `q`, `w`, `w`, `a`, then esc: effects 5, 6, none, 9, none in the status line |
+| Both screens, both colourings | drawn in a headless tmux and read back (`capture-pane -e`): main, sound held, the helper, the sheet, the pocket size, and both with `NO_COLOR`. Kept in `design/term/*.ans`, for Kenny's eye: `cat design/term/term-write-on.ans` in a truecolour terminal shows the screen as drawn |
+| Easy to package later | `cargo build --release --locked` in `term/` with no `PI_CORE_LIB` builds the core itself and links it: one binary of 1 142 232 bytes, needing only `libasound.so.2` and libc at run time (`ldd`) |
+| The beat | saved at quit and a second after a change, read at the next start; a version 4 snapshot, 1464 bytes |
+
+⚠ Found on the way: Hyprland's `send_key_state` moves focus to the window and back around every
+event, and the host, like the page, lets every held key go when focus leaves. The end-to-end
+check sets `PI_RHYTHM_TEST_IGNORE_FOCUS=1`, a test aid and not an option, to hold keys across
+its events. A player's focus does not move, so this is not a fault of the host.
+
+⚠ Not checked by anyone yet: holds and an effect played by hand; the look and the sound judged
+(issue 8's last box, Kenny's); five minutes of `pi-rhythm` playing a beat through the speakers (it ran
+five minutes on the Scarlett stopped, so silent: no xrun, ERR 0 on its node and the device in
+`pw-top`; R81 measured the engine playing, at gain 0); `pi-rhythm` built with the
+`pipewire` feature (it builds; it was not run).

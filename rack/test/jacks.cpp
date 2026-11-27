@@ -17,7 +17,7 @@
 //   silence        a return of silence on channel 1 removes the bass drum: AUDIO is bit for bit
 //                  a second engine's that never had its steps, and VOICES and TRIGGERS are as
 //                  they were.
-//   punch          the owner's patch: every sound returned from its own VOICES, and effect 2
+//   punch          Kenny's patch: every sound returned from its own VOICES, and effect 2
 //                  punched by fx and key 2. AUDIO is the core's own render of that punch, to
 //                  the same bound through the distortion's gain, and is not the dry beat: the
 //                  effect is heard on the returned drums (it was not, until Session 18).
@@ -259,7 +259,7 @@ static void silence() {
     check(!triggersBad, "silence", "TRIGGERS changed when RETURN was patched");
 }
 
-// The owner's patch (PLAN.md, Session 18): TRIGGERS out to drums, the drums back into RETURN,
+// Kenny's patch (PLAN.md, Session 18): TRIGGERS out to drums, the drums back into RETURN,
 // and a punch must be heard on them. Here the drums are the module's own VOICES.
 static void punch() {
     std::vector<int16_t> smp = sample();
@@ -564,7 +564,7 @@ static void clock() {
     const Case cases[] = {
         {false, 120000, 0, "bpm", "120", 120000},   // the table
         {false, 97500, 0, "bpm", "97", 97500},      // whole bpm, rounded down (§14)
-        {true, 116000, 1230, "ext", "123", 123000}, // the owner's Clocked at 123 with 116 stored (D64 item 3)
+        {true, 116000, 1230, "ext", "123", 123000}, // Kenny's Clocked at 123 with 116 stored (D64 item 3)
         {true, 120000, 1239, "ext", "123", 123900}, // ext / 10 rounded down
         {true, 120000, 0, "ext", "--", 120000},     // before the second edge, or a stopped clock
         {true, 120000, 65535, "ext", "6553", 6553500},

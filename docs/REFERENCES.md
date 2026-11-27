@@ -4,6 +4,8 @@ Outside facts this project relies on. Every entry was read on the date shown; we
 licences and registrations change, so re-check an entry before acting on it. ⚠ marks a claim
 that was not confirmed at its primary source.
 
+**Since D124 (2026-11-26):** "the owner" in an entry written before D124 means Kenny, the maintainer. Those entries are not rewritten.
+
 All entries below were checked on **2026-11-18**.
 
 ## Rules and rights

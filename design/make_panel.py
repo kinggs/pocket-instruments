@@ -50,7 +50,7 @@ DX, DY = (W - 121.92) / 2, 6.0
 MID_Y, MID_H = 38.0 + DY, 48.0  # the band the grid, sliders and function keys share
 
 GRID_X, PITCH, KEY = 5.0 + DX, 12.0, 11.7  # 4 x 4 at 12 mm pitch
-# The sliders were 7 mm apart, at 61.5 and 68.5, with the dividers at 56 and 74. The owner
+# The sliders were 7 mm apart, at 61.5 and 68.5, with the dividers at 56 and 74. Kenny
 # widened them to 10 mm (2026-11-19) for the guide's thumb room (R33). The space came from the
 # clearances beside the dividers, so the grid and the function keys did not move.
 DIVIDERS = (55.25 + DX, 74.75 + DX)
@@ -126,7 +126,7 @@ PLATE_HALF = 5.6                    # the stitches reach 5.2 mm from the centre
 PLATE_UP, PLATE_DOWN = 1.7, 5.7     # above the top label line's centre; below the socket's
 LABEL_PAD = 0.8                     # plate past its label, each side
 # AUDIO's plate had a half of 6.9 mm, wider than the rest. At 27 HP in layout B that reached 2.6 mm
-# from the edge and 0.25 mm from the display's frame; the owner chose a narrower plate
+# from the edge and 0.25 mm from the display's frame; Kenny chose a narrower plate
 # (2026-11-26, issue 101): as wide as the room between the margin and the frame leaves, 0.5 mm
 # clear of the frame. It keeps its inner frame: the main output.
 AUDIO_PLATE_HALF = (GLASS_IN - FRAME - 0.5 - MARGIN) / 2
