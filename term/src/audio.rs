@@ -28,7 +28,9 @@ pub struct Shared {
     /// A snapshot asked for (`want_save`) and its bytes once taken; a snapshot to load and its
     /// result.
     pub want_save: AtomicBool,
-    pub saved: Mutex<Option<[u8; PI_SNAPSHOT_SIZE]>>,
+    /// Since ABI 16 a buffer of version 5's most and the length taken (0: none yet), so the
+    /// audio thread saves without allocating.
+    pub saved: Mutex<(Vec<u8>, usize)>,
     pub to_load: Mutex<Option<(Vec<u8>, Option<i32>)>>,
 }
 
@@ -50,7 +52,7 @@ impl Shared {
             running: AtomicBool::new(false),
             rate: AtomicU32::new(0),
             want_save: AtomicBool::new(false),
-            saved: Mutex::new(None),
+            saved: Mutex::new((vec![0; PI_SNAPSHOT_SIZE], 0)),
             to_load: Mutex::new(None),
         })
     }
@@ -161,7 +163,8 @@ impl Runner {
         let sh = &self.shared;
         if sh.want_save.load(Ordering::Acquire) {
             if let Ok(mut s) = sh.saved.try_lock() {
-                *s = Some(self.engine.save());
+                let (buf, len) = &mut *s;
+                *len = self.engine.save_into(buf);
                 sh.want_save.store(false, Ordering::Release);
             }
         }

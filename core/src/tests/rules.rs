@@ -25,15 +25,18 @@ fn trigs(ev: &[(u64, Event)]) -> Vec<(u64, u32, u8)> {
 
 #[test]
 fn the_records_and_the_engine_have_the_sizes_the_header_says() {
-    assert_eq!(pi_abi_version(), 15); // ABI 15: one edge a beat, `SOURCE` 2, and the view's `ext` (D100)
+    assert_eq!(pi_abi_version(), 16); // ABI 16: sixteen patterns, the chain, the view at 88, snapshot version 5 (§21, D133)
     assert_eq!(size_of::<Cmd>(), 12);
     assert_eq!(size_of::<Event>(), 12);
-    // The upper bound is the hosts' fixed room for one engine: 4 KiB before the snapshot in
+    // The upper bound is the hosts' fixed room for one engine: 32 KiB before the snapshot in
     // harness/trace.test.mjs and before the events in web/worklet.js, and Probe.cpp's buffer.
     // It was 512 until the drums (752 bytes), 1 KiB until all sixteen voices (1 416), and
     // 2 KiB until each track had a sample beside its voice (D50). Session 21 (§20: what
-    // each step keeps, about 1 KiB) took it from 2 448 to the number in ENGINE.md §8.
-    assert!(pi_size() >= 316 - 16 && pi_size() <= 4096, "pi_size is {}", pi_size());
+    // each step keeps, about 1 KiB) took it from 2 448 to 3 568; 4 KiB held it until ABI 16,
+    // whose sixteen patterns took it to the number in ENGINE.md §21 (D133 item 1: 32 KiB).
+    assert!(pi_size() >= 316 - 16 && pi_size() <= 32_768, "pi_size is {}", pi_size());
+    // The sixteen are there: more than fifteen patterns' worth of bytes past ABI 15's 3 696.
+    assert!(pi_size() > 3_696 + 15 * 1_362, "pi_size is {}", pi_size());
     assert!(pi_align() <= 8);
 }
 
@@ -423,8 +426,10 @@ fn every_corrupted_byte_is_refused_and_changes_nothing() {
             let want = match (i, bit) {
                 // Until Session 21, version 3 with its low bit flipped said 2, a version this
                 // core wrote, and was refused by version 2's payload size (§8's order).
-                // Version 4 with it flipped says 5, which no core wrote.
+                // Version 4 with it flipped said 5, which no core wrote, until ABI 16 (§21):
+                // now it is read as version 5, whose payload size is not 1448.
                 (0..4 | 6..8, _) => ERR_MAGIC,
+                (4, 0x01) => ERR_SIZE,
                 (4..6, _) => ERR_VERSION,
                 (8..12, _) => ERR_SIZE,
                 _ => ERR_CRC,
@@ -443,7 +448,7 @@ fn every_corrupted_byte_is_refused_and_changes_nothing() {
 #[test]
 fn a_newer_version_is_refused_even_with_a_good_checksum() {
     let mut s = busy().save();
-    s[4] = 5;
+    s[4] = 6; // 5 until ABI 16 (§21), which writes version 5
     let crc = crc32(&s[..SNAP - 4]);
     s[SNAP - 4..].copy_from_slice(&crc.to_le_bytes());
     assert_eq!(Host::new(SR, 1).load(&s), ERR_VERSION);

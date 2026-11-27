@@ -203,11 +203,12 @@ static int weave(const char *views, const char *out) {
     while (std::getline(in, line)) {
         if (line.empty() || line[0] == '#') continue;
         size_t a = line.find(' '), b = line.find(' ', a + 1);
-        if (a == std::string::npos || b == std::string::npos || line.size() - b - 1 != 2 * PI_VIEW_SIZE) die("a line of the views is not a name, flags and 64 bytes");
+        // The views are ABI 15's 64 bytes: the weave reads no more (PI_WEAVE_VIEW_MIN, section 21).
+        if (a == std::string::npos || b == std::string::npos || line.size() - b - 1 != 2 * PI_WEAVE_VIEW_MIN) die("a line of the views is not a name, flags and 64 bytes");
         std::string name = line.substr(0, a), flags = line.substr(a + 1, b - a - 1);
-        uint8_t view[PI_VIEW_SIZE], cells[PI_WEAVE_CELLS];
-        for (unsigned i = 0; i < PI_VIEW_SIZE; i++) view[i] = uint8_t(std::stoul(line.substr(b + 1 + 2 * i, 2), nullptr, 16));
-        if (pi_weave(view, PI_VIEW_SIZE, uint32_t(std::stoul(flags)), cells, sizeof cells) != PI_WEAVE_CELLS) die("pi_weave refused a view");
+        uint8_t view[PI_WEAVE_VIEW_MIN], cells[PI_WEAVE_CELLS];
+        for (unsigned i = 0; i < PI_WEAVE_VIEW_MIN; i++) view[i] = uint8_t(std::stoul(line.substr(b + 1 + 2 * i, 2), nullptr, 16));
+        if (pi_weave(view, PI_WEAVE_VIEW_MIN, uint32_t(std::stoul(flags)), cells, sizeof cells) != PI_WEAVE_CELLS) die("pi_weave refused a view");
         report += "# " + name + " " + flags + "\n";
         for (unsigned y = 0; y < PI_WEAVE_H; y++) {
             for (unsigned x = 0; x < PI_WEAVE_W; x++) report += char('0' + cells[y * PI_WEAVE_W + x]);
@@ -269,26 +270,30 @@ int main(int argc, char **argv) {
                     check(where + " " + std::to_string(block), got, seen, ok);
                 }
 
-                // Save, load into a fresh engine with another seed, same trace.
-                uint8_t snap[PI_SNAPSHOT_SIZE];
+                // Save, load into a fresh engine with another seed, same trace. Since ABI 16
+                // (section 21) a snapshot is as long as pi_save says: version 5, 276 bytes and
+                // 1 364 a pattern written.
+                std::vector<uint8_t> snap(PI_SNAPSHOT_SIZE);
                 {
                     Host a(rate, seed);
                     std::vector<Timed> edits{{0, cmd(PI_CMD_TEMPO, 0, 0, uint32_t(fx.n("mbpm")))}};
                     for (const Json &c : fx.at("commands").arr)
                         if (c.n("at") == 0 && is_edit(c.at("cmd").str)) edits.push_back({0, to_cmd(c)});
                     run(a, edits, 1, 1);
-                    if (pi_save(a.e, snap, sizeof snap) != PI_SNAPSHOT_SIZE) die("pi_save");
+                    uint32_t n = pi_save(a.e, snap.data(), uint32_t(snap.size()));
+                    if (n < PI_SNAPSHOT_SIZE_MIN || (n - PI_SNAPSHOT_SIZE_MIN) % PI_SNAPSHOT_PATTERN) die("pi_save");
+                    snap.resize(n);
                 }
                 Host b(rate, seed + 12345);
-                if (pi_load(b.e, snap, sizeof snap) != PI_OK) die("pi_load refused a good snapshot");
+                if (pi_load(b.e, snap.data(), uint32_t(snap.size())) != PI_OK) die("pi_load refused a good snapshot");
                 std::vector<Timed> cmds;
                 std::vector<View> views;
                 uint64_t end = schedule(fx, rate, source, true, cmds, &views);
-                auto hex = [](const uint8_t *bytes) {
+                auto hex = [](const std::vector<uint8_t> &bytes) {
                     std::string out;
-                    for (unsigned i = 0; i < PI_SNAPSHOT_SIZE; i++) {
+                    for (uint8_t x : bytes) {
                         char two[3];
-                        std::snprintf(two, sizeof two, "%02x", bytes[i]);
+                        std::snprintf(two, sizeof two, "%02x", x);
                         out += two;
                     }
                     return out;
@@ -300,22 +305,37 @@ int main(int argc, char **argv) {
 
                 // Section 20 (Session 21): and from the snapshot a beat entered by keys saves,
                 // every step that is on keeping its sound's own A and B (tests/fixtures.rs).
-                uint8_t kept[PI_SNAPSHOT_SIZE];
+                // Since ABI 16 written into version 5's bytes, in each pattern written, as a
+                // KEEP there would write them; then loaded and saved again: the core's bytes.
+                std::vector<uint8_t> kept = snap;
                 {
-                    Host a(rate, seed);
-                    if (pi_load(a.e, snap, sizeof snap) != PI_OK) die("pi_load refused a good snapshot");
-                    std::vector<Timed> keeps;
-                    for (unsigned t = 0; t < PI_TRACKS; t++) {
-                        unsigned on = snap[24 + 2 * t] | snap[25 + 2 * t] << 8, has = snap[404 + 2 * t] | snap[405 + 2 * t] << 8;
-                        uint32_t ab = uint32_t(snap[312 + 4 * t] | snap[313 + 4 * t] << 8) << 16 | uint32_t(snap[314 + 4 * t] | snap[315 + 4 * t] << 8);
-                        for (unsigned st = 0; st < PI_STEPS; st++)
-                            if ((on >> st & 1) && !(has >> st & 1)) keeps.push_back({0, cmd(PI_CMD_KEEP, uint8_t(t), uint8_t(st), ab)});
+                    auto u16 = [&](size_t i) { return unsigned(kept[i] | kept[i + 1] << 8); };
+                    unsigned written = u16(92), n = 0;
+                    for (unsigned p = 0; p < PI_PATTERNS; p++) n += written >> p & 1;
+                    for (size_t at = PI_SNAPSHOT_SIZE_MIN - 4; n > 0; n--, at += PI_SNAPSHOT_PATTERN)
+                        for (unsigned t = 0; t < PI_TRACKS; t++) {
+                            unsigned on = u16(at + 2 * t), has = u16(at + 304 + 2 * t);
+                            for (unsigned st = 0; st < PI_STEPS; st++)
+                                if ((on >> st & 1) && !(has >> st & 1)) std::memcpy(&kept[at + 336 + 4 * (16 * t + st)], &kept[24 + 4 * t], 4);
+                            kept[at + 304 + 2 * t] = uint8_t(on | has);
+                            kept[at + 305 + 2 * t] = uint8_t((on | has) >> 8);
+                        }
+                    // The CRC again, bit by bit (the zip one: ENGINE.md section 8).
+                    uint32_t crc = 0xFFFFFFFFu;
+                    for (size_t i = 0; i + 4 < kept.size(); i++) {
+                        crc ^= kept[i];
+                        for (int k = 0; k < 8; k++) crc = crc >> 1 ^ (0xEDB88320u & (0u - (crc & 1)));
                     }
-                    run(a, keeps, 1, 1);
-                    if (pi_save(a.e, kept, sizeof kept) != PI_SNAPSHOT_SIZE) die("pi_save");
+                    crc = ~crc;
+                    for (int k = 0; k < 4; k++) kept[kept.size() - 4 + k] = uint8_t(crc >> (8 * k));
+                    Host a(rate, seed);
+                    if (pi_load(a.e, kept.data(), uint32_t(kept.size())) != PI_OK) die("pi_load refused a kept snapshot");
+                    std::vector<uint8_t> again(PI_SNAPSHOT_SIZE);
+                    again.resize(pi_save(a.e, again.data(), uint32_t(again.size())));
+                    if (again != kept) die("the core saves other bytes than the kept snapshot it loaded");
                 }
                 Host c(rate, seed + 12345);
-                if (pi_load(c.e, kept, sizeof kept) != PI_OK) die("pi_load refused a kept snapshot");
+                if (pi_load(c.e, kept.data(), uint32_t(kept.size())) != PI_OK) die("pi_load refused a kept snapshot");
                 seen.clear();
                 ok = true;
                 got = run(c, cmds, end, 128, nullptr, &views, &seen, &ok, PI_AUDIO_MIX, format);
@@ -323,7 +343,7 @@ int main(int argc, char **argv) {
 
                 // One flipped bit is refused.
                 snap[40] ^= 1;
-                if (pi_load(b.e, snap, sizeof snap) != PI_ERR_CRC) die("pi_load took a corrupted snapshot");
+                if (pi_load(b.e, snap.data(), uint32_t(snap.size())) != PI_ERR_CRC) die("pi_load took a corrupted snapshot");
             }
         }
     }
