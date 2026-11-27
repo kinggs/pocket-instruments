@@ -218,11 +218,18 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
     let keep_on_blur = std::env::var_os("PI_RHYTHM_TEST_IGNORE_FOCUS").is_some();
     let mut cores = screen::Cores::default();
     let t0 = Instant::now();
-    let leave = if from_menu { ":q back to the menu" } else { ":q quits" };
+    let leave = if from_menu { ":q menu" } else { ":q quits" };
+    let mode_word = if t.mode == Mode::Hold { "hold" } else { "tap" };
+    // The status line has 78 cells: the sound's name goes when the line would not fit.
+    let opening = [
+        format!("{mode_word} keys: {}. sound: {sound}. ? every key, {leave}", t.why),
+        format!("{mode_word} keys: {}. ? every key, {leave}", t.why),
+    ]
+    .into_iter()
+    .find(|m| m.chars().count() <= 78)
+    .unwrap_or_else(|| format!("{mode_word} keys. ? every key, {leave}"));
     let mut message: Option<(String, Instant)> = Some((
-        load_note.unwrap_or_else(|| {
-            format!("{} keys: {}. sound: {sound}. ? for every key, {leave}", if t.mode == Mode::Hold { "hold" } else { "tap" }, t.why)
-        }),
+        load_note.unwrap_or(opening),
         Instant::now() + Duration::from_secs(6),
     ));
     let mut last_gen = shared.generation.load(Ordering::Acquire);

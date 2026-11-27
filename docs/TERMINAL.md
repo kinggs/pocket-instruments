@@ -1,8 +1,8 @@
 # The terminal host
 
 **Status (2026-11-27):** designed in issue 8 (D123), for Kenny; built the same day ("Built",
-at the end). One command with a menu and a config file designed in issue 122 (D125), not
-built yet. The look is a stand-in until Kenny rules it. Rhythm in a Linux
+at the end). One command with a menu and a config file designed in issue 122 (D125) and
+built the next day ("Built (issue 122)", at the end). The look is a stand-in until Kenny rules it. Rhythm in a Linux
 terminal, from the same core as the page and Rack. The engine does not change: this host
 sends what a finger did and draws the 64-byte view (`ENGINE.md` §13, §14), as the others do.
 
@@ -338,3 +338,25 @@ its events. A player's focus does not move, so this is not a fault of the host.
 five minutes on the Scarlett stopped, so silent: no xrun, ERR 0 on its node and the device in
 `pw-top`; R81 measured the engine playing, at gain 0); `pi-rhythm` built with the
 `pipewire` feature (it builds; it was not run).
+
+## Built (issue 122, 2026-11-27)
+
+`pocket-instruments` as D125 and "The command, the menu and the config" design it.
+`src/settings.rs` reads the options and the config file and says which wins; `src/menu.rs`
+draws the intro page at both sizes and reads the menu's keys; `src/main.rs` sets the terminal up
+once and runs Rhythm from the menu or straight in. Ctrl+Q is now its own action in the host
+(`Action::QuitAll`), so `:q` can go back to the menu: `term/tests/keys.rs`'s two Ctrl+Q lines
+follow D125 item 3.
+
+| Check | Result |
+|---|---|
+| `term/tests/launcher.rs`, 12 tests | The options before and after `rhythm`; every config key, value and refusal with its line; a missing file; the order against `NO_COLOR` (R82); the menu's keys in foot's and tmux's bytes; the intro's cells at 80 by 24 and 48 by 10, in colour and without; the help within the frame |
+| The fixtures through the host, the keys, the lights | Unchanged and passing (`make test`) |
+| The real binary in a headless tmux (tap) | The menu read a config file (sound and motion marked `config`); `1` started Rhythm; `:q` came back to the menu; Ctrl+Q exited 0. Straight in, `:q` exited 0 |
+| The real binary in foot (hold), keys by Hyprland's `send_key_state` | Ctrl+Q on the menu exited 0 without touching the beat; `1` then Ctrl+Q started Rhythm, which saved the beat as it left, and exited 0 |
+| Pictures | `design/term/term-menu.ans`, `-options`, `-no-color`, `-pocket` (`cat` one in foot) |
+
+⚠ Found on the way: the help's first wrap ran past 78 columns on several lines; the test caught it
+and the text was rewrapped. Rhythm's opening line drops the sound's name when it would not fit.
+
+⚠ Not checked: the look of the intro (Kenny's; no canvas board); `:q` and Ctrl+Q by hand.
