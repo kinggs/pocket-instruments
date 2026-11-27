@@ -31,6 +31,7 @@ The live backlog is GitHub issues. There is no plan file.
 | Document | What it is | How it changes |
 |---|---|---|
 | `docs/ENGINE.md` | The engine's specification | By a decision; the header and fixtures change with it |
+| `docs/BEAT.md` | The beat file: a beat as text, one to one with the snapshot (D134; designed, not built) | By a decision, with its own version number |
 | `docs/DECISIONS.md` | Every decision and why. The Open table is at its end | Append only. A decision is superseded, not rewritten |
 | `docs/PROOFS.md` | What must be proven, the pass bar, the result | Bar before the run, result after |
 | `docs/REFERENCES.md` | Outside facts, with source and date | Re-check an old entry before leaning on it |
@@ -170,7 +171,8 @@ An agent cannot yet be asked to write a beat. There is no readable beat file, no
 line tool, and one pattern only.
 
 Both come with the patterns work (D110). ⚠ The issues for it were still being opened when
-this was written: search the issues for "patterns" and for "agent can play".
+this was written: search the issues for "patterns" and for "agent can play". The beat file's
+form is designed (`docs/BEAT.md`, D134), not built: nothing reads it yet.
 
 Until then a beat lives in two places only:
 

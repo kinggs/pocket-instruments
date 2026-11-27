@@ -10,6 +10,7 @@ Builds decide nothing. The live backlog is the repository's issues, not a file h
 | `docs/PROOFS.md` | What must be proven, the pass bar, the result | Pass bar written before the experiment; result after |
 | `docs/REFERENCES.md` | Outside facts we rely on, with source and date checked | Re-check before relying on an old entry |
 | `docs/LEARNINGS.md` | Dated notebook: what surprised us, what broke, why | Append only |
+| `docs/BEAT.md` | The beat file: a beat as text, one to one with snapshot version 5 (D134) | Changed by a decision; a new beat version adds words and drops none |
 | `docs/WORKFLOW.md` | What each press does, in our words; Kenny ticks each row on the hardware | Until P8 |
 | `docs/VOICES.md` | The sixteen sounds: role, recipe, what the sliders do, and what each was built as | Until each voice passes by ear |
 | `docs/RACK-RULES.md` | What any module of ours for VCV Rack is held to: the panel, the voltages, the code | Re-read VCV's manual (R33 to R35) before leaning on an old line |
