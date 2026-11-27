@@ -288,7 +288,7 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
                             Ok(()) => format!("saved {}", p.display()),
                             Err(e) => e,
                         },
-                        None if beat_path.is_some() => "the beat file was not read, so it is left alone: :w FILE".into(),
+                        None if beat_path.is_some() => "the beat file was not read, so it is left alone: save with :w FILE".into(),
                         None => "nowhere to save: give a file, :w FILE".into(),
                     };
                     message = Some((said, Instant::now() + Duration::from_secs(4)));

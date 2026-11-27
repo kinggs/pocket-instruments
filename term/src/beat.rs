@@ -40,7 +40,7 @@ pub fn from_file(bytes: &[u8]) -> Result<Vec<u8>, String> {
         return Ok(bytes.to_vec());
     }
     if bytes.starts_with(TEXT_FIRST) {
-        return Err("a beat written as text; this build reads it once the beat reader is in (issue 140)".into());
+        return Err("a text beat needs the beat reader (issue 140)".into());
     }
     Err("not a beat file".into())
 }
@@ -77,10 +77,11 @@ pub fn open(path: &Path) -> Opened {
     }
 }
 
-/// What the host says of a file it did not read, and leaves alone.
+/// What the host says of a file it did not read, and leaves alone (it then starts empty; `:w`
+/// says where else to save). Kept short: the footer has 78 cells.
 pub fn left_alone(path: &Path, why: &str) -> String {
     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    format!("{name} not read ({why}); left alone, starting empty. :w FILE saves elsewhere")
+    format!("{name} left alone: {why}")
 }
 
 pub fn read(path: &Path) -> std::io::Result<Vec<u8>> {
