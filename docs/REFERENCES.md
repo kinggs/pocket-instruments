@@ -246,6 +246,7 @@ was seen in the bytes below.
 |---|---|---|
 | R82 | **A program's own configuration may override `NO_COLOR`.** no-color.org, read 2026-11-27: "User-level configuration files and per-instance command-line arguments should override the NO_COLOR environment variable" | <https://no-color.org/> |
 | R83 | **The names were free on 2026-11-27,** looked up, not a register search: `pocket-instruments`, `pocket-instrument` and `pi-rhythm` had no package on the AUR (`aur.archlinux.org/rpc/v5/info` and `/search`), none in the Arch repositories (`archlinux.org/packages/search/json`), and no crate on crates.io (`crates.io/api/v1/crates/<name>` gave 404). ⚠ Free today is no claim on tomorrow; issue 45 holds the register search | Looked up |
+| R84 | **A Rack plugin's slug may hold hyphens, and must never change after release.** VCV's manual, "Manifest", read 2026-11-27: slugs "may only contain letters `a-z` and `A-Z`, numbers `0-9`, hyphens `-`, and underscores `_`"; they are case-sensitive; and "After your plugin is released, the slug must _never_ change, otherwise patch compatibility would be broken." The name "can be changed at any time" | <https://vcvrack.com/manual/Manifest> |
 
 ## Not yet checked
 

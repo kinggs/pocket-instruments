@@ -2883,6 +2883,18 @@ they follow is Kenny's ⚠.
 4. **The Rack plugin's slug** is `PocketInstruments` today, and a slug cannot change once the
    VCV Library has it (D110 item 1). Whether it becomes `pocket-instruments` is O37.
 
+### D128 — The Rack plugin's slug is `pocket-instruments`
+**2026-11-27 · decided (Kenny, answering O37: "Yes, pocket-instruments") · carries out D127 item 3 in Rack · the plugin's name and brand stay "Pocket Instruments"; the modules' slugs (`Rhythm`, `Probe`) stay · nothing published**
+
+1. **The slug becomes `pocket-instruments`,** the name as it is written everywhere else (D127
+   item 3). VCV allows hyphens in a slug, and a slug must never change after release (R84), so
+   it changes now, before the Library has it (D110 item 1).
+2. **What it costs:** a patch saved with the old slug no longer finds the module; none is
+   published. The repository's own patches (`rack/patch/`) and the self-test change with it,
+   and a Rack that has the old build installed holds both until the old folder goes.
+3. The `.vcvplugin` files and CI's artifacts take the slug in their names
+   (`pocket-instruments-<version>-<platform>`), as Rack's `plugin.mk` names them.
+
 ## Open
 
 | ID | Question | Needs |
@@ -2923,4 +2935,4 @@ they follow is Kenny's ⚠.
 | O34 | ~~Layout B (D114): 24 HP or 27 HP? By arithmetic from `design/make_panel.py`'s own clearances one row of ten fits at 24 HP, but the display narrows to about 88 mm and the weave cannot keep its 78 cells without a change in the core (§16). At 27 HP the display is about 103 mm, the weave keeps 78 cells and the groups stand about 7 mm apart. The tempo's column narrows to about 20 mm either way. ⚠ Nothing was run through `make_panel.py --check`~~ | **Answered 2026-11-26: D119 item 1.** Was: The owner. Recommended by the design session: 27 HP. `design/DESIGN.md`, "Layout B" |
 | O35 | ~~Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way~~ | **Answered 2026-11-26: D119 item 2.** Was: The owner |
 | O36 | ~~The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed?~~ | **Answered 2026-11-26: D119 item 3.** Was: The owner, one by one. ⚠ First check each against what Rack and a browser already do with it |
-| O37 | The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)? Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
+| O37 | ~~The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)?~~ **Answered 2026-11-27: D128, `pocket-instruments`.** Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
