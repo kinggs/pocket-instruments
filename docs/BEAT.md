@@ -293,3 +293,16 @@ finds its offsets.
   10. `pib_write` refuses any snapshot the core would not write (a field outside its range, a
       cleared pattern written, bytes after a chain's length, a value kept where nothing is):
       so whatever it writes reads back to the same bytes.
+
+**Built in Rack (issue 142, 2026-11-27).** The Rhythm module's menu has **Open beat file...** and
+**Save beat file...**, with Rack's own file dialogs (osdialog, from the Rack SDK; VCV's plugin
+guide names none). Open reads the file on Rack's UI thread, `pib_read` turns it into a snapshot,
+and the module's ordinary load takes it (the audio thread loads it between frames, as a patch's
+beat); a refusal says why and changes nothing; a key in `own` is named ("key 9 used its writer's
+own sample; playing the starter pack's", D34). Save takes the beat as it is now (the save the
+audio thread owes is asked for first, `ENGINE.md` §21), `pib_write` with no key in `own` (Rack
+plays no sample a player loaded), and writes the text. `rack/src/Rhythm.cpp`: `openBeat`,
+`saveBeat`; `libpi_beat.a` linked into the plugin beside `libpi_core.a`. `rack/selftest.sh` plays
+`fixtures/beat-four-and-a-fill` on both clocks from the beat file opened through `openBeat` by a
+second thread, holds its trace and views, opens a newer beat and an unknown word first (both
+refused, nothing loaded), and saves the beat again through `saveBeat` to its canonical text.

@@ -750,7 +750,10 @@ and passed at its first run in Rust, C++, Node and the terminal host (the beat r
 host's beat reader: the crate, `libpi_beat.a`, `pi_beat.wasm`). Each harness's engine starts
 from another seed (the fixture's plus 12 345), so the beat's own seed is what plays; no tempo is
 sent. The report holds the beat's bytes once (`# beat-four-and-a-fill beat <hex>`), then its 18
-runs. The Rhythm module's self-test leaves it out (`rack/rhythm.jq`): it reads no beat file.
+runs. ~~The Rhythm module's self-test leaves it out (`rack/rhythm.jq`): it reads no beat file.~~
+Since issue 142 the Rhythm module's self-test plays it too, on both clocks: a second thread opens
+the beat file through the module's own path (`Rhythm::openBeat`, as the menu's Open does), the
+engine made from the fixture's seed plus 12 345 loads it, and the trace and views must match.
 
 `docs/BEAT.md`'s worked example. The beat is loaded before frame 0, then the play edit at 0:
 tick 0 is pattern 1's step 0, the chain at its first pattern.

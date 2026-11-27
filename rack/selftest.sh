@@ -44,7 +44,8 @@
 # its bass drum restarts its chain; "save" drags a slider over sixteen patterns: no save not asked
 # for comes within a quarter second of the one before, and every patch save a second thread makes
 # through dataToJson holds the last move. And the instrument given an old patch's version 4
-# snapshot (fixtures/snapshots-v4.txt) loads it into pattern 1, as the version 1 one does.
+# snapshot (fixtures/snapshots-v4.txt) loads it into pattern 1, as the version 1 one does. And
+# beat-four-and-a-fill on both clocks, its beat file opened through the module's own path.
 # They run in a second patch, after the first (below). patterns-change-playing is 100 steps at
 # 120 bpm (12.5 s a pass), so each patch runs 20 seconds a rate.
 #
@@ -119,17 +120,22 @@ cat > "$user/autosave/patch.json" <<JSON
 JSON
 # Issue 142's modules in a second patch, run after the first: in one patch of 52 modules, 2 runs
 # in 6 had every module on an LFO's edges lose its cable (issue 59's symptom, with the plugin
-# from before this change too); the first patch alone, 0 in 6.
+# from before this change too); the first patch alone, 0 in 6. ⚠ Found since, by a scratch
+# build that logged each module's CLOCK: Rack removes the modules at exit in batches while the
+# engine still runs, and a module left after its LFO has gone loses its cable, starts a pass on
+# its table clock and is logged "on the table". A module on edges listed last in this patch did
+# so on every run, so the modules on edges come first. Not fixed here (issue 59).
 cat > "$user/patch-b.json" <<JSON
 {"version":"2.6.6","modules":[
  {"id":6,"plugin":"Fundamental","model":"LFO","version":"2.6.4","params":[{"id":2,"value":3.0}],"pos":[0,2]},
+ $(rhythm 53 '"fixture":"beat-four-and-a-fill"'),$(rhythm 54 '"fixture":"beat-four-and-a-fill"'),
  $(rhythm 41 '"fixture":"patterns-choose-and-play"'),$(rhythm 42 '"fixture":"patterns-chain"'),
  $(rhythm 43 '"fixture":"patterns-copy-and-clear"'),$(rhythm 44 '"fixture":"patterns-change-playing"'),
  $(rhythm 45 '"fixture":"patterns-choose-and-play"'),$(rhythm 46 '"fixture":"patterns-chain"'),
  $(rhythm 47 '"fixture":"patterns-copy-and-clear"'),$(rhythm 48 '"fixture":"patterns-change-playing"'),
  $(rhythm 49 '"loop":"patterns"'),$(rhythm 50 '"loop":"reset"'),$(rhythm 51 '"loop":"save"'),
  $(rhythm 52 "\"snapshot\":\"$old4\"")],
- "cables":[$(edge 49 45),$(edge 50 46),$(edge 51 47),$(edge 52 48),$(self 53 50 0 1)]}
+ "cables":[$(edge 49 45),$(edge 50 46),$(edge 51 47),$(edge 52 48),$(self 53 50 0 1),$(edge 60 54)]}
 JSON
 : > "$user/all.txt"
 runrack() { # one patch, its log added to all.txt
@@ -158,7 +164,7 @@ rgood() { # fixture, where: one clean module
     echo "$rl" | grep -E "\(removed\): fixture $1 $2: [1-9][0-9]* passes matched, 0 did not, [0-9]+ cut short, [1-9][0-9]* views held, 0 not; rate $rate Hz, 0 events dropped, .* 0 samples not finite, .* 16 of 16 samples found" | grep -c . || true
 }
 for f in keys-bpm-family keys-tap-and-choose keys-write-a-beat keeps-what-it-was-written-with fx-repeat-punch fx-repeat-swing fx-repeat-holds fx-shuffle \
-         patterns-choose-and-play patterns-chain patterns-copy-and-clear patterns-change-playing; do
+         patterns-choose-and-play patterns-chain patterns-copy-and-clear patterns-change-playing beat-four-and-a-fill; do
     for w in "on the table" "on edges"; do
         [ "$(rgood $f "$w")" = 1 ] || { echo "selftest: FAILED (Rhythm on $f $w at $rate Hz)"; exit 1; }
     done
@@ -213,6 +219,12 @@ done
 sv=$(echo "$rl" | sed -n 's/^.*patterns (removed): module 51: .*save loop: \([0-9]*\) saves not asked in \([0-9]*\) frames, closest \([0-9]*\) frames apart; \([0-9]*\) patch saves held the last move, \([0-9]*\) not$/\1 \2 \3 \4 \5/p')
 set -- $sv
 [ $# = 5 ] && [ "$3" -ge $((rate / 4)) ] && [ $(($1 * rate)) -le $((4 * $2 + rate)) ] && [ "$4" -ge 5 ] && [ "$5" = 0 ] || { echo "selftest: FAILED (saves at $rate Hz: '$sv': saves, frames, closest, patch saves held, not)"; exit 1; }
+# Issue 142: the beat file opened through the module's own path (Rhythm::openBeat, as the menu's
+# Open), its fixture's trace matched above on both clocks; two refused files changed nothing; and
+# the beat saved again through saveBeat is the file's canonical text.
+for w in "on the table" "on edges"; do
+    echo "$rl" | grep -E "rhythm beat \(removed\): beat-four-and-a-fill $w: beat-four-and-a-fill.beat opened [1-9][0-9]* times, 0 not; [1-9][0-9]* pairs of refused files changed nothing, 0 did; saved again [1-9][0-9]* times as its canonical text, 0 not" | grep -q . || { echo "selftest: FAILED (the beat file $w at $rate Hz)"; exit 1; }
+done
 echo "selftest: saves at $rate Hz while a slider is dragged over sixteen patterns: $1 in $2 frames, closest $3 frames apart (a quarter second is $((rate / 4))); $4 of $4 patch saves held the last move."
 echo "selftest: 4 probes clean in Rack at $rate Hz, each sounding; one on the sixteen samples, from a version 1 snapshot."
 echo "selftest: 24 Rhythm modules held to the three format 2 fixtures, the four format 3, the format 4 one and the four format 5 (patterns) on both clocks at $rate Hz, by their own parameters, FX GATES to each view's fx; one through RETURN; the instrument loaded a version 1 snapshot and a version 4 one, each into pattern 1."

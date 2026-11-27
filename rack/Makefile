@@ -18,8 +18,11 @@ ifeq ($(RUST_TARGET),)
 $(error No Rust target for Rack's $(ARCH_NAME))
 endif
 PI_LIB := ../target/$(RUST_TARGET)/release/libpi_core.a
+# The beat file's reader and writer (beat/, D134; issue 140), for the menu's Open and Save beat
+# file (issue 142). The root's rack-lib builds it beside the core, with the same flags.
+PI_BEAT_LIB := ../target/$(RUST_TARGET)/release/libpi_beat.a
 
-FLAGS += -I../core/include -Ibuild
+FLAGS += -I../core/include -I../beat/include -Ibuild
 # A scratch build for Rack's screenshot mode fills the face by hand (Rhythm.cpp, PI_FACE_SHOT):
 # `make PI_FACE_SHOT=1 install RACK_USER_DIR=<scratch>`. Never shipped.
 ifdef PI_FACE_SHOT
@@ -27,7 +30,7 @@ FLAGS += -DPI_FACE_SHOT=$(PI_FACE_SHOT)
 endif
 SOURCES += $(wildcard src/*.cpp)
 # After our objects, so the linker takes from the archive only what they ask for.
-OBJECTS += $(PI_LIB)
+OBJECTS += $(PI_LIB) $(PI_BEAT_LIB)
 
 # D50: the starter pack ships inside the plugin, as the engine reads it (samples/raw/),
 # copied in at build time so the repo holds one copy.
@@ -62,6 +65,7 @@ res/stmlib-plaits-MIT.txt: ../core/stmlib-plaits-MIT.txt
 .PHONY: FORCE
 $(PI_LIB): FORCE
 	$(MAKE) --no-print-directory -C .. rack-lib T=$(RUST_TARGET)
+$(PI_BEAT_LIB): $(PI_LIB)
 
 # The fixtures and their traces, as C++ initialisers. Never retyped by hand.
 # One jq a file: given them all at once, jq's exit status is the last file's alone, so a
@@ -81,6 +85,14 @@ build/rhythm-fixtures.inc: rhythm.jq $(wildcard ../fixtures/*.json)
 	for f in ../fixtures/*.json; do jq -r -f rhythm.jq "$$f" || exit 1; done > $@.tmp
 	mv $@.tmp $@
 build/src/Rhythm.cpp.o: build/rhythm-fixtures.inc
+
+# The beat files the fixtures name (../fixtures/*.beat), as C++ raw strings, for the self-test
+# to open through the module's own beat path (issue 142). Never retyped.
+build/rhythm-beats.inc: $(wildcard ../fixtures/*.beat)
+	@mkdir -p build
+	for f in ../fixtures/*.beat; do [ -e "$$f" ] || continue; printf '{"%s", R"PIBEAT(' "$$(basename "$$f")"; cat "$$f"; printf ')PIBEAT"},\n'; done > $@.tmp
+	mv $@.tmp $@
+build/src/Rhythm.cpp.o: build/rhythm-beats.inc
 
 # The build stamp: the commit, and when the repository holds changes not committed,
 # "-dirty" and the minute it was built. Rack's log says it at load and each module's menu
@@ -108,6 +120,7 @@ all: check-link
 check-link: $(TARGET)
 	@if $(PI_NM) --undefined-only $(TARGET) | grep -E 'rust_eh_personality|_Unwind_Resume.*rust|__rust' ; then echo "P3: the plugin needs a Rust runtime symbol"; exit 1; fi
 	@$(PI_NM) --defined-only $(TARGET) | grep -qE ' T _?pi_process$$' || { echo "P3: pi_process is not in the plugin"; exit 1; }
+	@$(PI_NM) --defined-only $(TARGET) | grep -qE ' T _?pib_read$$' || { echo "P3: pib_read (the beat file) is not in the plugin"; exit 1; }
 	@echo "P3: $(TARGET) holds the core and needs no Rust runtime symbol."
 
 # Rack itself, headless, on four probes and the Rhythm modules at three sample rates, two patches of 20 seconds

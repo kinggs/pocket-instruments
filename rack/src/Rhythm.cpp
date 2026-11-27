@@ -85,7 +85,9 @@
 
 #include "handoff.hpp"
 #include "jacks.hpp"
+#include "pi_beat.h"
 #include "pi_engine.h"
+#include <osdialog.h>
 
 using namespace rack;
 extern Plugin *pluginInstance;
@@ -110,10 +112,23 @@ struct RhythmFixture {
     std::vector<FixCmd> cmds;
     std::vector<pi_event> expect;
     std::vector<FixView> views;
+    const char *beat; // a fixture that starts from a beat file (issue 140): that file's name, else ""
 };
 const std::vector<RhythmFixture> FIXTURES = {
 #include "rhythm-fixtures.inc"
 };
+// The beat files the fixtures name, as text (../fixtures/*.beat, copied in by the Makefile).
+struct BeatText {
+    const char *name, *text;
+};
+const BeatText BEATS[] = {
+#include "rhythm-beats.inc"
+    {nullptr, nullptr}};
+const char *beatText(const char *name) {
+    for (const BeatText *b = BEATS; b->name; b++)
+        if (!std::strcmp(b->name, name)) return b->text;
+    return nullptr;
+}
 
 const char *const SOUND_NAMES[PI_TRACKS] = {"Bass drum", "Snare", "Closed hat", "Open hat", "Synth snare", "Sticks",
     "Cymbal", "Noise", "Clap", "Click", "Low tom", "High tom", "Cow bell", "Blip", "Tone", "Bass tone"};
@@ -286,6 +301,13 @@ struct Rhythm : Module {
     std::atomic<uint32_t> saveThrottled{0}, saveFramesRun{0}, saveClosestShown{0xffffffffu}, saveHeld{0}, saveNot{0};
     std::atomic<bool> testerStop{false};
     std::thread tester;
+    // A beat file fixture's self-test (issue 142; beatTester): the audio thread asks for the beat,
+    // the second thread opens it as the menu would.
+    int beatStage = 0;
+    uint32_t beatLoadsSeen = 0, beatSnapLen = 0;
+    uint8_t beatSnap[PI_SNAPSHOT_SIZE];
+    std::atomic<uint32_t> beatAsk{0}, beatOpened{0}, beatOpenNot{0}, beatRefusedHeld{0}, beatRefusedNot{0}, beatSavedSame{0}, beatSavedNot{0};
+    char beatWhy[400] = {}; // the refusals' words, for the log; written by beatTester, read when it has stopped
     uint32_t rate = 0, sinceReset = 0xffffffffu, generation = 0, sincePublish = 0;
     int sourceSent = -1;         // the clock source last sent (pi::source); -1 sends it on the next frame
     bool keyDown[23] = {};       // what the core was last told of each key
@@ -390,6 +412,43 @@ struct Rhythm : Module {
         }
     }
 
+    // A beat file fixture, Rack's other thread's half (issue 142): each time the audio thread asks,
+    // open two refused files, which must change nothing (no load asked), then the fixture's beat
+    // file; and once the pass plays from it, save the beat again through saveBeat, which must give
+    // the file's canonical text (pib_write of pib_read: docs/BEAT.md, "Canonical form").
+    void beatTester(int fx) {
+        const char *t = beatText(FIXTURES[fx].beat);
+        std::vector<uint8_t> text = t ? std::vector<uint8_t>(t, t + std::strlen(t)) : std::vector<uint8_t>();
+        std::string newer(text.begin(), text.end()), broken = newer;
+        size_t v = newer.find("beat 1");
+        if (v != std::string::npos) newer[v + 5] = '2';                    // a newer beat: refused by name
+        broken += "\nwobble 3\n";                                         // an unknown word: refused with its line
+        std::vector<uint8_t> canon(PIB_TEXT_MAX), snap(PIB_SNAPSHOT_MAX);
+        int32_t ns = pib_read(text.data(), uint32_t(text.size()), snap.data(), uint32_t(snap.size()), nullptr, nullptr, 0);
+        int32_t nc = ns > 0 ? pib_write(snap.data(), uint32_t(ns), 0, canon.data(), uint32_t(canon.size())) : -1;
+        canon.resize(nc > 0 ? size_t(nc) : 0);
+        uint32_t seen = 0;
+        while (!testerStop.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            uint32_t a = beatAsk.load(std::memory_order_acquire);
+            if (a == seen) continue;
+            seen = a;
+            uint32_t own = 0, before = loadsAsked;
+            std::string w1 = openBeat(std::vector<uint8_t>(newer.begin(), newer.end()), own);
+            std::string w2 = openBeat(std::vector<uint8_t>(broken.begin(), broken.end()), own);
+            bool refused = !w1.empty() && !w2.empty() && loadsAsked == before;
+            (refused ? beatRefusedHeld : beatRefusedNot)++;
+            if (!beatWhy[0]) std::snprintf(beatWhy, sizeof beatWhy, "\"%s\" and \"%s\"", w1.c_str(), w2.c_str());
+            std::string w = openBeat(text, own);
+            (w.empty() && own == 0 ? beatOpened : beatOpenNot)++;
+            if (!w.empty()) continue;
+            std::this_thread::sleep_for(std::chrono::milliseconds(300)); // the pass plays from it
+            std::vector<uint8_t> again;
+            std::string ws = saveBeat(again);
+            (ws.empty() && !canon.empty() && again == canon ? beatSavedSame : beatSavedNot)++;
+        }
+    }
+
     // As the Probe: res/samples/ in the plugin, in tracks.txt's order (D50).
     void loadPack() {
         std::ifstream list(asset::plugin(pluginInstance, "res/samples/tracks.txt"));
@@ -446,6 +505,11 @@ struct Rhythm : Module {
              "patch save (%u answered in time, %u not); save loop: %u saves not asked in %u frames, closest %u frames apart; %u patch saves held the last move, %u not",
              when, (long long)id, (ps & 0xff) + 1, ps >> 8 & 0xff, ps >> 16, published.load(), savesAsked.load(), asksAnswered.load(), asksLate.load(), saveThrottled.load(),
              saveFramesRun.load(), saveClosestShown.load(), saveHeld.load(), saveNot.load());
+        if (fx >= 0 && FIXTURES[fx].beat[0]) // issue 142: the beat file opened through the module's own path
+            INFO("Pocket Instruments rhythm beat (%s): %s%s: %s opened %u times, %u not; %u pairs of refused files changed "
+                 "nothing, %u did; saved again %u times as its canonical text, %u not; refused with %s",
+                 when, FIXTURES[fx].name, testedEdges.load() ? " on edges" : " on the table", FIXTURES[fx].beat, beatOpened.load(), beatOpenNot.load(),
+                 beatRefusedHeld.load(), beatRefusedNot.load(), beatSavedSame.load(), beatSavedNot.load(), beatWhy[0] ? beatWhy : "nothing");
         if (playTested.load()) // D138: selftest.sh compares these between modules run from one signal
             INFO("Pocket Instruments rhythm play (%s): module %lld: rate %u Hz, %u starts, %u steps, sum %016llx", when, (long long)id,
                  lastRate.load(), playStarts.load(), playSteps.load(), (unsigned long long)playSum.load());
@@ -608,8 +672,31 @@ struct Rhythm : Module {
                 testedFixture = fixture;
                 testedEdges = edgesRun ? 1 : 0;
                 const RhythmFixture &fx = FIXTURES[fixture];
-                fresh(fx.seed);
-                cmds[n++] = pi_cmd{0, PI_CMD_TEMPO, 0, 0, 0, fx.mbpm};
+                if (fx.beat[0]) {
+                    // Issue 142: a fixture that starts from a beat file (fixtures/README.md: the
+                    // engine from the fixture's seed plus 12 345, no tempo sent) has it opened by a
+                    // second thread through openBeat, as the menu's Open does (beatTester), and the
+                    // pass waits for the audio thread to load it.
+                    if (beatStage == 0) {
+                        fresh(fx.seed + 12345);
+                        beatLoadsSeen = loadsTaken.load(std::memory_order_relaxed);
+                        beatAsk.store(beatAsk.load(std::memory_order_relaxed) + 1, std::memory_order_release);
+                        beatStage = 1;
+                        return;
+                    }
+                    if (loadsTaken.load(std::memory_order_relaxed) == beatLoadsSeen) return;
+                    beatStage = 0;
+                    // The engine has run since it was made: make it again and load those same
+                    // bytes, so the pass starts from frame 0 as the harnesses' engines do.
+                    fresh(fx.seed + 12345);
+                    if (pi_load(e, beatSnap, beatSnapLen) != PI_OK) {
+                        mismatch = true;
+                        noteMismatch("%s%s", "the beat the module's own path delivered did not load again", "");
+                    }
+                } else {
+                    fresh(fx.seed);
+                    cmds[n++] = pi_cmd{0, PI_CMD_TEMPO, 0, 0, 0, fx.mbpm};
+                }
                 cmds[n++] = pi_cmd{0, PI_CMD_SOURCE, 0, 0, 0, edgesRun ? PI_SOURCE_EDGES : PI_SOURCE_TABLE};
                 sourceSent = edgesRun ? 1 : 0;
                 running = true;
@@ -1083,6 +1170,10 @@ struct Rhythm : Module {
         if (freshWanted.load(std::memory_order_relaxed) && freshWanted.exchange(false)) fresh(SEED);
         if (const Snap *s = inbox.take()) {
             (pi_load(e, s->b, s->len) == PI_OK ? loadsOk : loadsRefused)++;
+            if (beatStage == 1) { // a beat file fixture's beat, as the module's own path delivered it
+                std::memcpy(beatSnap, s->b, s->len);
+                beatSnapLen = s->len;
+            }
             loadsTaken++;
             reseat = true; // §20: a load is the one time a cap moves to what the beat holds
             mustPublish = true;
@@ -1448,6 +1539,34 @@ struct Rhythm : Module {
         inbox.publish();
     }
 
+    // The beat file (docs/BEAT.md; D134; issue 142), through the beat/ crate's two calls and the
+    // two above; no reader of our own (D134). Rack's other threads only, never process().
+    // Open: the text read, and the bytes loaded by the ordinary load. "" if it opened, else why
+    // not, and then nothing changed. `own`: the keys whose writer's own sample the file names
+    // (bit k-1 for key k), which play the starter pack's here (D34).
+    std::string openBeat(const std::vector<uint8_t> &text, uint32_t &own) {
+        std::vector<uint8_t> snap(PIB_SNAPSHOT_MAX);
+        char msg[PIB_MSG_MAX] = {};
+        own = 0;
+        int32_t n = pib_read(text.data(), uint32_t(text.size()), snap.data(), uint32_t(snap.size()), &own, (uint8_t *)msg, sizeof msg);
+        if (n < 0) return msg[0] ? std::string(msg) : string::f("not a beat file (%d)", int(n));
+        snap.resize(size_t(n));
+        queueLoad(snap);
+        return "";
+    }
+    // Save: the beat as it is now (currentSnapshot, so the last move is in it), as text. "" and
+    // the text, or why not. Rack plays no sample a player loaded, so `own` is always none.
+    std::string saveBeat(std::vector<uint8_t> &text) {
+        std::vector<uint8_t> snap = currentSnapshot();
+        if (snap.empty()) return "there is no beat yet: the module has not run";
+        text.assign(PIB_TEXT_MAX, 0);
+        int32_t n = pib_write(snap.data(), uint32_t(snap.size()), 0, text.data(), uint32_t(text.size()));
+        if (n == PIB_ERR_SNAPSHOT) return "the beat is still the patch's old snapshot, not yet saved again by the engine: try again in a moment";
+        if (n < 0) return string::f("the beat could not be written (%d)", int(n));
+        text.resize(size_t(n));
+        return "";
+    }
+
     // Rack calls these on its own thread while process() runs on the audio thread.
     json_t *dataToJson() override {
         json_t *root = json_object();
@@ -1492,6 +1611,8 @@ struct Rhythm : Module {
         if (json_t *j = json_object_get(root, "fixture"))
             for (size_t i = 0; i < FIXTURES.size(); i++)
                 if (json_is_string(j) && FIXTURES[i].name == std::string(json_string_value(j))) fixtureWanted = int(i);
+        int fw = fixtureWanted.load();
+        if (fw >= 0 && FIXTURES[fw].beat[0] && !tester.joinable()) tester = std::thread([this, fw] { beatTester(fw); });
         if (json_t *j = json_object_get(root, "snapshot")) {
             std::vector<uint8_t> bytes;
             try {
@@ -2247,11 +2368,62 @@ struct RhythmWidget : ModuleWidget {
         }
     }
 
+    // The beat file (docs/BEAT.md; issue 142): the menu's Open and Save, on Rack's UI thread. The
+    // dialogs are Rack's own, osdialog (the SDK's dep/include/osdialog.h, which Rack's patch menu
+    // uses; VCV's plugin guide names no file dialog). The text goes through Rhythm::openBeat and
+    // saveBeat, the beat/ crate's pair; nothing here reads a beat.
+    std::string beatDir;
+    void openBeatDialog(Rhythm *m) {
+        osdialog_filters *filters = osdialog_filters_parse("Beat file:beat");
+        char *path = osdialog_file(OSDIALOG_OPEN, beatDir.empty() ? nullptr : beatDir.c_str(), nullptr, filters);
+        osdialog_filters_free(filters);
+        if (!path) return;
+        std::string p = path;
+        std::free(path);
+        beatDir = system::getDirectory(p);
+        std::ifstream f(p, std::ios::binary);
+        std::vector<uint8_t> text((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        uint32_t own = 0;
+        std::string why = f.good() || f.eof() ? m->openBeat(text, own) : std::string("the file could not be read");
+        if (!why.empty()) {
+            osdialog_message(OSDIALOG_WARNING, OSDIALOG_OK, ("Not opened, and nothing changed: " + why).c_str());
+            return;
+        }
+        if (own) { // D34: a player's own sample is not carried; the starter pack's plays there
+            std::string keys;
+            for (int k = 0; k < 16; k++)
+                if (own >> k & 1) keys += string::f("Key %d used its writer's own sample; playing the starter pack's.\n", k + 1);
+            osdialog_message(OSDIALOG_INFO, OSDIALOG_OK, keys.c_str());
+        }
+    }
+    void saveBeatDialog(Rhythm *m) {
+        std::vector<uint8_t> text;
+        std::string why = m->saveBeat(text);
+        if (!why.empty()) {
+            osdialog_message(OSDIALOG_WARNING, OSDIALOG_OK, ("Not saved: " + why).c_str());
+            return;
+        }
+        osdialog_filters *filters = osdialog_filters_parse("Beat file:beat");
+        char *path = osdialog_file(OSDIALOG_SAVE, beatDir.empty() ? nullptr : beatDir.c_str(), "rhythm.beat", filters);
+        osdialog_filters_free(filters);
+        if (!path) return;
+        std::string p = path;
+        std::free(path);
+        if (system::getExtension(p) != ".beat") p += ".beat";
+        beatDir = system::getDirectory(p);
+        std::ofstream f(p, std::ios::binary);
+        f.write(reinterpret_cast<const char *>(text.data()), std::streamsize(text.size()));
+        if (!f) osdialog_message(OSDIALOG_WARNING, OSDIALOG_OK, ("Not saved: " + p + " could not be written").c_str());
+    }
+
     void appendContextMenu(Menu *menu) override {
         Rhythm *m = getModule<Rhythm>();
         if (!m) return;
         menu->addChild(new MenuSeparator);
         menu->addChild(createMenuLabel(string::f("Build %s", pi_build)));
+        // Issue 142: the beat as a text file (docs/BEAT.md). Opening one replaces the beat.
+        menu->addChild(createMenuItem("Open beat file...", "", [=]() { openBeatDialog(m); }));
+        menu->addChild(createMenuItem("Save beat file...", "", [=]() { saveBeatDialog(m); }));
         // Each key's code or sample (D50). The switch, then the sound as it now is, in one frame
         // (VOICE first), as the page's sheet does (D60 item 4) ⚠.
         menu->addChild(createSubmenuItem("Sounds", "", [=](Menu *sub) {
