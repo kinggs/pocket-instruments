@@ -2976,6 +2976,68 @@ Not chosen: patterns without Rack first; the lane and chain editor inside patter
 before patterns, carrying today's one-pattern snapshot (the link's form would be designed
 twice); Sampler straight after patterns; milestones with nothing closed.
 
+### D132 — The first pre-release: tag `v2.0.0-alpha.1`, the four plugin files and the reference patch, attested
+**2026-11-27 · proposed, for Kenny to rule · answers what D131 item 6 left open (the tag against the plugin's version) and the design note issue 74 asks for · nothing built; no file of the engine changes**
+
+D131 item 6 ruled that a tagged GitHub pre-release with the four plugin files is within
+"public and quiet". This is how it would look. Items 1, 2 and 4 are the three questions;
+each says what is proposed and why.
+
+1. **The tag is `v<plugin version>-alpha.<n>`; the first is `v2.0.0-alpha.1`.
+   `rack/plugin.json` stays `2.0.0`.** VCV's manual asks for `MAJOR.MINOR.REVISION`, with the
+   major matching Rack's (2), and says nothing of a suffix (R88). A suffix in `plugin.json`
+   would be a form Rack and the Library are not documented to read, so it stays on the tag,
+   and GitHub's pre-release mark says the same. The workflow refuses a tag that does not
+   start with `v` and the version in `plugin.json`. The files keep the names Rack's
+   `plugin.mk` gives them, `pocket-instruments-2.0.0-<platform>.vcvplugin` (D128 item 3); the
+   `Build <commit>` line in a module's menu tells one alpha from the next. A later alpha with
+   the same plugin is `-alpha.2`.
+   ⚠ What follows, inferred, not tried: the first VCV Library release should take a version
+   above 2.0.0 (2.1.0, say), or a Rack that loaded an alpha by hand may see nothing newer.
+2. **What it carries:**
+   - the four `.vcvplugin` files (Windows x64, Linux x64, macOS x64, macOS arm64), each
+     passed by `rack/check-dist.sh` on its own platform before it is attached (P5);
+   - the reference patch, `Showcase.vcv`, built by `make -C rack showcase` from
+     `rack/patch/showcase.json` as committed at the tag;
+   - an attestation for each of those five files (item 4).
+
+   **Not the terminal host.** Its glibc floor is not chosen (issue 74), and a binary built on
+   GitHub's current Ubuntu needs that Ubuntu's glibc ⚠ (not measured), so on an older
+   distribution it would not start. The README's build from a clone stands. The people
+   written to first (VCV, Teenage Engineering, a pattern book's author) are reached through
+   Rack and the page.
+3. **The release notes say,** in this order:
+   - a test build for loading by hand, unsigned; not in the VCV Library and not submitted;
+     no announcement (D110 item 1);
+   - the page, which needs no install, first;
+   - how to install (R87): put the file for your platform in the Rack user folder's
+     `plugins-<platform>` folder (`Help > Open user folder` in Rack), restart Rack, open
+     `Showcase.vcv`; ⚠ on a Mac an unsigned download may be refused (issue 83);
+   - not affiliated with Teenage Engineering, whose names are used only to describe;
+   - MIT; the plugin carries the MIT notice of the stmlib and Plaits code its effects port,
+     Emilie Gillet's (D77 item 5), and the OFL of its typeface;
+   - how to check an attestation; the commit it was built from.
+
+   The title: `Pocket Instruments <tag without v> (test build)`.
+4. **Attestations in this pass.** It is one step, `actions/attest@v4` over the five files,
+   free on a public repository, and checked with `gh attestation verify <file> -R
+   kinggs/pocket-instruments` (R89). Should Kenny want it later, the step comes out and
+   nothing else changes.
+5. **How it is made.** Pushing a tag `v*` runs a release workflow. It calls the Rack
+   workflow's four jobs as they are (GitHub's `workflow_call`, R89), then one job checks the
+   names against the tag, builds the patch, attests, and creates the pre-release. A push
+   without a tag makes no release. A pull request that changes the release workflow runs it
+   up to the attesting, so it is tried before a tag needs it. The tag is Kenny's to push.
+6. **Left for a second pass:** signing and notarising for macOS (issue 83); terminal host
+   binaries for x86_64 and aarch64 on a chosen glibc, with their attestations, and the AUR
+   package (issue 74); the VCV Library submission and any announcement (D110 item 1, after
+   P9).
+
+Not chosen: tag `v2.0.0` (it would name the release the Library will one day have); `2.0.0-alpha.1` in
+`plugin.json` (not a form VCV documents, R88); a `0.x` version (Rack loads only a plugin whose
+major is its own, R88); a release on every push to `main` (a release is a deliberate act); a
+draft left for Kenny to publish (one more step, and the tag is already his act).
+
 ## Open
 
 | ID | Question | Needs |
