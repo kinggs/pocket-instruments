@@ -9,7 +9,7 @@
 // patch (the notes) and the steps are near the top, as plain data, for Kenny to edit.
 //
 // Four rows, each left to right in signal order:
-//   0  DRUMS and OUT: the main note, the clock (LFO) and RESET (Push) shared by both
+//   0  DRUMS and OUT: the main note, the clock (LFO) and the play button (Push) shared by both
 //      modules, the DRUMS Rhythm (one bar of the Amen break; kick and snare on their samples,
 //      D50), its effect 4 (Split on FX SEND, Delay), VCA Mix (one channel a module), Audio 2.
 //   1  MELODY: the MELODIC Rhythm, which plays no drums: its sounds 15 and 16 fire two voices
@@ -35,9 +35,8 @@
 // jacks send what a sound was last hit with, on the frame of the hit (§19). So the lead's
 // filter and length change from note to note and the bass plays chosen notes.
 //
-// Starting together ⚠: two modules have two play keys, and the PLAY jack (issue 147) is not
-// built. Today both run on one LFO (one edge a step) and share one RESET button; see
-// startTogether() and PRESS below, which are all that changes when the jack lands.
+// Starting together: both run on one LFO (one edge a step), and one Push drives both PLAY ins
+// (issue 147, D138); see startTogether() and PRESS below.
 //
 // The beats are snapshots the core itself writes (pi_save on the committed web/pi_core.wasm),
 // read back and checked here. Port and param numbers are Rhythm.cpp's enums and Fundamental
@@ -56,13 +55,12 @@ const PAGE = 65536;
 // Core's Notes is 16 HP with a fixed display: about 31 characters a line and 21 lines show
 // without scrolling ⚠ (reckoned from Notes.cpp's 81 by 105 mm display, not yet seen).
 
-// What to press to start both modules in step. Its own string, so the PLAY jack (issue 147)
-// can replace it in one place.
-const PRESS = `TO START, in this order:
-1 PLAY on DRUMS
-2 PLAY on MELODY
-3 RESET (button by the LFO)
-RESET again if they drift.`;
+// What to press to start both modules in step: one button (startTogether()).
+const PRESS = `TO START: press HOLD on the
+button by the LFO. Both play,
+in step. Press it again: both
+stop. Each module's own PLAY
+key plays that one alone.`;
 
 const NOTE_MAIN = `POCKET INSTRUMENTS: RHYTHM
 Two Rhythm modules, one clock.
@@ -223,7 +221,7 @@ const enabledNotes = (notes) => Array.from({ length: 12 }, (_, i) => notes.inclu
 const modules = [
   // Row 0: DRUMS and OUT.
   [1, "Core", "Notes", RACK, 0, 0, [], { text: NOTE_MAIN }],
-  // (the clock at x 16 and RESET at 25: clock() and startTogether())
+  // (the clock at x 16 and the play button at 25: clock() and startTogether())
   [ID.drums, "pocket-instruments", "Rhythm", "2.0.0", 28, 0, [], { snapshot: snapshot(DRUMS), return: -1, a: -1, b: -1, fxRack: FX_RACK, fxInPlace: FX_IN_PLACE, clockBeat: false }],
   [7, "Fundamental", "Split", F, 55, 0, []], // FX SEND
   // Delay, effect 4: WET out only. Feedback 35% on the drums: two or three repeats.
@@ -271,7 +269,7 @@ const modules = [
   [36, "Fundamental", "VCA-1", F, 52, 3, [[0, 0.8], [1, 1.0]]],                       // a little under the lead
 ];
 
-// Rhythm: inputs CLOCK 0, RESET 1, SOUNDS IN 2, FX RETURN 3, SLIDER A IN 4, SLIDER B IN 5;
+// Rhythm: inputs CLOCK 0, RESET 1, SOUNDS IN 2, FX RETURN 3, SLIDER A IN 4, SLIDER B IN 5, PLAY 6;
 // outputs SOUNDS TRIG 0, SOUNDS OUT 1, AUDIO 2 (one mono jack), FX GATES 3, FX SEND 4,
 // SLIDER A OUT 5, SLIDER B OUT 6.
 // Cables: [from module, output, to module, input, colour].
@@ -330,25 +328,20 @@ function clock(clocked) {
   };
 }
 
-// ---- Starting together ⚠ (issue 147). ----
-// Two modules have two play keys. On a clock, play starts a module from step 1 at its next
-// edge (§5, D101 item 1), so two presses at two moments start out of step; one Push button's
-// trigger into both RESET inputs makes both start step 1 on the same next edge (§4: an edge
-// within 1 ms of a reset is ignored, by both alike). When the PLAY jack exists, this function
-// and PRESS are what change.
-// TODO(issue 147): Kenny ruled one PLAY input on Rhythm, under RESET: input 6, at the end of the
-// enum. It is not built. Once its build merges, this function becomes: this same Push's GATE
-// (output 1; Fundamental 2.6.4 src/Push.cpp: outputs TRIG 0, GATE 1; params PUSH 0, HOLD 1)
-// into both modules' PLAY (input 6), and no RESET cables. Push's HOLD latches: one press starts
-// both stopped modules from step 1 on the same edge, another stops both. Push saves nothing, so
-// HOLD opens off, as the modules open stopped. PRESS then becomes:
-//   "Press HOLD on the button to start both. Press it again to stop."
+// ---- Starting together (issue 147, D138). ----
+// One Push, its GATE (output 1; Fundamental 2.6.4 src/Push.cpp: outputs TRIG 0, GATE 1; params
+// PUSH 0, HOLD 1) into both modules' PLAY in (input 6, the end of Rhythm.cpp's InputId). A gate
+// plays while high and stops when it goes low (D138 item 4, proposed: O39), so pressing Push's
+// HOLD starts both stopped modules from step 1 on the same next clock edge, and pressing it
+// again stops both on the same frame. Push saves nothing: HOLD opens off, as the modules open
+// stopped. No RESET is wired: a stop and a start is a restart from step 1, in step.
 function startTogether(drums, melodic) {
+  const PLAY_IN = 6, GATE = 1;
   return {
     modules: [[6, "Fundamental", "Push", F, 25, 0, []]],
     cables: [
-      [6, 0, drums, 1, "#ffffff"],   // Push's trigger: both RESETs
-      [6, 0, melodic, 1, "#ffffff"],
+      [6, GATE, drums, PLAY_IN, "#ffffff"],   // Push's GATE: both PLAY ins
+      [6, GATE, melodic, PLAY_IN, "#ffffff"],
     ],
   };
 }
