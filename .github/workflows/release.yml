@@ -1,0 +1,99 @@
+# Pocket Instruments: a pre-release, made when a version tag is pushed (docs/DECISIONS.md D132).
+# The Rack workflow's four jobs build and check the four .vcvplugin files and the reference
+# patch, as on any run (rack.yml, called as it is). Then one job checks the files against
+# the tag, attests them and creates a GitHub pre-release with them attached.
+#
+# Kenny cuts one with an annotated tag on main, for example:
+#   git tag -a v2.0.0-alpha.1 -m "Pocket Instruments 2.0.0-alpha.1 (test build)"
+#   git push origin v2.0.0-alpha.1
+# The tag must start with "v" and the version in rack/plugin.json (D132 item 1).
+#
+# A push without a tag makes no release. A pull request that changes this file, or a run by
+# hand, goes through every step up to attesting and stops there: a dry run.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - .github/release-notes.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/rack.yml
+    permissions:
+      contents: read
+      packages: write # the Linux job keeps its build image in GitHub's container registry
+
+  release:
+    name: pre-release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the release
+      id-token: write # attest: the signing certificate (R89)
+      attestations: write # attest: keep the attestation
+      artifact-metadata: write # attest: the storage record
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: pocket-instruments-*
+          path: dist
+          merge-multiple: true
+
+      # Exactly the five files, named for the version in plugin.json, and a tag that starts
+      # with that version. Each .vcvplugin already passed rack/check-dist.sh on its own platform.
+      - name: Check the files against the tag
+        run: |
+          version=$(jq -r .version rack/plugin.json)
+          if [ "$PUBLISH" = true ]; then
+            tag=$GITHUB_REF_NAME
+            case $tag in
+            "v$version" | "v$version"-*) ;;
+            *) echo "The tag $tag does not start with v$version, the version in rack/plugin.json (D132 item 1)"; exit 1 ;;
+            esac
+          else
+            tag="v$version-dry-run"
+          fi
+          want=(Showcase.vcv)
+          for p in lin-x64 win-x64 mac-x64 mac-arm64; do want+=("pocket-instruments-$version-$p.vcvplugin"); done
+          expect=$(printf '%s\n' "${want[@]}" | sort | xargs)
+          have=$(cd dist && printf '%s\n' * | sort | xargs)
+          [ "$have" = "$expect" ] || { echo "Expected: $expect"; echo "Found: $have"; exit 1; }
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          { echo "Release $tag (publish: $PUBLISH):"; (cd dist && sha256sum -- *); } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Release notes
+        run: |
+          {
+            cat .github/release-notes.md
+            echo
+            echo "Built from commit $GITHUB_SHA by [this run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+          } > notes.md
+          cat notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attest
+        if: env.PUBLISH == 'true'
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/*
+
+      - name: Create the pre-release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$TAG" dist/* --verify-tag --prerelease \
+            --title "Pocket Instruments ${TAG#v} (test build)" --notes-file notes.md

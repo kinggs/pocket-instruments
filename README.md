@@ -22,13 +22,28 @@ and in a terminal (<code>pocket-instruments rhythm</code> in foot).</em></p>
 **Play it now:** <https://kinggs.github.io/pocket-instruments/web/rhythm.html> (made for a phone;
 a desktop browser works too).
 
-**In VCV Rack:** ⚠ the plugin is not in the VCV Library, and there is no release yet. CI builds
-it for Linux, Windows and both Macs when the core or the plugin changes. To try it, open the latest green run of the
-[rack workflow](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml), sign in
-to GitHub, and download the artifact for your platform. These are unsigned test builds for
-loading by hand. Or build it yourself (below).
+**In VCV Rack 2:** the plugin is not in the VCV Library. Test builds are on the
+[Releases page](https://github.com/kinggs/pocket-instruments/releases), as pre-releases. They
+are unsigned. To install one:
 
-**In a Linux terminal:** ⚠ there is no release yet; build it from a clone with `make term`
+1. From the latest pre-release, download the `.vcvplugin` file for your computer: `win-x64`
+   for Windows, `lin-x64` for Linux, `mac-arm64` for a Mac with Apple silicon (M1 and later),
+   `mac-x64` for an Intel Mac. Download `Showcase.vcv` too.
+2. In Rack, choose `Help > Open user folder`. Put the `.vcvplugin` file, as it is, in the
+   folder there named `plugins-` and your platform (`plugins-win-x64`, `plugins-lin-x64`,
+   `plugins-mac-arm64` or `plugins-mac-x64`). VCV's manual:
+   [Installing](https://vcvrack.com/manual/Installing).
+3. Restart Rack. It unpacks and loads the plugin when it starts.
+4. Open `Showcase.vcv` in Rack and press play on the Rhythm module.
+
+⚠ Not yet tried on a Mac: macOS may refuse an unsigned download
+([issue 83](https://github.com/kinggs/pocket-instruments/issues/83)). Each file has a build
+attestation: `gh attestation verify <file> -R kinggs/pocket-instruments` checks that this
+repository's CI built it. Between releases, the latest green run of the
+[rack workflow](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml) has
+the same files under "Artifacts" (sign in to GitHub). Or build it yourself (below).
+
+**In a Linux terminal:** ⚠ the releases do not carry it yet; build it from a clone with `make term`
 (below) and run `term/target/release/pocket-instruments`: it opens on a menu, and
 `pocket-instruments rhythm` goes straight in. In a terminal that reports key-up (foot, kitty,
 Ghostty, WezTerm) keys are held as on the hardware; elsewhere, tmux included, they tap.
@@ -209,7 +224,7 @@ The Rack plugin:
 
 ```sh
 make -C rack install RACK_DIR=/path/to/Rack-SDK   # builds the core and the plugin, installs it in Rack
-make -C rack showcase                             # rack/build/Showcase.vcv: the reference patch
+make -C rack showcase RACK_DIR=/path/to/Rack-SDK  # rack/build/Showcase.vcv: the reference patch
 ```
 
 The reference patch (`rack/patch/showcase.json`, written by `rack/patch/make-showcase.mjs`)
