@@ -45,7 +45,8 @@
 # for comes within a quarter second of the one before, and every patch save a second thread makes
 # through dataToJson holds the last move. And the instrument given an old patch's version 4
 # snapshot (fixtures/snapshots-v4.txt) loads it into pattern 1, as the version 1 one does.
-# patterns-change-playing is 100 steps at 120 bpm (12.5 s a pass), so a run is 20 seconds a rate.
+# They run in a second patch, after the first (below). patterns-change-playing is 100 steps at
+# 120 bpm (12.5 s a pass), so each patch runs 20 seconds a rate.
 #
 #   selftest.sh [seconds] [sample rate]
 #
@@ -62,7 +63,7 @@ fundamental=${FUNDAMENTAL:-$HOME/.local/share/Rack2/plugins-lin-x64/Fundamental}
 user=$(mktemp -d)
 # On a failure Rack's log is kept as build/selftest-<rate>.log: one run in 32 at 96 kHz once
 # failed with a Rhythm module that never saw its CLOCK cable (2026-11-23), and the log was gone.
-trap 's=$?; [ $s -ne 0 ] && mkdir -p "$here/build" && cp "$user/log.txt" "$here/build/selftest-$rate.log" 2>/dev/null && echo "selftest: Rack'"'"'s log kept: rack/build/selftest-$rate.log"; rm -rf "$user"' EXIT
+trap 's=$?; [ $s -ne 0 ] && mkdir -p "$here/build" && cp "$user/all.txt" "$here/build/selftest-$rate.log" 2>/dev/null && echo "selftest: Rack'"'"'s log kept: rack/build/selftest-$rate.log"; rm -rf "$user"' EXIT
 mkdir -p "$user/plugins-lin-x64" "$user/autosave"
 ln -s "$fundamental" "$user/plugins-lin-x64/Fundamental"
 make --no-print-directory -C "$here" install RACK_USER_DIR="$user" >/dev/null
@@ -108,23 +109,37 @@ cat > "$user/autosave/patch.json" <<JSON
  {"id":33,"plugin":"Fundamental","model":"LFO","version":"2.6.4","params":[{"id":2,"value":-1.5}],"pos":[0,4]},
  $(rhythm 34 ''),$(rhythm 35 ''),
  {"id":36,"plugin":"Fundamental","model":"Push","version":"2.6.4","params":[],"pos":[0,5]},
- $(rhythm 37 ''),$(rhythm 38 ''),$(rhythm 39 '"clockBeat":true'),$(rhythm 40 '"clockBeat":true'),
+ $(rhythm 37 ''),$(rhythm 38 ''),$(rhythm 39 '"clockBeat":true'),$(rhythm 40 '"clockBeat":true')],
+ "cables":[$(cable 2),$(cable 3),$(cable 4),$(edge 10 10),$(edge 11 11),$(edge 12 12),$(edge 15 15),$(loop 20 9),$(loop 21 13),
+  $(edge 18 18),$(edge 19 19),$(edge 28 28),$(edge 29 29),$(loop 30 20),$(self 31 21 4 3),$(self 32 22 5 4),$(self 33 22 6 5),$(self 34 24 4 3),$(self 35 25 4 3),
+  $(wire 36 30 3 31 0),$(wire 37 30 3 32 0),$(wire 38 36 1 31 6),$(wire 39 36 1 32 6),
+  $(wire 40 33 3 34 6),$(wire 41 33 3 35 6),
+  $(wire 42 33 3 36 1),$(wire 43 36 0 37 6),$(wire 44 36 0 38 6),
+  $(wire 45 30 3 39 0),$(wire 46 30 3 40 0),$(wire 47 36 1 39 6),$(wire 48 36 1 40 6)]}
+JSON
+# Issue 142's modules in a second patch, run after the first: in one patch of 52 modules, 2 runs
+# in 6 had every module on an LFO's edges lose its cable (issue 59's symptom, with the plugin
+# from before this change too); the first patch alone, 0 in 6.
+cat > "$user/patch-b.json" <<JSON
+{"version":"2.6.6","modules":[
+ {"id":6,"plugin":"Fundamental","model":"LFO","version":"2.6.4","params":[{"id":2,"value":3.0}],"pos":[0,2]},
  $(rhythm 41 '"fixture":"patterns-choose-and-play"'),$(rhythm 42 '"fixture":"patterns-chain"'),
  $(rhythm 43 '"fixture":"patterns-copy-and-clear"'),$(rhythm 44 '"fixture":"patterns-change-playing"'),
  $(rhythm 45 '"fixture":"patterns-choose-and-play"'),$(rhythm 46 '"fixture":"patterns-chain"'),
  $(rhythm 47 '"fixture":"patterns-copy-and-clear"'),$(rhythm 48 '"fixture":"patterns-change-playing"'),
  $(rhythm 49 '"loop":"patterns"'),$(rhythm 50 '"loop":"reset"'),$(rhythm 51 '"loop":"save"'),
  $(rhythm 52 "\"snapshot\":\"$old4\"")],
- "cables":[$(cable 2),$(cable 3),$(cable 4),$(edge 10 10),$(edge 11 11),$(edge 12 12),$(edge 15 15),$(loop 20 9),$(loop 21 13),
-  $(edge 18 18),$(edge 19 19),$(edge 28 28),$(edge 29 29),$(loop 30 20),$(self 31 21 4 3),$(self 32 22 5 4),$(self 33 22 6 5),$(self 34 24 4 3),$(self 35 25 4 3),
-  $(wire 36 30 3 31 0),$(wire 37 30 3 32 0),$(wire 38 36 1 31 6),$(wire 39 36 1 32 6),
-  $(wire 40 33 3 34 6),$(wire 41 33 3 35 6),
-  $(wire 42 33 3 36 1),$(wire 43 36 0 37 6),$(wire 44 36 0 38 6),
-  $(wire 45 30 3 39 0),$(wire 46 30 3 40 0),$(wire 47 36 1 39 6),$(wire 48 36 1 40 6),
-  $(edge 49 45),$(edge 50 46),$(edge 51 47),$(edge 52 48),$(self 53 50 0 1)]}
+ "cables":[$(edge 49 45),$(edge 50 46),$(edge 51 47),$(edge 52 48),$(self 53 50 0 1)]}
 JSON
-(cd "$app" && (sleep "$secs"; echo) | ./Rack -h -u "$user" >/dev/null 2>&1) || { echo "selftest: Rack exited badly"; tail -5 "$user/log.txt"; exit 1; }
-lines=$(grep 'Pocket Instruments probe' "$user/log.txt" || true)
+: > "$user/all.txt"
+runrack() { # one patch, its log added to all.txt
+    [ "$1" = "$user/autosave/patch.json" ] || cp "$1" "$user/autosave/patch.json"
+    (cd "$app" && (sleep "$secs"; echo) | ./Rack -h -u "$user" >/dev/null 2>&1) || { echo "selftest: Rack exited badly"; tail -5 "$user/log.txt"; exit 1; }
+    cat "$user/log.txt" >> "$user/all.txt"
+}
+runrack "$user/autosave/patch.json"
+runrack "$user/patch-b.json"
+lines=$(grep 'Pocket Instruments probe' "$user/all.txt" || true)
 echo "$lines" | sed 's/^.*report\] //'
 n=$(echo "$lines" | grep -c '(removed)' || true)
 quiet=$(echo "$lines" | grep -c '(removed).*audio peak 0\.00 V' || true)
@@ -137,7 +152,7 @@ good=$(echo "$lines" | grep -E '\(removed\): [1-9][0-9]* passes matched, 0 did n
 [ "$(echo "$lines" | grep '(removed)' | grep -c ' 1 loaded, 0 refused')" = 1 ] || { echo "selftest: FAILED (the version 1 snapshot was not loaded)"; exit 1; }
 [ "$(echo "$lines" | grep '(removed)' | grep -c ' 0 loaded, 0 refused')" = 3 ] || { echo "selftest: FAILED (a probe loaded or refused a snapshot it was not given)"; exit 1; }
 # The Rhythm modules (Session 13).
-rl=$(grep 'Pocket Instruments rhythm' "$user/log.txt" || true)
+rl=$(grep 'Pocket Instruments rhythm' "$user/all.txt" || true)
 echo "$rl" | sed 's/^.*report\] //'
 rgood() { # fixture, where: one clean module
     echo "$rl" | grep -E "\(removed\): fixture $1 $2: [1-9][0-9]* passes matched, 0 did not, [0-9]+ cut short, [1-9][0-9]* views held, 0 not; rate $rate Hz, 0 events dropped, .* 0 samples not finite, .* 16 of 16 samples found" | grep -c . || true
@@ -172,7 +187,7 @@ echo "$rl" | grep 'loop return:' | grep -qE ' [1-9][0-9]* frames with RETURN' ||
 echo "$rl" | grep -E "loop latch: [1-9][0-9]* passes held to the core, 0 not, [1-9][0-9]* frames the same, 0 not" | grep -q . || { echo "selftest: FAILED (the fx latch at $rate Hz)"; exit 1; }
 # D138: modules run from one PLAY signal, in step: each pair the same starts, the same steps and
 # the same sum of every step's engine frame and number, so every step on the same frame.
-pl=$(grep 'Pocket Instruments rhythm play (removed)' "$user/log.txt" || true) # printed above, with the other Rhythm lines
+pl=$(grep 'Pocket Instruments rhythm play (removed)' "$user/all.txt" || true) # printed above, with the other Rhythm lines
 played() { echo "$pl" | sed -n "s/^.*module $1: rate $rate Hz, \([0-9]*\) starts, \([0-9]*\) steps, sum \([0-9a-f]*\)\$/\1 \2 \3/p"; }
 for pair in "31 32 3 one LFO's edges, Push's gate into both PLAY ins" "39 40 3 one LFO's beats, Push's gate into both PLAY ins" \
             "34 35 3 their table clocks, one LFO's square into both PLAY ins" "37 38 2 their table clocks, Push's trigger into both PLAY ins"; do
