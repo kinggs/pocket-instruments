@@ -219,6 +219,13 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
     // The file the beat is saved to by itself: not one that is there and was not read, which is
     // left alone (docs/TERMINAL.md, "The beat"). `:w FILE` still saves anywhere asked.
     let autosave: Option<PathBuf> = beat_path.clone().filter(|_| !refused && opened.as_ref().is_none_or(|o| o.writable));
+    // The footer has 78 cells and a refusal's line and column can run past them: the whole
+    // line is said again on the terminal after leaving.
+    if autosave.is_none() {
+        if let (Some(p), Some(n)) = (&beat_path, &load_note) {
+            report.push(format!("{n} ({})", p.display()));
+        }
+    }
 
     let mut host = Host::new(t.mode);
     // A test aid, not an option: Hyprland's `send_key_state` moves focus to the window and back
