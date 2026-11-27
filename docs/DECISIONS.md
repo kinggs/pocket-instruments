@@ -3038,6 +3038,128 @@ Not chosen: tag `v2.0.0` (it would name the release the Library will one day hav
 major is its own, R88); a release on every push to `main` (a release is a deliberate act); a
 draft left for Kenny to publish (one more step, and the tag is already his act).
 
+### D133 — Sixteen patterns designed: what a pattern holds, the chain, copy and clear, a change at the end of the bar, the view at 88 bytes, snapshot version 5, the engine's room at 32 KiB
+**2026-11-27 · designed (issue 4's design pass); what Kenny's PO-12 showed is fact (R90), the rest proposed, for Kenny to rule · designs D110 item 6 and D131 item 1 for the core · ends D12's one pattern · `ENGINE.md` §21; ABI 16 · nothing built**
+
+How we got here: issue 4 asked the questions; the maker's guides gave the gestures (R86);
+Kenny's own PO-12 answered, the same day, what the guides do not say (R90). Six answers
+are his unit's and are not proposals: **a change chosen while playing lands at the end of
+the bar; while pattern is held a pattern with steps glows, the chosen one flickers, an
+empty one is dark, and the playing views stop; effects are kept per pattern; a copy carries
+them; choosing one pattern while a chain runs replaces the chain, and it stays replaced
+after stop and play; play restarts a chain from its first pattern.** The rest, item by item:
+
+1. **The sixteen live in the engine, and every host's fixed room for it becomes 32 KiB.**
+   Measured: the engine is 3 696 bytes today (3 688 in the `.wasm`), a pattern 1 364, and
+   the engine with fifteen more and a chain 24 152 (about 24 350 with the name and credit).
+   One more pattern would not fit the 404 bytes left in 4 KiB. `patterns[16]` and an index,
+   no working copy.
+2. **A pattern holds** its steps, probabilities, lane (R90) and what each step keeps; **the
+   beat holds** the tempo, swing, volume, seed, the sliders, `fx_sounds`, `sampled`, the
+   chosen sound and the chain. Edits and keys that write a step or the lane act on the
+   active pattern.
+3. **The length is each pattern's,** and a pattern shorter than sixteen steps changes, and
+   moves its chain on, at its own end rather than at the grid's bar (on sixteen steps the two
+   are one, as R90 saw). The length is not on the hardware (O10) and only an edit or a beat
+   file sets it.
+4. **Snapshot version 5 is variable in length:** 276 + 1 364 bytes a written pattern, a
+   pattern equal to a cleared one not written, so the same beat gives the same bytes: 1 640
+   for one pattern, 22 100 for sixteen. It holds the chain (the next chain if one waits),
+   the name and the credit (D134), and not the chain's position. **Versions 1 to 4 load into
+   pattern 1,** the other fifteen cleared, the chain pattern 1 alone.
+5. **The view grows to 88 bytes** (ABI 16): the active pattern, the chain's position and
+   length, the next chain's length, the used patterns, the chain and the next chain as
+   nibbles. While pattern is held: field the used patterns, bar the active one, stitch the
+   chain's patterns (⚠ open, below); the host draws no frame, core or twill then (R90) and
+   flickers the active pattern's key, a quarter of a second lit and dark.
+6. **Copy is write + pattern + a key, and puts write mode back as it was** before write went
+   down, so the next grid press does not land on a step. ⚠ Ours: R90 did not ask.
+7. **Three edits,** `PATTERN` (27), `CHAIN` (28), `COPY` (29), each what a key does, so the
+   fixtures drive patterns as D26 asks. **Clear** (function + pattern) clears the active
+   pattern only.
+8. **Across a change** a sounding note rings on, a held effect stays heard and is written
+   into the new pattern's lane, and a run ends where the playing pattern changes to another
+   (a held punch starts again on the new pattern's first step ⚠ ours). A reset restarts the
+   chain. A seventeenth chain key is ignored ⚠.
+9. **Every host saves at most four times a second,** as the worklet does: the bit-by-bit CRC
+   over 22 100 bytes measured 74 µs (4.8 µs over today's 1 460), and Rack saves on every
+   generation move. The cost a frame is expected to be nothing the bench can see; the build
+   measures it.
+
+**⚠ Open, each one line with its default written in:** (chain lights) what is lit while
+pattern is held during a running chain (default: the chain's patterns stitched, the playing
+one flickering); (empty flicker) whether an empty chosen pattern flickers (default: yes).
+
+Not chosen:
+
+- **A bank the host lends** (as effect 4's line, ABI 12), the engine staying in 4 KiB. Every
+  host changes its memory anyway for the snapshot, and a lent bank needs a defined engine
+  with no bank (one pattern), a pointer kept, and a load writing into host memory.
+- **Snapshot version 5 at a fixed 22 100 bytes.** Simpler to check, but every save of a
+  one-pattern beat pays the CRC over sixteen, and a patch carries 29 KB of base64 for 2 KB of
+  beat.
+- **Packing the pattern and chain into the view's spare bits** (three in the flags byte):
+  not enough for a pattern number, a position and a chain. Growing the view moves
+  `PI_VIEW_SIZE`, every hand-off and the harnesses; the ABI moves anyway for the snapshot.
+- **A length for the whole beat:** a fill of twelve steps in a chain of sixteen-step patterns
+  would need it per pattern.
+- **A change at once, or at the end of the chain:** R90 says the end of the bar.
+- **A copy that leaves the lane** (R90: "Yes, effects copy").
+
+### D134 — The beat file designed: snapshot version 5 as text, one to one; read and written by one small crate beside the core; its own version; a name and a credit
+**2026-11-27 · designed (issue 4's design pass), proposed, for Kenny to rule · answers D110 item 7's "a readable beat file, designed with patterns" and issue 4's questions on it · carries D131 items 2 and 3 (the agent's command, the bank, the link) · `docs/BEAT.md` · nothing built**
+
+1. **One text form, `docs/BEAT.md`, one to one with snapshot version 5.** Every snapshot field
+   has one place; reading and writing again gives the same text in its canonical form, and
+   the same bytes. A sound is a row of sixteen characters a pattern: `.` off, `x` on keeping
+   nothing, a letter for a pair of kept slider values, `*` with a list; probabilities and the
+   lane as lists. A row may name its sound, and a wrong name is refused.
+2. **Not the core:** a crate, `beat/`, `no_std`, no allocator, no dependencies, a C ABI of two
+   pure calls (`pib_read`, `pib_write`), built as a static library and a `.wasm` that imports
+   nothing (`web/pi_beat.wasm`). Every host and the agent's command use it, off the audio
+   thread. **Kept from drifting** by one file of offsets that both crates include, and by
+   tests in `make test`: every fixture's snapshot and every old snapshot through text and
+   back to the same bytes; every `.beat` in the repository through `pib_read`, `pi_load` and
+   `pi_save` to the same bytes and back to the same text; a fuzz.
+3. **Its own version:** `pocket-instruments beat 1` on the first line, beat 1 for snapshot 5.
+   An older file reads in a newer build, always; a newer file is refused by name in an older
+   one; an unknown word or a bad row is refused with its line.
+4. **The name (32 bytes) and credit (128) are in the snapshot,** copied by the core and never
+   read, so a beat from the bank keeps its credit in a Rack patch, on the page and in the
+   terminal. **A player's own sample is not carried** (D34): the file says `own <key>`, the
+   opener hears the starter pack's sample there and is told so.
+5. **The terminal host's saved beat becomes the text,** at the same path, reading an old
+   binary file by its magic and writing text from then on. ⚠ For Kenny: the alternative keeps
+   the binary file.
+6. **Assumed for what follows, not designed here:** issue 6's command links `beat/` and the
+   core and renders; issue 134's bank is `.beat` files; issue 7's link carries the text,
+   compressed (a typical beat is under 2 KB; the worked example is 428 bytes).
+
+Not chosen: a reader in each host's language (three to drift apart); the core reading text
+(a parser in the audio code, against D25); JSON (larger to read without an allocator, and a
+grid of steps is not readable in it); the name and credit kept by each host beside the
+snapshot (two places, and a credit lost on the first save that forgets it).
+
+### D135 — Patterns with one finger: Shift keeps a latched pattern for a chain, and latches write for a copy; the terminal's tap
+**2026-11-27 · designed (issue 4's design pass), proposed, for Kenny to rule · extends D60, D113 and D119 item 5 · hosts only: the core sees the same keys · `docs/WORKFLOW.md`, "Patterns, on every way of playing" · nothing built**
+
+The hardware chains by holding pattern over several keys and copies by holding two keys over
+a third. Touch has fingers enough (D23). A mouse, and a terminal without key-up, do not: a
+latch lets go after the next grid key (D60).
+
+1. **Shift on a grid key keeps a latched pattern latched.** So: Shift+pattern, Shift+*a*,
+   Shift+*b*, *c* chains *a b c*; a plain key or `esc` ends it. On every host (D113), the
+   terminal's tap mode included.
+2. **Shift latches write too,** and it lets go after the next grid key like the others. Its
+   press still flips write mode, and a copy puts it back (D133 item 6). D60 had play and
+   write ignore the latch.
+3. **In the terminal's tap mode, a tap on `p` while pattern is latched holds write down**
+   until the next grid key ends; otherwise a tap on `p` flips write mode as now.
+
+Not chosen: a latched pattern that stays until pressed again, like fx (D78): choosing, the
+common case, would then take three actions, not two. A separate copy gesture for a mouse:
+D22 keeps the hardware's.
+
 ## Open
 
 | ID | Question | Needs |
@@ -3079,3 +3201,4 @@ draft left for Kenny to publish (one more step, and the tag is already his act).
 | O35 | ~~Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way~~ | **Answered 2026-11-26: D119 item 2.** Was: The owner |
 | O36 | ~~The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed?~~ | **Answered 2026-11-26: D119 item 3.** Was: The owner, one by one. ⚠ First check each against what Rack and a browser already do with it |
 | O37 | ~~The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)?~~ **Answered 2026-11-27: D128, `pocket-instruments`.** Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
+| O38 | Patterns as designed (D133 to D135)? Above all: the sixteen in the engine and every host's room at 32 KiB (D133 item 1); the beat file read and written by one crate beside the core (D134 item 2); snapshot version 5 variable in length (D133 item 4); the view at 88 bytes (D133 item 5); the length each pattern's (D133 item 3); Shift keeping a latched pattern and latching write (D135); write mode put back after a copy (D133 item 6); the terminal's saved beat as text (D134 item 5). And the two lights R90 did not show: during a chain, and an empty chosen pattern | Kenny. Recommended: accept as designed; the two lights at their defaults until Kenny's PO-12 shows them |

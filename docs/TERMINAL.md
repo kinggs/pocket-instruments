@@ -304,7 +304,9 @@ is Loom in cells and draws nothing of anyone else's.
 ## Not designed here
 
 - Packaging, store listings, a plugin for any host program: Kenny's, after the demos.
-- More than one pattern (issue 4).
+- More than one pattern (issue 4). **Designed 2026-11-27** (D133 to D135): the keys in
+  `docs/WORKFLOW.md`, "Patterns, on every way of playing"; the engine in `ENGINE.md` §21; the
+  saved beat as text in `docs/BEAT.md`. Not built.
 - MIDI, a clock in or out, recording to a file.
 
 ## Built (issue 8, 2026-11-26)

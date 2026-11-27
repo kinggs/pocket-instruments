@@ -99,6 +99,13 @@ snapshot byte changed. The report and every older render file are as they were;
 `fx-shuffle` and `render-fx-14` are new. One constant then moved after ours was read beside
 the PO-12: 14's gain, 2.24 → 2.05 (§18's table).
 
+**Designed, not built (2026-11-27, issue 4; D133 to D135): §21, sixteen patterns,** chosen,
+chained, copied and cleared, with the hardware's gestures; the view grows to 88 bytes,
+snapshot version 5 holds sixteen patterns and a chain, three edits (27 to 29), every host's
+room for the engine becomes 32 KiB: ABI 16. The readable beat file that maps one to one onto
+a version 5 snapshot is `docs/BEAT.md`. Until built, the code does what the sections before
+§21 say.
+
 **Where everything is, at ABI 12** (2026-11-24):
 
 | ABI | Session | Section | Adds |
@@ -459,6 +466,11 @@ What turned out different, or is a reading:
 Pattern: for each of 16 tracks, 16 steps, each `on` or off with a probability 0 to 100
 (default 100). Plus `length` (1 to 16, default 16) and `swing` (0 to 48 ticks, default 0).
 
+**Designed 2026-11-27 (§21, D133; not built):** sixteen such patterns and a chain. The
+sequencer plays the active one; at a wrap the chain moves on, or a chosen pattern lands (the
+end of the bar). `length` becomes each pattern's; `swing` stays global. §21's pseudo-code
+takes the place of `cur`'s two lines below.
+
 State: `playing`, `fresh`, `cur` (pattern step), `pending`, `offset`.
 
 ```
@@ -579,7 +591,9 @@ Two runs agree when their traces are the same bytes.
   the room is 4 KiB. With the keys (§13) it is 2 352 bytes, in the same room, and snapshot
   version 2 (§15) added nothing to it. With the lane and the repeats (§17) it is 2 400; with the bus (§18), 2 448; with what each step keeps (§20), 3 568, natively and in WebAssembly, still inside every host's 4 KiB (Session 21); with the routes and the slider outputs (§19), 3 704 (Session 18); with the weave's three fields (§16), 3 712 (Session 14); with effect 4's lent line (§18, ABI 12), 3 728, natively and in WebAssembly (Session 26). The samples
   themselves are in pages of their own after the host's, and so is effect 4's line.
-  A host that can should ask `pi_size` instead.
+  A host that can should ask `pi_size` instead. **Measured 2026-11-27:** 3 696 natively and
+  3 688 in the committed `.wasm` (the 3 872 above, in §4, is older). **Designed 2026-11-27
+  (§21, D133 item 1):** with sixteen patterns about 24 350, and every host's room 32 KiB.
 - **One thread.** Every function on an engine is called from the audio thread only (`pi_weave`, §16, takes no engine, so any thread may call it). That
   includes the ones that only read: `pi_save` on another thread while `pi_process` runs is a
   data race (P6 planted it and the sanitizer found it).
@@ -590,6 +604,10 @@ A versioned binary block, written and read only by the core. Each host wraps it 
 it saves: Rack as a base64 string in the patch's JSON, the browser the same in its storage.
 Why not one readable format: the core has no allocator and should not carry a JSON parser,
 and one writer with one reader cannot drift. A readable export is a tool for later.
+**Designed 2026-11-27 (D134):** that tool is the beat file, `docs/BEAT.md`: a text form that
+maps one to one onto snapshot version 5 (§21), read and written by a small crate beside the
+core, never by the core. **Version 5** (§21) holds sixteen patterns, the chain, a name and a
+credit, and is 276 to 22 100 bytes long.
 
 Version 1, 316 bytes, little-endian. (It was 100 bytes for four tracks until D30; nothing
 had been built, so the number stays 1.) Since ABI 5 the core writes version 2 (§15), which is
@@ -699,7 +717,7 @@ it is not, as the hardware runs alone.
 | The sliders in the snapshot | version 1 has no room and the keys that set them are not built | snapshot version 2, with the instrument |
 | A master level, a limiter, a mute mask for D33's expander | nothing summed until the drums | the level is done (D48). A master volume, a level per track and the mute mask: with the instrument |
 | ~~Keys and sliders doing anything~~ | ~~the workflow is not confirmed on hardware~~ | Done in Session 10: §13, ABI 4. Built from `WORKFLOW.md` as it stands (D29) |
-| Sixteen patterns, chains | scope to decide | snapshot version 2 |
+| Sixteen patterns, chains | scope to decide | ~~snapshot version 2~~ Designed 2026-11-27: §21, ABI 16, snapshot version 5 (D133) |
 | Parameter locks, step multiplier, ~~effects~~ | same | same. Effects: designed in Session 15, §17 to §19 |
 | A command in the middle of a step, in a fixture | on edges, a flush is one indivisible burst, so the position cannot be matched | with live recording: fixture format 3. (Format 2, Session 10, puts a key one frame after its step's boundary, no further) |
 | A tempo change inside a fixture | the harness would need to re-anchor its step frames, as it now does for a reset (`fixtures/README.md`) | when a fixture needs one. Until then the Rust rule tests cover it (`core/src/tests/rules.rs`) |
@@ -869,7 +887,7 @@ all). A new press of bpm starts unused.
 |---|---|
 | bpm is held | `volume` becomes *n* + 1. Uses bpm |
 | sound is held | the chosen sound becomes track *n*, and it fires as `FIRE` does ⚠ |
-| pattern, fx or function is held | nothing (later rows of `WORKFLOW.md`). Designed, not built: fx held punches an effect (§17) |
+| pattern, fx or function is held | nothing (later rows of `WORKFLOW.md`). Designed, not built: fx held punches an effect (§17). **Designed 2026-11-27 (§21):** pattern held chooses or chains, pattern and write held copies |
 | write is on | step *n* of the chosen sound flips, as `STEP` would. No sound |
 | otherwise | track *n* fires, as `FIRE` does. The chosen sound does not change |
 
@@ -879,7 +897,7 @@ all). A new press of bpm starts unused.
 |---|---|
 | play | Stopped: on the table clock, `RESET` then `PLAY 1` (it starts on this frame, from step 1; §9's host policy moves here); on edges, `PLAY 1` alone (step 1 at the next edge). Playing: `PLAY 0` |
 | write | flips `write`, on the press |
-| pattern | with function held: clears the pattern. Every track's steps go off and every probability back to 100. Length, swing, tempo, sliders and volume stay. Otherwise only held |
+| pattern | with function held: clears the pattern. Every track's steps go off and every probability back to 100. Length, swing, tempo, sliders and volume stay. Otherwise only held. **Designed 2026-11-27 (§21):** clears the active pattern only |
 | sound, bpm, function, fx | only held |
 
 Play and write act whatever else is held. Clear is function, then pattern, in that order:
@@ -968,7 +986,7 @@ first row that applies:
 |---|---|---|---|---|
 | bpm held | keys 1 to `volume` | none | ~~none~~ the chosen sound (D121) | no |
 | sound held | ~~none~~ the sounds in use (D120; D119 item 7) | none | the chosen sound | yes |
-| pattern held | none | none | key 1 (the one pattern) | no |
+| pattern held | none, **designed 2026-11-27 (§21; R90): the used patterns** | none, **designed: the chain's patterns ⚠** | key 1 (the one pattern), **designed: the active pattern** | no |
 | write on | the chosen sound's steps | steps of any other sound | ~~none~~ the chosen sound (D121) | no |
 | write off | the chosen sound's steps (D82; was none) | ~~none~~ steps of any other sound (D120; D112 item 1) | ~~none~~ the chosen sound (D121) | yes |
 
@@ -1361,6 +1379,9 @@ grid key still down is not a press. `KEY_DOWN` on fx: only held.
 otherwise.)
 
 Function + pattern (clear) also empties the lane. `fx_sounds` stays, as the sliders do.
+**Designed 2026-11-27 (§21; R90):** the lane is each pattern's, and clear empties the active
+pattern's only; `fx_sounds` stays global. Across a change of pattern a held punch stays heard
+and is written into the new pattern's lane; a run ends.
 
 ### The lane is written by the steps that arrive
 
@@ -2733,6 +2754,9 @@ resets 60 to 63 to that sound's last hit.
 | 436 | 1024 | the values: track by track, step by step, A then B, a u16 each; zero where nothing is kept |
 | 1460 | 4 | CRC-32 of bytes 0 to 1459 |
 
+**Designed 2026-11-27 (§21):** what a step keeps is each pattern's, and a copy carries it;
+version 5 holds it in each pattern's block, and a version 1 to 4 load puts it in pattern 1.
+
 The core writes version 4 and loads all four. **An older version's load keeps, for every
 step that is on, its sound's own A and B** (D75 item 6). A version 4 load keeps what it
 says, no more. Values where the keep bit is clear are not read.
@@ -2981,3 +3005,314 @@ words; where they are silent the build is the baseline (no byte moved in Session
 - Not readings: a slider input is read only in the 50-channel layout, at a hit; the slider
   outputs move on every hit in any layout and are written only in the 50. The tour switches
   layouts mid-run, and the build agrees with the model on all three.
+
+## 21. Patterns: sixteen, chosen, chained, copied and cleared; snapshot version 5 (ABI 16; designed 2026-11-27; D133, D135; issue 4; not built)
+
+Sixteen patterns in place of one (D12's "one pattern first" ends). Every host gets them
+through the core: the keys mean the same everywhere (D51), and a host draws what the view
+says. What the PO-12 does is R86 (the guides) and R90 (Kenny's own unit, 2026-11-27); what
+we take is D133. Lines marked **⚠ open** are the two points R90 does not answer, both about
+the lights while pattern is held: each is one line, with the recommended default written
+in.
+
+### What a pattern holds, and what stays global
+
+| A pattern holds (×16) | Global (one for the beat) |
+|---|---|
+| each sound's sixteen steps, on or off | the tempo, the swing, the master volume, the seed |
+| each step's probability (0 to 100) | the sliders' hand positions, a sound's own A and B (§20, D75 item 1) |
+| the lane: one effect a step (§17). **Per pattern** (R90: "The FX is saved per pattern") | which sounds go through the effects (`fx_sounds`, D66 item 4) |
+| what each step keeps: the keep bits and the A and B kept (§20) | each key's code voice or sample (`sampled`, D50) |
+| its length, 1 to 16 (proposed per pattern, D133 item 3; not on the hardware, O10) | the chosen sound; the hat cut (0) |
+| | **the chain** (below), saved |
+| | the beat's name and credit (D134), saved and never read by the core |
+
+`LENGTH`, `STEP`, `PROB`, `FX` and `KEEP`, and every key that writes a step or the lane,
+act on the **active pattern**: the one playing, or, stopped, the one that will play. `SWING`,
+`TEMPO`, `SOUND`, `VOICE`, `FXSOUND` and `PARAM` stay global. The view's `len` is the active
+pattern's length.
+
+The core keeps all sixteen in the engine (D133 item 1): `patterns[16]` and an `active`
+index, with no working copy, so there is one source of truth and nothing to keep in step.
+**Measured 2026-11-27** in a scratch build (not kept): today's engine is **3 696 bytes**
+natively (x86-64) and **3 688** in the committed `.wasm` (§4's "3 872" and
+`rack/src/Rhythm.cpp`'s comment are older); one pattern is **1 364 bytes** (1 362 without the
+swing and `fx_sounds`, which move out); the engine with fifteen more patterns and a chain is
+**24 152 bytes**. So sixteen do not fit any host's 4 KiB room, as issue 4 read, and one more
+pattern alone would not (404 bytes are free). **Every host's fixed room for the engine
+becomes 32 KiB** (32 768), and `core/src/tests/rules.rs` holds `pi_size` to it. The name and
+credit (160 bytes) and the keys' few new bytes bring it to about 24 350 by arithmetic ⚠; the
+build measures it.
+
+### The chain
+
+The chain is a list of one to sixteen patterns, repeats allowed (R86: "one pattern can be
+selected multiple times"). Choosing a pattern is a chain of one. State: `chain[16]`,
+`chain_len` (1 to 16), `pos` (0 to `chain_len − 1`), and a **next chain** waiting to land,
+`next[16]` and `next_len` (0 for none). At `pi_init` the chain is pattern 1 alone (index
+0), `pos` 0, no next chain.
+
+- **Advancing.** At a step boundary where the playhead would wrap (§5: `cur + 1 ≥ length`),
+  the chain moves on: `pos = (pos + 1) % chain_len`, `active = chain[pos]`, and the new step
+  is step 0 of that pattern, its length read there. After the last pattern "the sequence
+  will start over again" (R86). A chain advance moves no generation: `pos` is the moment's.
+- **A next chain lands at the end of the bar** (R90: "Pattern changes at the end of bar").
+  Read as the boundary where the playing pattern wraps: on a pattern of sixteen steps that
+  is the end of its bar. There, before the chain would advance, the next chain becomes the
+  chain. A pattern shorter than sixteen steps lands at its own end, not at the grid's bar
+  (D133 item 3; ours, listed in `WORKFLOW.md`).
+
+  ```
+  at a step boundary, playing:
+    wrap = fresh or cur + 1 >= length(active)
+    if wrap:
+      if next_len > 0:  chain = next; chain_len = next_len; next_len = 0; pos = 0
+      else if fresh:    pos = 0                                   # play restarts the chain (R90)
+      else:             pos = (pos + 1) % chain_len
+      if chain[pos] != active:  active = chain[pos]; the run ends (below)
+      cur = 0;  fresh = false
+    else:
+      cur = cur + 1
+    emit STEP(cur), and the rest of §5 and §17 as before, from patterns[active]
+  ```
+
+- **Stopped, a choice lands at once:** the first key (or `PATTERN`) makes the chain that one
+  pattern, `pos` 0, `active` that pattern, on that frame, and drops any next chain. Nothing
+  waits while stopped. A next chain chosen while playing and not yet landed when play stops
+  stays, and lands at the next play's first step.
+- **Choosing a pattern while a chain runs replaces the chain** (R90: "clear the chain so
+  that only pattern 1 plays"), at the end of the bar like any change. After a stop and a
+  play only that pattern plays (R90: "Same when I stop then start"): the chain was replaced,
+  not paused.
+- **Play restarts the chain from its first pattern** (`fresh: pos = 0` above; R90: "Play
+  restarts the chain yes"), as it starts a pattern from step 1.
+- **A reset restarts the chain** from its first pattern, as play does (a reset sets
+  `fresh`), and a next chain lands at the reset's first step. Ours: Rack has a reset jack
+  and the hardware has none.
+- **Up to sixteen entries.** A seventeenth key while pattern is held is ignored ⚠ (R86 says
+  "up to 16"; what the hardware does with a seventeenth is not known).
+- **Table clock, external edges, one edge a beat:** all of this happens at step boundaries
+  inside the sequencer, which sees ticks only (§1), so every source gives the same trace.
+  An early edge's flush (§4) crosses a landing like any other boundary. Nothing here reads
+  a frame.
+
+### Across a change: a held effect, a running repeat, a sounding note
+
+- **A sounding note rings on.** A pattern change touches no voice (D56: nothing moves a
+  voice that is sounding).
+- **A held effect stays heard,** and the steps that arrive in the new pattern take it, into
+  the new pattern's own lane (§17: the lane is written by the steps that arrive; R53's
+  "written across four chained patterns"). `punch` is the keys' moment, not a pattern's.
+- **The lane that plays is the active pattern's.** Leaving a pattern and coming back finds
+  its lane as it was (R90).
+- **A run ends where the playing pattern changes to another** (`chain[pos] != active`):
+  `last` and `down` (§17, "Built (Session 30)") are cleared, as at play. A repeat in the new
+  pattern's lane at its first step begins a run of its own there; a punch still held begins
+  one on the new pattern's step 0 (the step it came down on belongs to the old pattern).
+  ⚠ Ours: R53 and R90 are silent. A chain entry that repeats the same pattern is an ordinary
+  wrap: a run carries on across it as across any wrap.
+- **Effect 13 and the sound effects carry nothing over:** they read `eff` and `heard` at
+  each boundary and frame, so they follow the new pattern's lane at once.
+
+### The keys (§13's tables, changed)
+
+`KEY_DOWN` on grid key *n*: the row "pattern, fx or function is held: nothing" becomes three
+rows, in the same place (after bpm, sound and fx):
+
+| When | It does |
+|---|---|
+| pattern and write are held | **copy:** the active pattern is copied to slot *n*, as `COPY` would; write mode goes back to what it was before write last went down (D133 item 6 ⚠). Copying a pattern onto itself does nothing |
+| pattern is held | **the first grid key since pattern went down** begins a new chain of that one pattern, as `PATTERN` would; **each further one** adds *n* to it, as `CHAIN` would. A copy key counts as neither |
+| function is held | nothing |
+
+`KEY_DOWN` on pattern with function held **clears the active pattern only:** every step
+off, every probability 100, the lane empty, every kept value forgotten. Its length, the
+other fifteen, the chain and every global setting stay. (Today's clear, narrowed to one
+pattern; R86: "press funct + pattern".)
+
+`KEY_DOWN` on write flips write mode on the press, as now, and remembers what it was. A copy
+made while it is down puts it back (one bit, `write_was`). Why: the hardware's copy is "hold
+write + pattern", and a modifier that left write mode flipped would send the next grid press
+to a step. ⚠ Whether the PO-12 leaves write mode flipped after a copy is not known (not asked
+in R90).
+
+`KEY_UP` on pattern: the chain being built is done; nothing else.
+
+### The edits (§6's table grows)
+
+| Type | Name | Arguments |
+|---|---|---|
+| 27 | `PATTERN` | `value` 0 to 15: a new chain of that one pattern. Stopped, at once; playing, it is the next chain and lands at the end of the bar. A value past 15 is ignored |
+| 28 | `CHAIN` | `value` 0 to 15: added to the end of the next chain if one waits, else of the chain. Ignored past 15, or when that chain already holds sixteen |
+| 29 | `COPY` | `value` 0 to 15: the active pattern copied to that slot, whole (below). Ignored past 15 |
+
+A key does exactly what its edit does (§13's rule since ABI 4), so the fixtures can drive
+patterns with edits alone (D26). Each moves `pi_generation` when it changes what a snapshot
+holds: `PATTERN` and `CHAIN` change the chain saved (below) when it differs, `COPY` when the
+slot's bytes change. A landing and a chain advance move nothing: what is saved is already
+the new chain.
+
+### Copy
+
+`COPY` *n* writes into slot *n* everything a pattern holds: the steps, the probabilities,
+what each step keeps, its length, **and its lane** (R90: "Yes, effects copy"). The active
+pattern stays active (R86: "paste
+the active pattern to the corresponding new slot"). A copy while a next chain waits copies
+the pattern playing.
+
+### The view (§14, changed; ABI 16)
+
+**`PI_VIEW_SIZE` becomes 88** (D133 item 5). Bytes 0 to 63 keep their meaning. Then:
+
+| Offset | Size | Field |
+|---|---|---|
+| 64 | 1 | the active pattern, 0 to 15 |
+| 65 | 1 | `pos`, the chain's position, 0 to 15 |
+| 66 | 1 | `chain_len`, 1 to 16 |
+| 67 | 1 | `next_len`: 0, or the length of the next chain |
+| 68 | 2 | used: bit *p*, pattern *p* has a step on or a lane entry, in any of its sixteen steps |
+| 70 | 2 | zero |
+| 72 | 8 | the chain: entry 2*i* in the low four bits of byte 72 + *i*, entry 2*i* + 1 in the high four; zero past `chain_len` |
+| 80 | 8 | the next chain, the same way; all zero while `next_len` is 0 |
+
+`pi_weave` (§16) still reads only bytes 0 to 63 and takes any `len` of at least 64
+(`PI_WEAVE_VIEW_MIN`), so `fixtures/weave-views.txt` and every weave do not move.
+
+**The grid while pattern is held** (§14's "pattern held" row, changed; R90). The core:
+
+| When | field | stitch | bar | grid is sounds |
+|---|---|---|---|---|
+| pattern held | the used patterns (byte 68) | the patterns in the chain shown: the next chain while one waits, else the chain (**⚠ open (chain lights)**) | the active pattern | no |
+
+**What a host does while `held` bit 17 (pattern) is set, or the host holds pattern
+latched:** it draws field, stitch, bar and pressed, and **not** the frame, the core or the
+twill: R90, holding pattern while playing "stops the normal playing views". And **the active
+pattern's key flickers:** its field is drawn lit and dark in turn, a quarter of a second
+each (R90: "2 flickers"), **whether or not that pattern is used (⚠ open (empty flicker):
+one line;** not seen on the PO-12; recommended, so a player always sees where they are; the
+other reading leaves an empty chosen pattern dark). ⚠ The rate is ours, not measured. **The
+stitch for the chain is ours (⚠ open (chain lights): one line):** what the PO-12 lights and
+flickers during a chain is not known; recommended, the chain's patterns stitched and the
+playing one flickering; the other reading is no stitch.
+
+**The display** shows which pattern plays (64); while a chain of more than one runs, its
+position (`pos + 1` of `chain_len`); while a next chain waits, the pattern it begins with
+(byte 80's low four bits). How each host draws them is a stand-in until Kenny rules a look
+on the design canvas (CONTRIBUTING, "A look").
+
+**As text, fixture format 5:** format 4's line with
+` pat=<64> pos=<65> chain=<digits> next=<digits or -> used=<four hex digits>` on its end.
+`chain` is the chain's entries, one lowercase hex digit each (`chain_len` of them); `next`
+the next chain's the same way, or `-` while `next_len` is 0. Formats 1 to 4 are unchanged:
+every existing fixture's views stay the same bytes.
+
+### Snapshot version 5 (D133 item 4)
+
+Variable in length: **276 + 1 364 × *n* bytes**, where *n* is the number of patterns written.
+A pattern that equals a cleared one (every step off, every probability 100, the lane empty,
+nothing kept, length 16) is not written, so the same beat always gives the same bytes. One
+pattern: 1 640 bytes; four: 5 732; all sixteen: **22 100** (`PI_SNAPSHOT_SIZE`, the most).
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 4 | magic `P K I N` |
+| 4 | 2 | version: 5 |
+| 6 | 2 | kind: 1 |
+| 8 | 4 | payload size: 260 + 1 364 × *n* (the bytes between the header and the CRC, as before) |
+| 12 | 4 | seed |
+| 16 | 4 | tempo, thousandths of a bpm |
+| 20 | 1 | swing |
+| 21 | 1 | volume |
+| 22 | 1 | the chosen sound |
+| 23 | 1 | hat cut: 0 |
+| 24 | 64 | sliders: track by track, A then B, a u16 each |
+| 88 | 2 | sampled |
+| 90 | 2 | fx sounds |
+| 92 | 2 | written: bit *p*, pattern *p*'s block follows |
+| 94 | 1 | chain length, 1 to 16 |
+| 95 | 1 | zero |
+| 96 | 16 | the chain: a byte an entry, 0 to 15; zero past its length |
+| 112 | 32 | the name: UTF-8, zero-padded (D134). The core copies it and never reads it |
+| 144 | 128 | the credit: the same |
+| 272 | 1 364 × *n* | the written patterns' blocks, in rising *p* |
+| 272 + 1 364 *n* | 4 | CRC-32 of every byte before it |
+
+A pattern's block (1 364 bytes): steps, 32 (a u16 a track); probability, 256 (track by
+track, a byte a step); the lane, 16; keeps, 32 (a u16 a track); the values, 1 024 (track by
+track, step by step, A then B; zero where nothing is kept); the length, 1; zero, 3. The
+order versions 1 to 4 hold them in.
+
+- **The chain saved is the one that will play:** the next chain if one waits, else the
+  chain. `pos` is not saved: a loaded beat starts from its chain's first pattern, as a
+  loaded pattern starts from step 1.
+- **Load, version 5:** §8's checks in §8's order, the least size taken from the version
+  (276), the payload size checked against 260 + 1 364 × the bits set in "written", and the
+  length passed checked against the payload. Then the patterns not written are cleared ones,
+  `pos` 0, no next chain, `active` the chain's first. Clamped as a command would be: a chain
+  length of 0 is 1 and past 16 is 16; a chain entry past 15 is 15; a pattern's length 0 is 1
+  and past 16 is 16; a lane byte past 16 is 0; a probability past 100 is 100. The name and
+  credit are copied as they are. Bytes after the CRC are the host's, as ever.
+- **Every older version still loads,** into **pattern 1**: its steps, probabilities, lane
+  and keeps (each version's own rule: versions 1 to 3 keep each step that is on at its
+  sound's own values, §20), and its length as pattern 1's. The other fifteen are cleared,
+  the chain is pattern 1 alone, the name and credit are empty, and every global field is as
+  that version's load sets it today. So a beat saved before this plays as it did.
+- **Not saved:** the playhead, `pos`, playing, write mode, the moment's punches and runs,
+  the clock source (as §8 and §15).
+- **The core writes version 5 only.** `PI_SNAPSHOT_VERSION` 5; `PI_SNAPSHOT_SIZE` 22 100,
+  the most; `PI_SNAPSHOT_SIZE_V4` 1 464. `pi_save` returns the bytes it wrote (276 to
+  22 100), or 0 when `cap` is under them. **A host keeps whatever length `pi_save`
+  returns:** `rack/src/Probe.cpp` and `rack/src/Rhythm.cpp` today keep a snapshot only when
+  its length equals `PI_SNAPSHOT_SIZE`, which a version 5 almost never does.
+
+### Saving while playing (§8; P6)
+
+The rule stands: one thread; the audio thread saves when the generation moves and hands a
+copy over (§8's three buffers, or the worklet's message). What changes is a save's cost.
+**Measured 2026-11-27** (scratch build, release, AMD Ryzen 9 7950X3D, mean of 2 000): the
+bit-by-bit CRC (`core/src/crc.rs`) takes **4.8 µs** over 1 460 bytes (today's) and **74 µs**
+over 21 940; copying 21 940 bytes takes 0.27 µs. So the CRC is the cost, and it grows with
+the patterns written: about 6 µs for one, 20 µs for four, 75 µs for sixteen on that
+machine; a phone is slower ⚠.
+
+- **Every host saves at most four times a second** when the generation moves, as the
+  worklet already does (§8, "Built (Session 12)"), and always saves the last move once
+  that quarter second has passed. `rack/src/Rhythm.cpp` saves today whenever the generation
+  moves, looked at every 16th frame: a slider drag could ask for 3 000 saves a second, 22% of
+  a core at sixteen patterns. The terminal host saves only when asked (unchanged).
+- Not proposed: a CRC by table (1 KiB of data in the `.wasm`, against P1's 50 000 with the
+  `.wasm` at 45 121). Only if the build measures a save that still costs too much.
+
+### What must not move, and what it costs
+
+- **Every trace and render file,** and every view of formats 1 to 4: a beat with one pattern
+  and a chain of one plays as before, bit for bit.
+- **The cost a frame, expected (the build measures it with `make bench` and `make pairs`):**
+  nothing the bench can see. The sequencer reads `patterns[active]` where it read `pat`, one
+  index; a wrap adds two comparisons (a next chain; a chain longer than one). The engine
+  grows from 3 696 to about 24 350 bytes, but the audio path touches one pattern, as before.
+  A save costs what the measurement above says, on the audio thread, at most four times a
+  second.
+
+### What settles what, and what proves it
+
+**R90 settles:** when a change lands (the end of the bar); the lights while pattern is held
+(used steady, the chosen one flickering, empty dark, the playing views gone); effects kept
+per pattern, and carried by a copy; a choice replacing a running chain, and staying replaced
+after stop and play; play restarting a chain from its first pattern. **Two lines stay ⚠
+open,** each with its default written in: **(chain lights)** what the grid shows while
+pattern is held during a chain; **(empty flicker)** whether an empty chosen pattern
+flickers.
+
+**Proven when built by:** `fixtures/designed/patterns-*.json`, worked by hand from this
+section before any code (`fixtures/README.md`), moved up unchanged: choosing while stopped
+and the lights while pattern is held, a chain built by keys, copy and clear, a change and a
+chain landing at the end of the bar while playing and a choice replacing a chain; all three
+harnesses, both sources, three rates, three block sizes, from a snapshot.
+`fixtures/snapshots-v4.txt`: each fixture's version 4 snapshot written by the ABI 15 core
+**before** any change and committed first, loaded against its fixture's trace beside
+`snapshots-v1.txt` to `-v3.txt`. A rule test for each row and bullet above; the 20 000-press
+generation test with pattern, copy and clear in it; a snapshot with all sixteen patterns
+written saved, loaded and saved again to the same bytes; planted faults caught by name.
+Every host's fixed room for the engine, the view and a snapshot searched for (`LEARNINGS.md`,
+Session 8: "Search for every fixed room when a size bound moves").
