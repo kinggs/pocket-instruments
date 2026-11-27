@@ -789,3 +789,41 @@ that is wrong; nothing else on either line, no `expect` and no trace moves.
 
 Each fixture's `about` says the same in a sentence. A view of format 1 to 4 has no bytes 64 to
 87, so nothing else of either shows.
+
+## `beat-amen-break`, worked by hand (2026-11-27; issue 164, D141, D142 proposed; in `designed/` until the hosts read the bank)
+
+The bank's default beat, the beat a new player opens on (`docs/BANK.md`). Its `beat` is the
+bank's own file, `../beats/amen-break.beat`, named from `fixtures/` (each harness reads a
+fixture's `beat` beside the fixture), so the fixture and the bank cannot drift: there is no
+copy of the beat in `fixtures/`. Worked from the file's rows and `ENGINE.md` §5, §14, §17, §20
+and §21, with no engine and no reader; a throwaway script laid the JSON out from the step lists
+typed below (as in Session 10). `beat/expected/amen-break.txt` (the command's grids) was not
+read for it.
+
+- **The file, read:** tempo 136 (`mbpm` 136 000, so `F` is true to the beat's tempo), no swing,
+  volume 16 and sliders 32 768 by default, seed 1 and no probability (no draw is taken), no lane.
+  `sound 1 sample` and `sound 2 sample`: `sampled=0003`; no `dry`: `fxsounds=ffff`. Chain
+  `1 2 3 4`: `chain=0123`; four patterns written: `used=000f`.
+- **The steps, counted from 0** (a row's character *n* is step *n*):
+
+  | Pattern | kick (0) | snare (1) | hat (2) | cymbal (6) | hits |
+  |---|---|---|---|---|---|
+  | 1, 2 | 0 2 10 11 | 4 7 9 12 15 | 0 2 4 6 8 10 12 14 | | 4 + 5 + 8 = 17 |
+  | 3 | 0 2 10 | 4 7 9 14 | 0 2 4 6 8 10 12 14 | | 3 + 4 + 8 = 15 |
+  | 4 | 2 3 10 | 1 4 7 9 14 | 0 2 4 6 8 12 14 | 10 | 3 + 5 + 7 + 1 = 16 |
+
+- **The trace:** the play edit at 0, so tick 0 is pattern 1's step 0 (§21: play restarts the
+  chain). Grid step *g* is tick 96*g*; swing 0 moves nothing. The chain moves on where each
+  pattern wraps (§21, "Advancing"): pattern 2 at 1536, 3 at 3072, 4 at 4608, and pattern 1 again
+  at 6144, step 64, the run's last: its kick and hat. In a step, the step line, then its hits in
+  rising track. 65 step lines and 17 + 17 + 15 + 16 + 2 = 67 hits: 132 lines.
+- **The views,** write off (§14's write-off row): field the kick's steps of the active pattern,
+  stitch every other sound's, bar the chosen sound (`0001`), `sounds=1`. The kick's steps are
+  `x`, keeping nothing, so `a b` and `ea eb` are its own 32 768 (§20).
+
+  | `at` | Pattern, `pos` | field | stitch | fires (kick, snare, hat, cymbal) |
+  |---|---|---|---|---|
+  | 15 | 1, 0 | `0c05` (0 2 10 11) | `d7d5`: snare `9290` and hat `5555` | 4, 5, 8, 0 |
+  | 47 | 3, 2 | `0405` (0 2 10) | `57d5`: snare `4290` and hat `5555` | 11, 14, 24, 0 |
+  | 63 | 4, 3 | `040c` (2 3 10) | `57d7`: snare `4292`, hat `5155`, cymbal `0400` | 14, 19, 31, 1 |
+  | 64 | 1, 0, step 0 | `0c05` | `d7d5` | 15, 19, 32, 1 |
