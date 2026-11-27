@@ -1803,3 +1803,26 @@ above; these are what only the chain showed.
   cancelled main's push run (harmless: the next run rebuilt the root from main) and #117's close
   run, which left `pr-117/` online. A workflow that queues must make each run repair what an
   earlier one would have done, not trust every event to get its own run.
+
+## 2026-11-27 — sixteen patterns in the core (issue 139)
+
+- **A design's "nothing old moves" is a claim to check, not a fact to build on.** §21 said
+  every format 1 to 4 view stays the same bytes; its own pattern-held row moved two of them.
+  The row, a ruled decision and a hand-worked fixture agreed, so the sentence was the error.
+  Grep the existing fixtures for every row a design changes before believing the sentence.
+- **A slower thread can wake a race the old timing hid.** With 22 KB snapshots the race
+  harness's second thread slowed tenfold against the audio thread, and D130's bpm press (timed
+  in frames) read as a hold on one side and a press on the model's, which counts a frame a
+  message: up to ten bad rounds in 6 400. Nothing in the core was wrong. Every rule timed in
+  frames is a rule the race model cannot keep; such keys go into its churn only in a form whose
+  timing cannot matter.
+- **A plant aimed at index 0 tests nothing when the answer is index 0.** Dropping the firing's
+  pattern read pattern 1's values, which the first test expected anyway. Put the thing under
+  test somewhere a zero cannot reach by accident.
+- **Keep a converter only if it checks itself on old bytes.** Hundreds of tests read version
+  4's offsets. One function lays a one-pattern version 5 out as version 4 and panics on
+  anything version 4 cannot hold; every committed version 4 snapshot loads, saves as version 5
+  and comes back through it to its own bytes, so the converter is held to what an old core wrote.
+- **A struct twenty times larger changed a per-call cost the bench sees, and not by layout
+  alone.** One frame a call costs 1.7 and 3.5 ns more; putting the bank last changed nothing
+  and putting its small fields first made it worse. Measured, written down, not explained.
