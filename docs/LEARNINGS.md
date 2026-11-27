@@ -1896,3 +1896,19 @@ above; these are what only the chain showed.
   miss that message.** The page's `listeners.forEach` skipped a load's result whenever a
   check's one-shot listener sat just before it; the bank's list was the first code to load
   while a check waited on a snapshot. Walk a copy.
+
+## 2026-11-27 — larger keys, and a hit test (issue 150)
+
+- **A bigger key does not cover every old gap.** The brief for the build said a click in the
+  old gap between keys "now lands on a key". The first hit test said otherwise: in Rack the
+  old bottom row's centre line (y 86) is exactly the new gap between rows 3 and 4, and on the
+  phone the gap between the middle columns sits at the screen's middle in both layouts, as
+  does the one under the second row. 21 of 24 old gap middles are on a key in Rack, 16 of 24
+  on the phone. Work a geometric claim out before writing it as a bar.
+- **Rack's headless mode makes no widgets, but screenshot mode does,** and a `ButtonEvent`
+  with its own `EventContext` sent to `Widget::onButton` of the module widget goes through
+  Rack's real dispatch (the topmost visible child whose box holds the point). That is a hit
+  test with no window events and no module (`rack/hittest.sh`, `PI_HIT_TEST`).
+- **A pixel check must avoid what the key draws on itself.** The first read-back of the
+  screenshot failed on an old gap that lay under key 12's numeral: ecru, not tile. "On a key"
+  is "not the ground", not "the key's colour".
