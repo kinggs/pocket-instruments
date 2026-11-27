@@ -353,20 +353,22 @@ fn effect_13_and_the_sound_effects_follow_the_new_lane_at_once() {
 #[test]
 fn a_step_fired_just_before_a_change_on_the_same_frame_plays_what_its_own_pattern_keeps() {
     // On edges, swing 48: step 15 fires half a step late. An early edge flushes that firing and
-    // the next step, the change to pattern 2, into one frame (§4). Pattern 1's step 15 keeps
-    // (1000, 2000); pattern 2's step 15 keeps (5000, 6000) and its step 0 is silent. The mark
-    // (the view's bytes 60 to 63) is what track 0 was last hit with: pattern 1's.
+    // the next step, the change from pattern 2 to pattern 3, into one frame (§4). Pattern 2's
+    // step 15 keeps (1000, 2000); pattern 3's step 15 keeps (5000, 6000) and its step 0 is
+    // silent; pattern 1 keeps nothing. The mark (the view's bytes 60 to 63) is what track 0 was
+    // last hit with: pattern 2's. (Patterns 2 and 3, not 1 and 2, so a firing that lost its
+    // pattern and read pattern 1's would show too.)
     let mut h = Host::new(SR, 1);
     let keep = |a: u32, b: u32| cmd(CMD_KEEP, 0, 15, a << 16 | b);
-    h.block(1, &[cmd(CMD_SOURCE, 0, 0, 1), cmd(CMD_SWING, 0, 0, 48), on(0, 15), keep(1000, 2000), pattern(1), on(0, 15), keep(5000, 6000), pattern(0), chain(1), play()]);
+    h.block(1, &[cmd(CMD_SOURCE, 0, 0, 1), cmd(CMD_SWING, 0, 0, 48), pattern(2), on(0, 15), keep(5000, 6000), pattern(1), on(0, 15), keep(1000, 2000), chain(2), play()]);
     let mut cmds: Vec<(u64, Cmd)> = (0..16).map(|m| (1 + m * STEP, cmd(CMD_CLOCK, 0, 0, 0))).collect();
     cmds.push((1 + 15 * STEP + 2000, cmd(CMD_CLOCK, 0, 0, 0))); // early: before step 15's firing
     let ev = h.run(15 * STEP + 2100, 128, &cmds);
     let last: Vec<_> = ev.iter().rev().take(2).map(|(f, e)| (*f, e.kind, e.step)).collect();
     assert_eq!(last[0].0, last[1].0, "the firing and the next step on one frame: {last:?}");
     assert_eq!((last[1].1, last[0].1, last[0].2), (EV_TRIG, EV_STEP, 0));
-    assert_eq!(h.view()[64], 1, "pattern 2 is playing");
-    assert_eq!(h.view()[60..64], [0xe8, 0x03, 0xd0, 0x07], "hit with pattern 1's (1000, 2000)");
+    assert_eq!(h.view()[64], 2, "pattern 3 is playing");
+    assert_eq!(h.view()[60..64], [0xe8, 0x03, 0xd0, 0x07], "hit with pattern 2's (1000, 2000)");
 }
 
 // ---- The keys ----
