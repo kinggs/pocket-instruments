@@ -11,6 +11,9 @@
 //             Unpatched: the table clock. On edges the display shows the tempo the edges play,
 //             "ext" where "bpm" was (ENGINE.md §14, designed 2026-11-25).
 //   RESET     starts from step 1. CLOCK is ignored for 1 ms after it (RACK-RULES.md).
+//   PLAY in   presses play (D138; ENGINE.md §19, designed 2026-11-27): a gate plays while high
+//             and stops when it goes low, a trigger (under 10 ms) toggles (pi::PlayIn). One
+//             button (Fundamental's Push) into several modules' PLAY starts them as one.
 //   TRIGGERS  sixteen channels, 10 V for 1 ms a firing. VOICES: sixteen channels, 5 V to 1.0.
 //   RETURN    sixteen channels; channel n takes sound n's place in the mix, and in the effects'
 //             bus if that sound is switched into them (D62, D68 item 3).
@@ -158,7 +161,8 @@ struct View {
 struct Rhythm : Module {
     enum ParamId { KEY_PARAMS = 0, SLIDER_A = 23, SLIDER_B = 24, PARAMS_LEN };
     // Rack ties a cable to a port's number: new ports go after the old ones, always (D76 item 2).
-    enum InputId { CLOCK_INPUT, RESET_INPUT, RETURN_INPUT, FX_RETURN_INPUT, A_INPUT, B_INPUT, INPUTS_LEN };
+    // D138: PLAY in, input 6, at the end.
+    enum InputId { CLOCK_INPUT, RESET_INPUT, RETURN_INPUT, FX_RETURN_INPUT, A_INPUT, B_INPUT, PLAY_INPUT, INPUTS_LEN };
     enum OutputId { TRIGGERS_OUTPUT, VOICES_OUTPUT, AUDIO_OUTPUT, FX_GATES_OUTPUT, FX_SEND_OUTPUT, A_OUTPUT, B_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
     enum Holder : uint8_t { MOUSE = 1, KEYBOARD = 2, LATCH = 4, SPACE = 8 }; // SPACE: play held by the space bar
@@ -226,6 +230,15 @@ struct Rhythm : Module {
     pi::Jacks shadowJacks;       // FX SEND as jacks.hpp makes it from the shadow's frame
     float shadowSend[PI_TRACKS] = {};
     dsp::SchmittTrigger clockTrig, resetTrig;
+    pi::PlayIn playIn;           // D138: PLAY in's rule (jacks.hpp)
+    uint32_t gateFrames = 480;   // 10 ms at the rate: a PLAY in high this long or longer is a gate
+    // The play self-test (selftest.sh, D138): every module with PLAY patched counts its starts
+    // and steps, and a sum of each step's engine frame and number, so modules run from one
+    // signal can be compared. Logged when the module goes.
+    std::atomic<bool> playTested{false};
+    std::atomic<uint32_t> playStarts{0}, playSteps{0};
+    std::atomic<uint64_t> playSum{0};
+    bool wasPlaying = false;
     uint32_t rate = 0, sinceReset = 0xffffffffu, generation = 0, sincePublish = 0;
     int sourceSent = -1;         // the clock source last sent (pi::source); -1 sends it on the next frame
     bool keyDown[23] = {};       // what the core was last told of each key
@@ -277,7 +290,7 @@ struct Rhythm : Module {
         configOutput(FX_SEND_OUTPUT, "FX send (sixteen channels, one an effect: the sounds through the effects while that effect is heard)");
         configOutput(A_OUTPUT, "Slider A (sixteen channels, 0 to 10 V: what each sound was last hit with)");
         configOutput(B_OUTPUT, "Slider B (sixteen channels, 0 to 10 V: what each sound was last hit with)");
-        if (pi_abi_version() != PI_ABI_VERSION || pi_size() > sizeof mem) {
+        configInput(PLAY_INPUT, "Play (presses play: a gate plays while high and stops when it goes low; a trigger toggles)");        if (pi_abi_version() != PI_ABI_VERSION || pi_size() > sizeof mem) {
             WARN("Pocket Instruments: the core is not the one this plugin was built for");
             return;
         }
@@ -338,6 +351,9 @@ struct Rhythm : Module {
              loopWanted.load() == LOOP_FX ? fxLoopCase() : "", loopPassed.load(),
              loopFailed.load(), loopHeld.load(), loopNot.load(), loopActed.load(), packLoaded);
         if (haveMismatch.load()) INFO("Pocket Instruments rhythm: first mismatch: %s", firstMismatch);
+        if (playTested.load()) // D138: selftest.sh compares these between modules run from one signal
+            INFO("Pocket Instruments rhythm play (%s): module %lld: rate %u Hz, %u starts, %u steps, sum %016llx", when, (long long)id,
+                 lastRate.load(), playStarts.load(), playSteps.load(), (unsigned long long)playSum.load());
     }
 
     void noteMismatch(const char *fmt, const char *a, const char *b) {
@@ -759,6 +775,7 @@ struct Rhythm : Module {
             rate = r;
             lastRate = r;
             msFrames = std::max<uint32_t>(1, r / 1000);
+            gateFrames = std::max<uint32_t>(1, r / 100);
             viewFrames = r / 60;
             sendStep = pi::rampStep(r);
         }
@@ -777,6 +794,11 @@ struct Rhythm : Module {
         if (resetIn) sinceReset = 0;
         else if (sinceReset < 0xffffffffu) sinceReset++;
         if (sinceReset < msFrames) clockIn = false;
+        // D138: PLAY in, read every frame as CLOCK and RESET; acted on only by the instrument
+        // (a self-test plays alone). A finger on play wins: keyDown is what the core was told.
+        bool playPatched = inputs[PLAY_INPUT].isConnected();
+        bool playPress = playIn.frame(playPatched, playPatched ? inputs[PLAY_INPUT].getVoltage() : 0.f,
+                                      view[PI_VIEW_FLAGS] & PI_VIEW_FLAG_PLAYING, keyDown[PI_KEY_PLAY], gateFrames);
 
         pi_cmd cmds[PI_EVENTS_MIN + 40];
         uint32_t n = 0;
@@ -819,6 +841,15 @@ struct Rhythm : Module {
                 sourceSent = source;
             }
             if (resetIn) cmds[n++] = pi_cmd{0, PI_CMD_RESET, 0, 0, 0, 0};
+            // D138 (ENGINE.md §19, designed 2026-11-27): PLAY in presses play as a finger does,
+            // down and up on this frame, after RESET and before CLOCK, so a press on the frame
+            // an edge arrives starts on that edge. The core decides what the press means (D51,
+            // §13). The view's playing flag is as of the last frame: only a command or a load
+            // moves it, and both read the view.
+            if (playPress) {
+                cmds[n++] = pi_cmd{0, PI_CMD_KEY_DOWN, uint8_t(PI_KEY_PLAY), 0, 0, 0};
+                cmds[n++] = pi_cmd{0, PI_CMD_KEY_UP, uint8_t(PI_KEY_PLAY), 0, 0, 0};
+            }
             if (edges && clockIn) cmds[n++] = pi_cmd{0, PI_CMD_CLOCK, 0, 0, 0, 0};
             pi_cmd c;
             while (n < 40 && menu.pop(c)) cmds[n++] = c;
@@ -910,6 +941,26 @@ struct Rhythm : Module {
         bool viewRead = viewNow || n || count || fixture >= 0 || loop != LOOP_NONE || (++frames & 15) == 0;
         if (viewRead) pi_view(e, view, sizeof view);
         viewNow = false;
+
+        // D138, the play self-test's count: only while PLAY in is patched, so a module without
+        // it pays one test a frame.
+        if (playPatched) {
+            if (!playTested.load(std::memory_order_relaxed)) playTested = true;
+            bool now = view[PI_VIEW_FLAGS] & PI_VIEW_FLAG_PLAYING;
+            if (now && !wasPlaying) playStarts.store(playStarts.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+            wasPlaying = now;
+            uint64_t sum = playSum.load(std::memory_order_relaxed);
+            uint32_t steps = 0;
+            for (uint32_t i = 0; i < count; i++)
+                if (ev[i].type == PI_EV_STEP) {
+                    sum = sum * 1000003u + uint64_t(args.frame) * 16u + ev[i].step;
+                    steps++;
+                }
+            if (steps) {
+                playSum.store(sum, std::memory_order_relaxed);
+                playSteps.store(playSteps.load(std::memory_order_relaxed) + steps, std::memory_order_relaxed);
+            }
+        }
 
         if (fixture >= 0 && running) {
             const RhythmFixture &fx = FIXTURES[fixture];
@@ -1071,8 +1122,7 @@ struct Rhythm : Module {
 
     void dataFromJson(json_t *root) override {
         stillWeave = json_is_true(json_object_get(root, "reducedMotion"));
-        clockBeat = json_is_true(json_object_get(root, "clockBeat")); // a patch from before ABI 15: one edge a step
-        if (json_t *j = json_object_get(root, "return")) returnChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
+        clockBeat = json_is_true(json_object_get(root, "clockBeat")); // a patch from before ABI 15: one edge a step        if (json_t *j = json_object_get(root, "return")) returnChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
         if (json_t *j = json_object_get(root, "a")) aChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
         if (json_t *j = json_object_get(root, "b")) bChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
         json_t *rack = json_object_get(root, "fxRack");
@@ -1656,8 +1706,11 @@ struct RhythmWidget : ModuleWidget {
         }
         // CLOCK over RESET left of the display, AUDIO right of it, and the ten sixteen-channel
         // jacks in one row of four groups (SOUNDS, SLIDER A, SLIDER B, FX).
-        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(9.5f, 13.5f)), module, Rhythm::CLOCK_INPUT));
-        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(9.5f, 27.5f)), module, Rhythm::RESET_INPUT));
+        // D138: PLAY under RESET, and the column moved up a little (Kenny): CLOCK was at 13.5,
+        // RESET at 27.5. Only the pictures move; no port's number does.
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(9.5f, 13.15f)), module, Rhythm::CLOCK_INPUT));
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(9.5f, 25.95f)), module, Rhythm::RESET_INPUT));
+        addInput(createInputCentered<RhythmPort<false>>(mm2px(Vec(9.5f, 38.75f)), module, Rhythm::PLAY_INPUT));
         addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(126.58f, 21.f)), module, Rhythm::AUDIO_OUTPUT));
         const float ROW = 116.3f;
         addOutput(createOutputCentered<RhythmPort<true>>(mm2px(Vec(10.6f, ROW)), module, Rhythm::TRIGGERS_OUTPUT));

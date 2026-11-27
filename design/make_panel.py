@@ -137,11 +137,19 @@ TICK_IN, TICK_OUT, TICK_W = 4.4, 5.2, 0.5
 RETURN_LABEL_HALF = 5.2
 
 # name: (x, y, is an output, sixteen channels, the label's lines)
+# D138 (issue 147; ruled by Kenny): PLAY under RESET, and the column moved up a little, "since
+# we have some whitespace above the clock jack". CLOCK rises as far as the top left screw lets
+# it (its label 0.52 mm under the screw; was 0.87 at 13.5), and the three share the room down to
+# the keys at one pitch, 12.8 mm. RESET was 27.5. Port numbers do not move, only the pictures.
+# The whole look is for a later design session. `--check` prints every clearance.
+COLUMN_X, COLUMN_Y = 9.5, (13.15, 25.95, 38.75)  # CLOCK (was 13.5), RESET (was 27.5), PLAY
 JACKS = {
-    "CLOCK": (9.5, 13.5, False, False, ("CLOCK",)),
-    "RESET": (9.5, 27.5, False, False, ("RESET",)),
+    "CLOCK": (COLUMN_X, COLUMN_Y[0], False, False, ("CLOCK",)),
+    "RESET": (COLUMN_X, COLUMN_Y[1], False, False, ("RESET",)),
     "AUDIO": (W - MARGIN - (GLASS_IN - FRAME - 0.5 - MARGIN) / 2, 21.0, True, False, ("AUDIO",)),  # was W - 9.5 on the board
+    "PLAY": (COLUMN_X, COLUMN_Y[2], False, False, ("PLAY",)),
 }
+SIDE = ("CLOCK", "RESET", "PLAY", "AUDIO")  # the jacks beside the display
 
 # The wordmark sat at x 63 until the outputs became three (2026-11-19), then at x 49, 3.5 mm,
 # until RETURN (D62), when it dropped to 3.0 mm to fit between RETURN's stitches and the
@@ -323,22 +331,32 @@ def check(font):
     good = under >= 0.5 and over >= 0.5
     ok = ok and good
     print(f"  the rules are {over:.2f} mm under the names and {under:.2f} mm over the jacks' lettering and plates" + ("" if good else "  <-- too close"))
-    # The side jacks: CLOCK over RESET, AUDIO; against the margin, the screws and the display.
+    # The side jacks: CLOCK over RESET over PLAY (D138), AUDIO; against the margin, the screws
+    # and the display, the column's jacks against each other, and PLAY against the keys under it.
     dx, dy, dw, dh = DISPLAY_BOX
-    for name in ("CLOCK", "RESET", "AUDIO"):
+    for name in SIDE:
+        right_side = JACKS[name][0] > W / 2
         l, r, t, b = jack_box(font, name)
-        to_display = (dx - r) if name != "AUDIO" else (l - (dx + dw))
-        to_edge = l if name != "AUDIO" else W - r
+        to_display = (l - (dx + dw)) if right_side else (dx - r)
+        to_edge = W - r if right_side else l
         screw = min(max(sx - r, l - (sx + SCREW), sy - b, t - (sy + SCREW)) for sx, sy in SCREWS)
         good = to_display >= 0.5 - 1e-6 and to_edge >= MARGIN - 0.01 and screw >= 0.5
         ok = ok and good
         print(f"{name}: {to_edge:.2f} mm from the edge, {to_display:.2f} mm from the display's frame, {screw:.2f} mm from the nearest screw"
               + ("" if good else "  <-- too close"))
-    _, _, _, rb = jack_box(font, "CLOCK")
-    _, _, rt, _ = jack_box(font, "RESET")
-    good = rt - rb >= 0.5
+    for upper, lower in (("CLOCK", "RESET"), ("RESET", "PLAY")):
+        ub = jack_box(font, upper)[3]
+        lt = jack_box(font, lower)[2]
+        good = lt - ub >= 0.5
+        ok = ok and good
+        print(f"{upper} to {lower}: {lt - ub:.2f} mm" + ("" if good else "  <-- too close"))
+    keys = {f"key {n + 1}": (GRID_X + PITCH / 2 + (n % 4) * PITCH, MID_Y + PITCH / 2 + (n // 4) * PITCH, KEY, KEY) for n in range(16)}
+    keys.update({label: (x + w / 2, y + h / 2, w, h) for label, x, y, w, h in fn_keys()})
+    l, r, t, b = jack_box(font, "PLAY")
+    gap, k = min((max(cx - w / 2 - r, l - cx - w / 2, cy - h / 2 - b, t - cy - h / 2), k) for k, (cx, cy, w, h) in keys.items())
+    good = gap >= 0.5
     ok = ok and good
-    print(f"CLOCK to RESET: {rt - rb:.2f} mm" + ("" if good else "  <-- too close"))
+    print(f"PLAY to the keys: {gap:.2f} mm, from {k}" + ("" if good else "  <-- too close"))
     for name in names:
         l, r, t, b = jack_box(font, name)
         screw = min(max(sx - r, l - (sx + SCREW), sy - b, t - (sy + SCREW)) for sx, sy in SCREWS)

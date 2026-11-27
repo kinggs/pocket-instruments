@@ -296,4 +296,41 @@ inline Lights keyLights(const uint8_t *v, int n, bool coreOn, bool fxLatched, Ro
     return l;
 }
 
+// PLAY in (D138; ENGINE.md §19, designed 2026-11-27; the rule ⚠ proposed, O39): whether this
+// frame presses play. One rule for a gate and a trigger. A rise presses play if the module is
+// stopped. A fall after a gate (high for gateFrames or more: 10 ms) presses it if the module is
+// playing. A fall after a trigger presses it only if the module was playing at the rise and
+// still is. So a gate (Push's GATE) plays while high, and a trigger (Push's TRIG, a clock's RUN
+// out) toggles. A Schmitt trigger at 0.1 V and 2 V (R92), as CLOCK and RESET. It starts low, so a cable
+// that is already high when it is patched, or when the patch opens, is a rise. Unpatched it
+// presses nothing, and forgets: pulling a cable out is not a stop. `playing` is the view's
+// flag 1 as last read; `held` says the play key is down, and then nothing is pressed (a finger
+// wins). Call once a frame.
+struct PlayIn {
+    bool high = false, wasPlaying = false;
+    uint32_t highFrames = 0;
+    bool frame(bool patched, float volts, bool playing, bool held, uint32_t gateFrames) {
+        if (!patched) {
+            high = false;
+            highFrames = 0;
+            return false;
+        }
+        bool press = false;
+        if (!high) {
+            if (volts >= 2.f) {
+                high = true;
+                highFrames = 0;
+                wasPlaying = playing;
+                press = !playing;
+            }
+        } else if (volts <= 0.1f) {
+            high = false;
+            press = highFrames >= gateFrames ? playing : wasPlaying && playing;
+        } else if (highFrames < gateFrames) {
+            highFrames++;
+        }
+        return press && !held;
+    }
+};
+
 } // namespace pi
