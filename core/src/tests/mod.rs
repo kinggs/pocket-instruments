@@ -1,6 +1,7 @@
 //! Tests need the standard library; the crate does not. Everything here goes through the C
 //! functions, the way a host does, in memory the test owns.
 
+mod beat;
 mod bus;
 mod clock;
 mod fixtures;

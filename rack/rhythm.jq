@@ -11,7 +11,9 @@ def value: if .cmd == "keep" then (.a * 65536 + .b) else (.value // 0) end;
 # `fx` names its step where the others name a track: the command's `a` either way.
 def first: if .cmd == "fx" then .step else (.track // .key // .slider // 0) end;
 def second: if .cmd == "fx" then 0 else (.step // 0) end;
-if .format == 1 then empty elif (.format != 2 and .format != 3 and .format != 4 and .format != 5) or .ticks_per_step != 96 then error("not fixture format 2, 3, 4 or 5") else
+# A fixture with a beat file (issue 140) starts from the beat, which the module's self-test does
+# not read: left out.
+if .format == 1 or .beat then empty elif (.format != 2 and .format != 3 and .format != 4 and .format != 5) or .ticks_per_step != 96 then error("not fixture format 2, 3, 4 or 5") else
 "{\"\(.name)\", \(.format), \(.seed), \(.mbpm), \(.steps),\n {"
 + ([.commands[] | "{\(.at),\(kind),\(first),\(second),\(value)}"] | join(","))
 + "},\n {"

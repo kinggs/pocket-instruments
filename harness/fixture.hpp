@@ -151,7 +151,9 @@ static Json read_fixture(const std::string &path) {
     uint64_t format = fx.n("format");
     if (format < 1 || format > 5 || fx.n("ticks_per_step") != PI_TICKS_PER_STEP) die(path + ": not a format this harness runs");
     if (format == 1 && fx.find("views")) die(path + ": views are format 2's to 5's");
-    if (fx.find("beat")) die(path + ": a fixture with a beat file waits for the beat reader (D134)");
+    // A fixture's "beat" (issue 140) is read by harness.cpp with the beat reader; race.cpp leaves
+    // such a fixture out.
+    if (fx.find("beat") && fx.at("beat").kind != Json::Str) die(path + ": beat names a file");
     return fx;
 }
 
