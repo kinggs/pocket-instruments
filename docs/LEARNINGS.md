@@ -1826,3 +1826,19 @@ above; these are what only the chain showed.
 - **A struct twenty times larger changed a per-call cost the bench sees, and not by layout
   alone.** One frame a call costs 1.7 and 3.5 ns more; putting the bank last changed nothing
   and putting its small fields first made it worse. Measured, written down, not explained.
+
+## 2026-11-27 — the race check's flake was its own model (issue 169)
+
+- **Changing what a check presses treats a symptom; widen the model to the specification.**
+  Issue 139's build stopped pressing bpm alone because its release raced the model. The
+  failures fell but did not stop: a grid key already down leaves bpm unused, and the same
+  frame-counted release (D130) came back once in some hundreds of runs. The fix was to let the
+  model hold every outcome the specification allows (a press or a hold) and to press bpm
+  freely again.
+- **Load reproduces what one run hides.** Twenty runs with 28 cores busy turned a one-in-many
+  CI flake into nine failures in twenty, each with the inputs kept. Print the differing bytes
+  of the first bad round before reasoning: every one was the tempo and the CRC, which named
+  the cause in a minute.
+- **A diagnostic print is code under the sanitizer too.** The first instrumented copy read the
+  audio thread's block counter unguarded and ThreadSanitizer reported it, which looked like a
+  core race until read.
