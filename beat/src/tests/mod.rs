@@ -2,6 +2,7 @@
 //! refusal, the worst text, and a mutation fuzz that nothing panics. What needs the core
 //! (`pi_load` and `pi_save` as the referee) is in the core's tests: `core/src/tests/beat.rs`.
 
+mod bank;
 mod example;
 mod fuzz;
 mod refusals;
