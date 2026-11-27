@@ -143,7 +143,16 @@ void viewText(const uint8_t *b, char *out, size_t cap, uint32_t format = 2) {
         n += std::snprintf(out + n, cap - size_t(n), " fx=%u fxsteps=%04x fxsounds=%04x", unsigned(b[PI_VIEW_HEARD]),
                            unsigned(u16(b, PI_VIEW_FX_STEPS)), unsigned(u16(b, PI_VIEW_FX_SOUNDS)));
     if (format >= 4 && n > 0 && size_t(n) < cap)
-        std::snprintf(out + n, cap - size_t(n), " ea=%u eb=%u", unsigned(u16(b, PI_VIEW_HIT_A)), unsigned(u16(b, PI_VIEW_HIT_B)));
+        n += std::snprintf(out + n, cap - size_t(n), " ea=%u eb=%u", unsigned(u16(b, PI_VIEW_HIT_A)), unsigned(u16(b, PI_VIEW_HIT_B)));
+    // Format 5 (ENGINE.md §21, ABI 16): the patterns, the chain and the next chain a hex digit an entry.
+    if (format >= 5 && n > 0 && size_t(n) < cap) {
+        char chain[17] = {}, next[17] = "-";
+        for (unsigned i = 0; i < b[PI_VIEW_CHAIN_LEN] && i < 16; i++) chain[i] = "0123456789abcdef"[b[PI_VIEW_CHAIN + i / 2] >> (4 * (i & 1)) & 15];
+        for (unsigned i = 0; i < b[PI_VIEW_NEXT_LEN] && i < 16; i++) next[i] = "0123456789abcdef"[b[PI_VIEW_NEXT + i / 2] >> (4 * (i & 1)) & 15];
+        if (b[PI_VIEW_NEXT_LEN]) next[std::min<unsigned>(b[PI_VIEW_NEXT_LEN], 16)] = 0;
+        std::snprintf(out + n, cap - size_t(n), " pat=%u pos=%u chain=%s next=%s used=%04x", unsigned(b[PI_VIEW_PATTERN]), unsigned(b[PI_VIEW_POS]),
+                      chain, next, unsigned(u16(b, PI_VIEW_USED)));
+    }
 }
 
 // A snapshot, how many of its bytes are real, and how many loads the audio thread had taken
@@ -205,7 +214,9 @@ struct Rhythm : Module {
     uint32_t loadsAsked = 0;
 
     // ---- The audio thread's own. ----
-    alignas(16) uint8_t mem[4096]; // the engine is 3 872 bytes (ENGINE.md §8; 2 352 until §20)
+    // Every host's room for the engine is 32 KiB since ABI 16 (ENGINE.md §21, D133 item 1: sixteen
+    // patterns, about 24 KB); it was 4 KiB, for 3 696 bytes, until then.
+    alignas(16) uint8_t mem[32768];
     std::vector<int16_t> pack[PI_TRACKS]; // read once, before any audio; never changed (pi_set_sample)
     int packLoaded = 0;
     pi_engine *e = nullptr;
@@ -219,7 +230,7 @@ struct Rhythm : Module {
     // down allocates nothing. Lent after every pi_init and every rate change (lend()).
     std::vector<float> line, line2;
     // The loop self-tests: a second engine, given what the module's own cables should carry.
-    alignas(16) uint8_t mem2[4096];
+    alignas(16) uint8_t mem2[32768];
     pi_engine *shadow = nullptr;
     int loop = LOOP_NONE;
     bool loopRunning = false, loopBad = false;
@@ -1073,7 +1084,9 @@ struct Rhythm : Module {
             Snap &s = saved.write();
             s.len = pi_save(e, s.b, PI_SNAPSHOT_SIZE);
             s.loads = loadsTaken.load(std::memory_order_relaxed);
-            if (s.len == PI_SNAPSHOT_SIZE) {
+            // ABI 16 (§21): version 5 is as long as pi_save says, rarely PI_SNAPSHOT_SIZE; 0 is
+            // the only refusal. (The save throttle §21 asks of every host is issue 142's.)
+            if (s.len != 0) {
                 saved.publish();
                 published++;
             }
@@ -1148,7 +1161,8 @@ struct Rhythm : Module {
             } catch (const std::exception &) {
             }
             // Any version the core has written; the core checks which, and refuses the rest.
-            if (bytes.size() >= PI_SNAPSHOT_SIZE_V1) {
+            // Version 5 can be as short as PI_SNAPSHOT_SIZE_MIN, 276 (ABI 16), under version 1.
+            if (bytes.size() >= PI_SNAPSHOT_SIZE_MIN) {
                 Snap &in = inbox.write();
                 in.len = uint32_t(std::min<size_t>(bytes.size(), PI_SNAPSHOT_SIZE));
                 std::copy(bytes.begin(), bytes.begin() + in.len, in.b);
