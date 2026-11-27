@@ -58,7 +58,7 @@ function snapshot() {
 // Modules: [id, plugin, model, version, x in HP, row, params, data].
 const F = "2.6.4";
 const modules = [
-  [1, "PocketInstruments", "Rhythm", "2.0.0", 0, 0, [], { snapshot: snapshot(), return: 1, a: 2, fxRack: 64, fxInPlace: 64 }],
+  [1, "pocket-instruments", "Rhythm", "2.0.0", 0, 0, [], { snapshot: snapshot(), return: 1, a: 2, fxRack: 64, fxInPlace: 64 }],
   [2, "Fundamental", "Split", F, 27, 0, []],
   [3, "Fundamental", "ADSR", F, 32, 0, [[0, 0.0], [1, 0.32], [2, 0.0], [3, 0.3]]],   // attack, decay, sustain, release
   [4, "Fundamental", "VCO", F, 41, 0, [[2, -33]]],                                   // FREQ: about 55 Hz

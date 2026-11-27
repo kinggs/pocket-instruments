@@ -3,7 +3,7 @@
 # (REFERENCES.md R16). CI runs it on each of the four artefacts; it runs anywhere the
 # platform's own binary tools are (objdump on Linux and MSYS2, otool and lipo on macOS).
 #
-#   check-dist.sh <PocketInstruments-<version>-<platform>.vcvplugin>
+#   check-dist.sh <pocket-instruments-<version>-<platform>.vcvplugin>
 #
 #   - the archive holds the manifest and one plugin binary of the right kind;
 #   - and the starter pack (D50): res/samples/tracks.txt and the sixteen samples it names;
@@ -30,7 +30,7 @@ fail() { echo "P5 $platform: $1"; exit 1; }
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 zstd -dcq "$file" | tar -xf - -C "$tmp"
-dir=$tmp/PocketInstruments
+dir=$tmp/pocket-instruments
 [ -f "$dir/plugin.json" ] || fail "no plugin.json in the archive"
 case $platform in
 lin-*) bin=$dir/plugin.so ;;
