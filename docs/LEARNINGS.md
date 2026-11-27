@@ -1826,3 +1826,19 @@ above; these are what only the chain showed.
 - **A struct twenty times larger changed a per-call cost the bench sees, and not by layout
   alone.** One frame a call costs 1.7 and 3.5 ns more; putting the bank last changed nothing
   and putting its small fields first made it worse. Measured, written down, not explained.
+
+## 2026-11-27 — the beat file's reader and writer (issue 140)
+
+- **A size guessed "by arithmetic" was a third short.** `docs/BEAT.md` put the worst beat file
+  under 64 KiB; built and measured it is 94 349 bytes. The guess counted the `keep` lists and not
+  the `prob` lists beside them, nor the 46 value lines. Sum every line's widest form in a test
+  and build a case that comes within a KiB of it; then the constant is a measurement.
+- **The CRC of a snapshot, CRC included, is one number.** Hashing whole snapshots with the zip
+  CRC for a report gave `2144df1c` for every one: a CRC appended to its own data always leaves
+  that residue. Use another hash (FNV-1a here) to tell snapshots apart.
+- **A second Rust crate's panic handler must be optional.** A `no_std` static library needs
+  one; the core's tests, which link the beat crate with the standard library, must not get a
+  second. A default feature (`panic-handler`) that the dev-dependency turns off does both.
+- **Two Rust static libraries link into one C++ program and one Rust test on Linux** (the core's
+  and the beat's): their shared `core` symbols are local or in archive members the linker takes
+  once. Not tried on Rack's macOS and Windows toolchains ⚠.

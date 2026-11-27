@@ -2,7 +2,8 @@
 //! sizes, compared byte for byte. `fixtures/README.md` says how a harness runs one; the Node
 //! and C++ harnesses in `harness/` do the same and write the same report.
 //! Format 2 adds keys, sliders and views (Session 10); format 3 the effects (Session 16);
-//! format 4 a step's own sliders (Session 21); format 5 the patterns (ABI 16, §21).
+//! format 4 a step's own sliders (Session 21); format 5 the patterns (ABI 16, §21). A fixture
+//! with a `beat` (issue 140, `docs/BEAT.md`) starts from its beat file, read by the beat reader.
 
 use super::json::{Json, parse};
 use super::*;
@@ -12,7 +13,7 @@ pub const RATES: [u32; 3] = [44_100, 48_000, 96_000];
 pub const BLOCKS: [u32; 3] = [1, 128, 512];
 const SOURCES: [(&str, u32); 2] = [("table", 0), ("edges", 1)];
 
-fn fixtures() -> Vec<(String, Json)> {
+pub(super) fn fixtures() -> Vec<(String, Json)> {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../fixtures");
     let mut names: Vec<String> = std::fs::read_dir(dir)
         .unwrap()
@@ -27,7 +28,10 @@ fn fixtures() -> Vec<(String, Json)> {
             let j = parse(&std::fs::read_to_string(format!("{dir}/{n}")).unwrap());
             assert!(matches!(j.num("format"), 1..=5), "{n}");
             assert!(j.num("format") >= 2 || j.get("views").is_none(), "{n}: views are format 2's to 5's");
-            assert!(j.get("beat").is_none(), "{n}: a fixture with a beat file waits for the beat reader (D134)");
+            if let Some(b) = j.get("beat") {
+                let Json::Str(file) = b else { panic!("{n}: beat names a file") };
+                assert!(std::path::Path::new(&format!("{dir}/{file}")).is_file(), "{n}: no beat file {file}");
+            }
             assert_eq!(j.num("ticks_per_step"), 96, "{n}");
             (n.trim_end_matches(".json").to_string(), j)
         })
@@ -153,7 +157,7 @@ fn play(h: &mut Host, plan: &Plan, block: u32, label: &str) -> (Vec<(u64, Event)
     (events, text)
 }
 
-fn expect(fx: &Json) -> String {
+pub(super) fn expect(fx: &Json) -> String {
     fx.arr("expect")
         .iter()
         .map(|l| match l {
@@ -165,7 +169,7 @@ fn expect(fx: &Json) -> String {
 
 /// A snapshot of the fixture's patterns, taken from an engine that was given the tempo and
 /// the step-0 edits and nothing else: version 5, at the length `pi_save` returns.
-fn snapshot_of(fx: &Json, rate: u32) -> Vec<u8> {
+pub(super) fn snapshot_of(fx: &Json, rate: u32) -> Vec<u8> {
     let mut a = Host::new(rate, fx.num("seed") as u32);
     let mut cmds = vec![cmd(CMD_TEMPO, 0, 0, fx.num("mbpm") as u32)];
     cmds.extend(
@@ -182,7 +186,7 @@ fn snapshot_of(fx: &Json, rate: u32) -> Vec<u8> {
 /// Since ABI 16 (§21) written into version 5's bytes, in every pattern written, as a `KEEP` in
 /// each would write them (until then by `KEEP` edits, into the one pattern); then loaded and
 /// saved again, so the bytes are the core's.
-fn kept_snapshot_of(fx: &Json, rate: u32) -> Vec<u8> {
+pub(super) fn kept_snapshot_of(fx: &Json, rate: u32) -> Vec<u8> {
     let mut s = snapshot_of(fx, rate);
     let u16_at = |s: &[u8], i: usize| u16::from_le_bytes([s[i], s[i + 1]]);
     let written = u16_at(&s, 92);
@@ -209,7 +213,7 @@ fn kept_snapshot_of(fx: &Json, rate: u32) -> Vec<u8> {
     s
 }
 
-fn hex(b: &[u8]) -> String {
+pub(super) fn hex(b: &[u8]) -> String {
     b.iter().map(|x| format!("{x:02x}")).collect()
 }
 
@@ -219,8 +223,34 @@ fn every_fixture_everywhere() {
     let mut runs = 0;
     let all = fixtures();
     let count = all.len();
+    let beats = all.iter().filter(|(_, fx)| fx.get("beat").is_some()).count();
     for (name, fx) in all {
         let want = expect(&fx);
+        // A fixture with a beat file (fixtures/README.md, format 5): the file read by the beat
+        // reader and loaded before frame 0, then its commands; no step-0 edits and no tempo of
+        // the harness's, since the beat carries them, and no run from a snapshot, since the beat
+        // is one. The bytes go in the report once, so the hosts' readers are held to each other.
+        if let Some(Json::Str(file)) = fx.get("beat") {
+            let beat = super::beat::read_fixture_beat(file);
+            writeln!(report, "# {name} beat {}", hex(&beat)).unwrap();
+            for (source_name, source) in SOURCES {
+                for rate in RATES {
+                    for block in BLOCKS {
+                        let label = format!("{name} {source_name} {rate} {block}");
+                        let plan = schedule(&fx, rate, source, true);
+                        let mut h = Host::new(rate, fx.num("seed") as u32 + 12_345);
+                        assert_eq!(h.load(&beat), OK, "{label}");
+                        let (events, text) = play(&mut h, &plan, block, &label);
+                        assert_eq!(trace(&events), want, "{label}");
+                        assert_eq!(h.dropped(), 0, "{label}");
+                        writeln!(report, "# {label}").unwrap();
+                        report.push_str(&text);
+                        runs += 1;
+                    }
+                }
+            }
+            continue;
+        }
         for (source_name, source) in SOURCES {
             for rate in RATES {
                 for block in BLOCKS {
@@ -274,7 +304,7 @@ fn every_fixture_everywhere() {
             }
         }
     }
-    assert_eq!(runs, count * 2 * 3 * 5);
+    assert_eq!(runs, (count - beats) * 2 * 3 * 5 + beats * 2 * 3 * 3);
     // The Makefile compares this file with the ones the Node and C++ harnesses write.
     if let Ok(path) = std::env::var("PI_REPORT") {
         std::fs::write(path, report).unwrap();
@@ -319,7 +349,7 @@ fn every_format_1_fixture_with_its_commands_at_frame_0_gives_the_table_s_trace_o
 
 /// `fixtures/snapshots-v1.txt`, `-v2.txt` and `-v3.txt`: each fixture's snapshot, as the core
 /// of the day wrote it before the next version existed (Sessions 11, 16 and 21).
-fn old_snapshots(file: &str) -> Vec<(String, Vec<u8>)> {
+pub(super) fn old_snapshots(file: &str) -> Vec<(String, Vec<u8>)> {
     let path = format!("{}/../fixtures/{file}", env!("CARGO_MANIFEST_DIR"));
     std::fs::read_to_string(path)
         .unwrap()

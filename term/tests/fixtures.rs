@@ -12,6 +12,22 @@ use pi_term::ffi::*;
 use pi_term::host::{Host, Mode, char_of};
 use pi_term::input::{Input, Kind, Reader, kitty_bytes};
 
+// The beat file's reader (beat/include/pi_beat.h; issue 140), from the static library build.rs
+// links: a fixture with a "beat" starts from its file.
+unsafe extern "C" {
+    fn pib_read(text: *const u8, len: u32, snap: *mut u8, cap: u32, own: *mut u32, msg: *mut u8, msg_cap: u32) -> i32;
+}
+
+fn read_beat(file: &str) -> Vec<u8> {
+    let text = std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures").join(file)).unwrap();
+    let mut snap = vec![0u8; 22_100];
+    let mut msg = [0u8; 192];
+    let n = unsafe { pib_read(text.as_ptr(), text.len() as u32, snap.as_mut_ptr(), snap.len() as u32, std::ptr::null_mut(), msg.as_mut_ptr(), 192) };
+    assert!(n > 0, "{file}: {}", String::from_utf8_lossy(&msg[..msg.iter().position(|b| *b == 0).unwrap()]));
+    snap.truncate(n as usize);
+    snap
+}
+
 // ---- just enough JSON for the fixture formats: objects, arrays, strings, whole numbers ----
 
 #[derive(Clone, Debug)]
@@ -156,7 +172,6 @@ fn fixtures() -> Vec<(String, Json)> {
             let fx = Parser { s: &text, i: 0 }.value();
             let format = fx.n("format");
             assert!((1..=5).contains(&format) && fx.n("ticks_per_step") == PI_TICKS_PER_STEP);
-            assert!(fx.get("beat").is_none(), "a fixture with a beat file waits for the beat reader (D134)");
             (p.file_stem().unwrap().to_string_lossy().into_owned(), fx)
         })
         .collect()
@@ -382,10 +397,14 @@ fn every_fixture_through_the_terminal_host() {
     for want in ["patterns-chain", "patterns-change-playing", "patterns-choose-and-play", "patterns-copy-and-clear"] {
         assert!(all.iter().any(|(n, _)| n == want), "{want} is not in fixtures/");
     }
+    let mut beats = 0;
     for (name, fx) in &all {
         let seed = fx.n("seed") as u32;
         let format = fx.n("format");
         let want: String = fx.arr("expect").iter().map(|l| if let Json::Str(s) = l { format!("{s}\n") } else { panic!() }).collect();
+        if let Some(Json::Str(file)) = fx.get("beat") {
+            report += &format!("# {name} beat {}\n", hex(&read_beat(file)));
+        }
         let mut check = |label: String, got: String, seen: String, ok: bool| {
             runs += 1;
             if got != want || !ok {
@@ -393,6 +412,24 @@ fn every_fixture_through_the_terminal_host() {
             }
             report += &format!("# {label}\n{got}{seen}");
         };
+        // A fixture with a beat file (fixtures/README.md, format 5): read by pib_read, loaded
+        // before frame 0, no run from a snapshot; its bytes in the report once.
+        if let Some(Json::Str(file)) = fx.get("beat") {
+            let snap = read_beat(file);
+            for (source_name, source) in [("table", PI_SOURCE_TABLE), ("edges", PI_SOURCE_EDGES)] {
+                for rate in [44100u32, 48000, 96000] {
+                    for block in [1u64, 128, 512] {
+                        let (cmds, views, end) = schedule(fx, rate, source, true);
+                        let mut e = Engine::new(rate, seed + 12345);
+                        assert_eq!(e.load(&snap), PI_OK);
+                        let (got, seen, ok) = run(&mut e, &cmds, end, block, &views, format);
+                        check(format!("{name} {source_name} {rate} {block}"), got, seen, ok);
+                    }
+                }
+            }
+            beats += 1;
+            continue;
+        }
         for (source_name, source) in [("table", PI_SOURCE_TABLE), ("edges", PI_SOURCE_EDGES)] {
             for rate in [44100u32, 48000, 96000] {
                 let where_ = format!("{name} {source_name} {rate}");
@@ -460,5 +497,5 @@ fn every_fixture_through_the_terminal_host() {
         std::fs::write(path, &report).unwrap();
     }
     assert!(failed.is_empty(), "{} of {runs} runs did not match: {:?}", failed.len(), &failed[..failed.len().min(10)]);
-    assert_eq!(runs, all.len() * 2 * 3 * 5);
+    assert_eq!(runs, (all.len() - beats) * 2 * 3 * 5 + beats * 2 * 3 * 3);
 }
