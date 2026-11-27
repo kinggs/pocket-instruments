@@ -1,18 +1,18 @@
-# The terminal host (docs/TERMINAL.md, D123): Rhythm in a terminal, on the core's static
+# The terminal host (docs/TERMINAL.md, D123, D125): the instruments in a terminal, on the core's static
 # library through the C ABI. Its own workspace, so the core's lock file and `make build` never
 # see these dependencies; the root workspace excludes this folder.
 [package]
-name = "pi-term"
+name = "pocket-instruments"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "Pocket Instruments: Rhythm, played in a terminal."
+description = "Pocket Instruments: small instruments, played in a terminal."
 publish = false
 build = "build.rs"
 
 [[bin]]
-# A working name (D123 item 9, O3): one line to change before anything is packaged.
-name = "pi-rhythm"
+# One command for the family (D125 item 1). ⚠ The name is not cleared (O3): nothing is packaged.
+name = "pocket-instruments"
 path = "src/main.rs"
 
 [lib]

@@ -69,7 +69,7 @@ Not affiliated with any of them.
 
 ### Linked into the terminal host
 
-`pi-rhythm` (`term/`, `docs/TERMINAL.md`) is built with two libraries from crates.io. Neither is
+`pocket-instruments` (`term/`, `docs/TERMINAL.md`) is built with two libraries from crates.io. Neither is
 in the repository; `term/Cargo.lock` pins the versions. A binary someone distributes carries
 their notices, and cpal's Apache-2.0 licence.
 
