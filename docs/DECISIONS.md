@@ -2798,6 +2798,55 @@ The same preference is Kenny's for other open-source repositories. This reposito
 carry it there; a writing preference across repositories belongs in Kenny's own user-scope
 instructions, which are Kenny's to change.
 
+### D125 — One command, `pocket-instruments`: an intro and a menu of instruments, and a small config file
+**2026-11-27 · decided (Kenny, ruling issue 122: "Take the recommendations") · supersedes D123 item 9 (the binary's working name) · bends "nothing generic until a second instrument needs it" for the menu alone · the terminal host only; the engine, the page and Rack do not change · nothing published**
+
+Kenny, after playing the terminal host: "I think the TUI should actually be named
+`pocket-instruments` that launches with a brief intro / help screen and a menu to decide which
+pi (like rhythm) to run. And maybe some of the config?" Issue 122 set out the options; Kenny
+took its recommendations.
+
+1. **The command and its package are `pocket-instruments`.** `pocket-instruments rhythm` goes
+   straight into Rhythm. One name for the family on the command line, in a package and in the
+   data folder it already uses (`~/.local/share/pocket-instruments/`). `pi-rhythm` goes with no
+   alias: nothing was published under it. ⚠ The family's name is still not cleared (O3, issue
+   45): publishing waits on that, the command does not.
+2. **With no instrument named, it opens on one page:** what it is, the homage line, a menu with
+   a line an instrument (its key, its name, a few words), the settings it will play with and
+   where each came from, and the keys: a number or enter starts, `?` shows every option, `q`
+   quits. Rhythm is the only line today.
+3. **Leaving an instrument:** `:q` goes back to the menu when the menu started it, and quits
+   when it was named on the command line. Ctrl+Q quits the program from anywhere. ⚠ For Kenny
+   to try.
+4. **The menu is the one place "nothing generic" bends,** because Kenny asked for it before a
+   second instrument. It is a list of names and a function to run each, not a plugin interface.
+   Each instrument keeps its own code; Sampler (issue 23) adds a line.
+5. **A small config file, `$XDG_CONFIG_HOME/pocket-instruments/config.toml`** (`~/.config/…`
+   when that is unset), for what people set once:
+
+   | Key | Values | Same as |
+   |---|---|---|
+   | `keys` | `"auto"`, `"hold"`, `"tap"` | `--keys` |
+   | `colour` (or `color`) | `true`, `false` | `--no-color` when false |
+   | `audio` | `"default"`, `"pipewire"`, `"none"` | `--audio` |
+   | `reduced_motion` | `true`, `false` | `--reduced-motion` |
+
+   Its form is a subset of TOML, so a TOML reader would agree: one `key = value` a line,
+   strings in double quotes, `true` or `false`, `#` comments and blank lines; no tables. It is
+   read by this crate's own few lines: no dependency. A missing file is no error; an unknown key
+   or a bad value stops the start with the file, the line and what it takes, as a bad option
+   does. The program never writes it; a settings screen waits for someone to ask.
+6. **Which wins:** an option on the command line, then the file, then `NO_COLOR`, then the
+   default. no-color.org asks for exactly that order (R82).
+7. **The intro's look is a stand-in** until Kenny rules it, in Loom's words and tokens: lettering
+   ecru on ground, the secondary lilac, the chosen line a lit field (ecru, ground lettering;
+   reverse with no colour). No board on the canvas yet. Both sizes: the main screen's 80 by 24
+   and the pocket size's 48 by 10.
+
+Not chosen (issue 122): one binary an instrument (more names to clear and to package); opening
+straight into Rhythm until a second instrument (Kenny asked for the menu now); a settings
+screen; a TOML library for four keys.
+
 ## Open
 
 | ID | Question | Needs |
