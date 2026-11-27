@@ -240,7 +240,12 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
         shared.want_save.store(true, Ordering::Release);
         let until = Instant::now() + Duration::from_millis(500);
         while Instant::now() < until {
-            if let Some(b) = shared.saved.lock().unwrap().take() {
+            let taken = {
+                let mut s = shared.saved.lock().unwrap();
+                let n = std::mem::take(&mut s.1);
+                (n > 0).then(|| s.0[..n].to_vec())
+            };
+            if let Some(b) = taken {
                 return beat::write(path, &b).map_err(|e| format!("could not write {}: {e}", path.display()));
             }
             std::thread::sleep(Duration::from_millis(2));
