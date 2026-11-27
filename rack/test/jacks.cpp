@@ -55,6 +55,12 @@
 //                  fern, the stitch, the bar and pressed from the view in every row, write on or
 //                  off; and each case of the source marks' table, from held, the host's fx
 //                  latch, sampled and the ROUTE masks.
+//   play           (D138, issue 147) PLAY in, by pi::PlayIn: a gate starts a stopped module on
+//                  its rise and stops it on its fall; a trigger (under 10 ms) toggles, acted on
+//                  at its fall when it stops; a rise while playing and a fall while stopped press
+//                  nothing; 0.1 V and 2 V; a finger on play wins; unpatched presses nothing and a
+//                  cable high when patched is a rise; two modules on one button, one stopped
+//                  and one playing, both end up following the button.
 //
 // Since Session 39 every check reads the outputs through Module, which drives jacks.hpp as
 // Rhythm.cpp does: each output's own voltages, kept from frame to frame as Rack keeps them.
@@ -824,6 +830,78 @@ static void lights() {
     check(why.empty(), "lights", why);
 }
 
+// D138: PLAY in. A module is modelled as its playing flag, flipped by a press on the frame it
+// is sent (as the core does with play: ENGINE.md §13).
+static void play() {
+    std::string why;
+    auto expect = [&](bool ok, const char *what) {
+        if (!ok && why.empty()) why = what;
+    };
+    const uint32_t G = 480; // 10 ms at 48 kHz
+    {   // a gate: rise starts, fall stops; and the echoes of it press nothing
+        pi::PlayIn p;
+        expect(!p.frame(true, 0.f, false, false, G), "gate: low presses nothing");
+        expect(p.frame(true, 10.f, false, false, G), "gate: a rise while stopped presses play");
+        int pressed = 0;
+        for (int f = 0; f < 1000; f++) pressed += p.frame(true, 10.f, true, false, G);
+        expect(pressed == 0, "gate: held high presses nothing more");
+        expect(p.frame(true, 0.f, true, false, G), "gate: a fall while playing presses play");
+        expect(!p.frame(true, 0.f, false, false, G), "gate: low again presses nothing");
+        pi::PlayIn q;
+        expect(!q.frame(true, 10.f, true, false, G), "gate: a rise while playing presses nothing");
+        for (int f = 0; f < 1000; f++) q.frame(true, 10.f, false, false, G);
+        expect(!q.frame(true, 0.f, false, false, G), "gate: a fall while stopped presses nothing");
+    }
+    {   // a trigger of 1 ms toggles: a start at its rise, a stop at its fall
+        pi::PlayIn p;
+        bool playing = false;
+        for (int round = 0; round < 4; round++) {
+            for (int f = 0; f < 48; f++)
+                if (p.frame(true, 10.f, playing, false, G)) playing = !playing;
+            bool afterRise = playing;
+            for (int f = 0; f < 2000; f++)
+                if (p.frame(true, 0.f, playing, false, G)) playing = !playing;
+            expect(playing == (round % 2 == 0), "trigger: each trigger toggles play");
+            if (round % 2 == 0) expect(afterRise, "trigger: a start is pressed at the rise");
+        }
+        pi::PlayIn q; // its rise finds it playing; something else stops it before the fall
+        expect(!q.frame(true, 10.f, true, false, G), "trigger: a rise while playing waits for the fall");
+        expect(!q.frame(true, 0.f, false, false, G), "trigger: stopped by then, the fall presses nothing");
+    }
+    {   // the thresholds: 0.1 V and 2 V
+        pi::PlayIn p;
+        expect(!p.frame(true, 1.99f, false, false, G), "thresholds: 1.99 V is not high");
+        expect(p.frame(true, 2.f, false, false, G), "thresholds: 2 V is high");
+        for (int f = 0; f < 600; f++) p.frame(true, 0.11f, true, false, G);
+        expect(p.frame(true, 0.1f, true, false, G), "thresholds: 0.11 V is still high, 0.1 V is low");
+    }
+    {   // a finger wins; unpatched presses nothing; a high cable patched in is a rise
+        pi::PlayIn p;
+        expect(!p.frame(true, 10.f, false, true, G), "held: a rise under a finger presses nothing");
+        pi::PlayIn q;
+        expect(q.frame(true, 10.f, false, false, G), "patched: high from the first frame is a rise");
+        for (int f = 0; f < 1000; f++) q.frame(true, 10.f, true, false, G);
+        expect(!q.frame(false, 0.f, true, false, G), "unpatched: pulling the cable is not a stop");
+        expect(q.frame(true, 10.f, false, false, G), "patched again while high: a rise");
+    }
+    {   // one button (a gate) into two modules, B already started by a finger: the rise starts A
+        // and leaves B; the fall stops both; from then on the button moves both on one frame.
+        pi::PlayIn ina, inb;
+        bool pa = false, pb = true;
+        int apartAfter = 0;
+        for (int f = 0; f < 100000; f++) {
+            float v = (f / 5000) % 2 ? 10.f : 0.f; // low for 5 000 frames, high for 5 000
+            if (ina.frame(true, v, pa, false, G)) pa = !pa;
+            if (inb.frame(true, v, pb, false, G)) pb = !pb;
+            if (f >= 10000 && pa != pb) apartAfter++;
+            if (f == 5000) expect(pa && pb, "one button: the first rise starts A and leaves B playing");
+            if (f == 10000) expect(!pa && !pb, "one button: the first fall stops both");
+        }
+        expect(apartAfter == 0, "one button: after the first fall both follow it on every frame");
+    }
+    check(why.empty(), "play", why);
+}
+
 int main() {
     if (pi_abi_version() != PI_ABI_VERSION) {
         std::printf("FAILED setup: the core is ABI %u, this test ABI %u\n", pi_abi_version(), PI_ABI_VERSION);
@@ -843,6 +921,7 @@ int main() {
     triggers();
     voices();
     lights();
+    play();
     if (failures) {
         std::printf("rack/test/jacks: %d checks FAILED\n", failures);
         return 1;
@@ -852,7 +931,7 @@ int main() {
                 "TRIGGERS as they were. Every sound returned and effect 2 punched: the core's own punched render within %.1e (largest "
                 "%.1e), and heard. FX SEND's sixteen ramps at three rates; the three settings through FX SEND and FX RETURN; A OUT into "
                 "A IN; masks; the keys and sliders read every 16th frame (every frame in a fixture self-test); the clock's source, the display's "
-                "tempo and the white's hold (ABI 15); not-finite; TRIGGERS' 1 ms pulses at three rates, patched and not, and VOICES; a key's lights and the source marks (D120).\n",
+                "tempo and the white's hold (ABI 15); not-finite; TRIGGERS' 1 ms pulses at three rates, patched and not, and VOICES; a key's lights and the source marks (D120); PLAY in (D138).\n",
                 double(OWN_RETURN_BOUND), double(worstOwnReturn), double(PUNCH_BOUND), double(worstPunch));
     return 0;
 }

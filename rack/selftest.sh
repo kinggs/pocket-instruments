@@ -30,6 +30,12 @@
 # modules loop them, effect 4 Ours, effect 2 Rack's beside the dry and effect 2 Rack's in place
 # of the dry (the settings given in each module's data), and FX SEND's sixteen channels are
 # held to jacks.hpp given the second engine's frame.
+# Since issue 147 (D138): eight modules in four pairs, each pair's PLAY in from one signal. A slow
+# LFO's square presses a Fundamental Push; Push's GATE into both PLAY ins of a pair on a second
+# LFO's edges, and of a pair on its beats ("CLOCK: one edge a beat"), as the reference patch is
+# wired; on their table clocks, the slow square itself into a pair (a gate), and Push's TRIG into
+# a pair (a trigger that toggles). Each pair must start as often and step on the same frames,
+# the same steps.
 #
 #   selftest.sh [seconds] [sample rate]
 #
@@ -65,6 +71,9 @@ loop() { printf '{"id":%s,"outputModuleId":%s,"outputId":1,"inputModuleId":%s,"i
 # A module's own output into its own input: cable id, module, output, input. Outputs: FX SEND 4,
 # A OUT 5, B OUT 6. Inputs: FX RETURN 3, A IN 4, B IN 5 (the enums in Rhythm.cpp).
 self() { printf '{"id":%s,"outputModuleId":%s,"outputId":%s,"inputModuleId":%s,"inputId":%s,"color":"#ffffff"}' "$1" "$2" "$3" "$2" "$4"; }
+# Any cable: id, from module, output, to module, input. D138: PLAY in is the Rhythm's input 6;
+# the LFO's square is its output 3; Push's PUSH in is input 1, its TRIG out 0 and GATE out 1.
+wire() { printf '{"id":%s,"outputModuleId":%s,"outputId":%s,"inputModuleId":%s,"inputId":%s,"color":"#ffffff"}' "$1" "$2" "$3" "$4" "$5"; }
 # The LFO's FREQ is param 2; 8 is 256 Hz, so a 48-step fixture goes round five times a second.
 cat > "$user/autosave/patch.json" <<JSON
 {"version":"2.6.6","modules":[
@@ -80,9 +89,19 @@ cat > "$user/autosave/patch.json" <<JSON
  $(rhythm 20 '"loop":"return"'),$(rhythm 21 '"loop":"fx"'),$(rhythm 22 '"loop":"sliders"'),$(rhythm 23 '"loop":"latch"'),
  $(rhythm 24 '"loop":"fx","fxRack":2,"fxInPlace":0'),$(rhythm 25 '"loop":"fx","fxRack":2,"fxInPlace":2'),
  $(rhythm 26 '"fixture":"fx-repeat-holds"'),$(rhythm 27 '"fixture":"fx-shuffle"'),
- $(rhythm 28 '"fixture":"fx-repeat-holds"'),$(rhythm 29 '"fixture":"fx-shuffle"')],
+ $(rhythm 28 '"fixture":"fx-repeat-holds"'),$(rhythm 29 '"fixture":"fx-shuffle"'),
+ {"id":30,"plugin":"Fundamental","model":"LFO","version":"2.6.4","params":[{"id":2,"value":3.0}],"pos":[0,3]},
+ $(rhythm 31 ''),$(rhythm 32 ''),
+ {"id":33,"plugin":"Fundamental","model":"LFO","version":"2.6.4","params":[{"id":2,"value":-1.5}],"pos":[0,4]},
+ $(rhythm 34 ''),$(rhythm 35 ''),
+ {"id":36,"plugin":"Fundamental","model":"Push","version":"2.6.4","params":[],"pos":[0,5]},
+ $(rhythm 37 ''),$(rhythm 38 ''),$(rhythm 39 '"clockBeat":true'),$(rhythm 40 '"clockBeat":true')],
  "cables":[$(cable 2),$(cable 3),$(cable 4),$(edge 10 10),$(edge 11 11),$(edge 12 12),$(edge 15 15),$(loop 20 9),$(loop 21 13),
-  $(edge 18 18),$(edge 19 19),$(edge 28 28),$(edge 29 29),$(loop 30 20),$(self 31 21 4 3),$(self 32 22 5 4),$(self 33 22 6 5),$(self 34 24 4 3),$(self 35 25 4 3)]}
+  $(edge 18 18),$(edge 19 19),$(edge 28 28),$(edge 29 29),$(loop 30 20),$(self 31 21 4 3),$(self 32 22 5 4),$(self 33 22 6 5),$(self 34 24 4 3),$(self 35 25 4 3),
+  $(wire 36 30 3 31 0),$(wire 37 30 3 32 0),$(wire 38 36 1 31 6),$(wire 39 36 1 32 6),
+  $(wire 40 33 3 34 6),$(wire 41 33 3 35 6),
+  $(wire 42 33 3 36 1),$(wire 43 36 0 37 6),$(wire 44 36 0 38 6),
+  $(wire 45 30 3 39 0),$(wire 46 30 3 40 0),$(wire 47 36 1 39 6),$(wire 48 36 1 40 6)]}
 JSON
 (cd "$app" && (sleep "$secs"; echo) | ./Rack -h -u "$user" >/dev/null 2>&1) || { echo "selftest: Rack exited badly"; tail -5 "$user/log.txt"; exit 1; }
 lines=$(grep 'Pocket Instruments probe' "$user/log.txt" || true)
@@ -129,6 +148,21 @@ echo "$rl" | grep 'loop return:' | grep -vq 'audio peak 0\.00 V' || { echo "self
 echo "$rl" | grep 'loop return:' | grep -qE ' [1-9][0-9]* frames with RETURN' || { echo "selftest: FAILED (the return loop took nothing from RETURN)"; exit 1; }
 # D78: the fx latch, every pass.
 echo "$rl" | grep -E "loop latch: [1-9][0-9]* passes held to the core, 0 not, [1-9][0-9]* frames the same, 0 not" | grep -q . || { echo "selftest: FAILED (the fx latch at $rate Hz)"; exit 1; }
+# D138: modules run from one PLAY signal, in step: each pair the same starts, the same steps and
+# the same sum of every step's engine frame and number, so every step on the same frame.
+pl=$(grep 'Pocket Instruments rhythm play (removed)' "$user/log.txt" || true) # printed above, with the other Rhythm lines
+played() { echo "$pl" | sed -n "s/^.*module $1: rate $rate Hz, \([0-9]*\) starts, \([0-9]*\) steps, sum \([0-9a-f]*\)\$/\1 \2 \3/p"; }
+for pair in "31 32 3 one LFO's edges, Push's gate into both PLAY ins" "39 40 3 one LFO's beats, Push's gate into both PLAY ins" \
+            "34 35 3 their table clocks, one LFO's square into both PLAY ins" "37 38 2 their table clocks, Push's trigger into both PLAY ins"; do
+    set -- $pair
+    x=$1 y=$2 least=$3
+    shift 3
+    a=$(played $x); b=$(played $y)
+    [ -n "$a" ] && [ "$a" = "$b" ] || { echo "selftest: FAILED (PLAY: modules $x and $y not in step on $* at $rate Hz: '$a' and '$b')"; exit 1; }
+    set -- $a
+    [ "$1" -ge "$least" ] && [ "$2" -gt 0 ] || { echo "selftest: FAILED (PLAY: modules $x and $y started $1 times, $2 steps, at $rate Hz; at least $least starts wanted)"; exit 1; }
+done
 echo "selftest: 4 probes clean in Rack at $rate Hz, each sounding; one on the sixteen samples, from a version 1 snapshot."
 echo "selftest: 16 Rhythm modules held to the three format 2 fixtures, the four format 3 and the format 4 one on both clocks at $rate Hz, by their own parameters, FX GATES to each view's fx; one through RETURN; the instrument loaded a version 1 snapshot."
+echo "selftest: 8 Rhythm modules by PLAY in pairs (D138), each pair every step on the same frame: Push's gate into both, on one LFO's edges and on its beats; one gate and Push's trigger into both, on their table clocks."
 echo "selftest: 5 Rhythm modules through their own cables (VOICES to RETURN with effect 2 punched; FX SEND's sixteen channels to FX RETURN with effect 4 Ours, effect 2 beside the dry and effect 2 in place of the dry, FX SEND held to jacks.hpp; A OUT and B OUT to A IN and B IN), each frame the core's own; the fx latch (D78)."

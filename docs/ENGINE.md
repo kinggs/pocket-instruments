@@ -2770,6 +2770,23 @@ PLAY ins, and two from one trigger, toggled together, every step of each pair on
 frame and the same step; every existing self-test as before; and a patch saved before the
 change opening with every cable on the same jack. `rack/test/jacks.cpp` holds the rule.
 
+**Built (issue 147; no ABI change).** `pi::PlayIn` in `rack/src/jacks.hpp`, read in
+`Rhythm::process` before the commands are put together; `PLAY_INPUT`, input 6. Proven by
+`rack/test/jacks.cpp`'s `play` (six faults planted in `PlayIn`, each caught by name) and by
+`make -C rack selftest` at 44.1, 48 and 96 kHz: four pairs (Push's GATE into both on one LFO's
+edges and on its beats, the LFO's square into both on the table, Push's TRIG into both on the
+table), each pair the same starts and every step on the same engine frame (a planted fault,
+PLAY in pressing nothing, caught: "started 0 times"). The patch the self-test has always opened, saved before
+the new port, opens with every cable where it was. Cost, `perf` on a headless Rack at 48 kHz,
+eight modules stopped, 25 s, samples of 200 000 cycles in `Rhythm::process`: before 5 026 and
+4 394; after, PLAY unpatched 4 262 and 4 227; after, PLAY patched (0 V) 4 699 and 4 076. The
+change is inside the spread between two runs of one build. What the brief left to the build:
+
+- **A press when the play key's parameter is down but not yet scanned** goes through; "held"
+  is what the core was last told (`keyDown`), within the 16-frame scan (D99).
+- ⚠ **The order "before `CLOCK`"** is held by the two-engine scratch program, not by a
+  committed test: in a patch of one button it matters only on the frame an edge arrives.
+
 ## 20. The sliders are the hand's; a step keeps what it was written with (ABI 8; designed 2026-11-23; D75; built in Session 21)
 
 Until now each sound owned its sliders and a `PARAM` moved the chosen sound's (§13, D54).

@@ -53,6 +53,7 @@ Kenny's brief for it: dark, high contrast, easy to read with weak eyes.
 | `rack-weave-stopped-200.png` | Stopped after seven steps: the cloth as it was left, the beater back to one cell, the shuttle at the top with no thread, `step --` |
 | `phone-weave-step13.png` | The phone page's display at three device pixels a CSS pixel (a headless browser, the view filled by hand): the same moment as `rack-weave-step13`, to compare the two hosts' painting of the same cells |
 | `play-jack-options.png` | Issue 147 (D138): the top of the panel today and with a PLAY jack in three places, drawn by `make_panel.py` with the sockets and keys sketched over it (not Rack's own drawing), as put to Kenny. 1: PLAY in under RESET, nothing moved; 2: in only, the column spaced; 3, then recommended: PLAY in under RESET and PLAY out under AUDIO. Each passes `--check`. **Kenny chose 2, with the column moved up a little** (`play-jack-ruled.png`) |
+| `rack-play-jack-100.png`, `-200.png` | Issue 147's build (D138), from Rack's own screenshot mode at 100% and 200%: the module before (left) and with PLAY under RESET and the column moved up (right). Nothing lit: no module runs in that mode |
 | `play-jack-ruled.png` | The same drawing, today beside what Kenny ruled (D138 item 3): PLAY in only, CLOCK at y 13.15, RESET 25.95, PLAY 38.75 |
 
 The four `rack-face-*` pairs above were taken before the weave and show its area dark; they
@@ -394,8 +395,9 @@ Positions in mm from the top-left corner (`uv run design/make_panel.py --positio
 | fx | 99.55 | 80.15 | 9.55 | 23.70 |
 | play | 109.70 | 80.15 | 9.55 | 23.70 |
 | write | 119.85 | 80.15 | 9.55 | 23.70 |
-| jack CLOCK (in) | 9.50 | 13.50 | | |
-| jack RESET (in) | 9.50 | 27.50 | | |
+| jack CLOCK (in) | 9.50 | 13.15 (13.50 until D138) | | |
+| jack RESET (in) | 9.50 | 25.95 (27.50 until D138) | | |
+| jack PLAY (in; D138) | 9.50 | 38.75 | | |
 | jack AUDIO (out) | 126.58 | 21.00 | | |
 | SOUNDS: TRIG (TRIGGERS, out, 16 channels) | 10.60 | 116.30 | | |
 | SOUNDS: OUT (VOICES, out, 16) | 21.80 | 116.30 | | |
