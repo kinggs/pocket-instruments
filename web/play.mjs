@@ -82,6 +82,39 @@
 //     sheet into view; esc lets every latch go, fx's too.
 //   - D116 item 3, D119 item 6: `?` opens the keys helper and esc closes it; a click on the
 //     `?` mark in the display's top right corner opens it too.
+// Added for issue 141 (ENGINE.md §21; D133, D135, D136):
+//   - in every drawing, while pattern is held (the view's bit 17) or latched: every key's
+//     field but the active pattern's, the stitch, the bar and pressed are the view's; no frame,
+//     no core and no twill is drawn (counted where each would show); the display's line is
+//     `pattern <64 + 1>`, then `<65 + 1>/<66>` while the chain is longer than one, then
+//     `→ <80's low four bits + 1>` while a next chain waits;
+//   - the four patterns-* fixtures played by touch, each in a fresh page: every view, as text
+//     (format 5), is the fixture's, and each stretch of play's trace, its ticks counted from
+//     the stretch's first event, is the fixture's `expect` cut the same way;
+//   - D135 item 1: Shift+click pattern, Shift+click key 2, Shift+click key 3 (pattern stays
+//     held and lit), a plain click on key 1: the chain 2 3 1 and nothing latched; the same by
+//     Shift+8, Shift+3, 4: the chain 3 4;
+//   - D135 item 2: Shift+click write latches it (held, lit) and flips write mode; Shift+click
+//     pattern and click key 6: the active pattern is in slot 6, write mode is back off and
+//     both latches are gone; Shift+8, Shift+p, e: slot 7 the same; Shift+click function, click
+//     pattern clears the active pattern only; esc lets a latched pattern go;
+//   - the flicker: the active key's field, sampled in every drawing, starts lit and turns every
+//     250 ms (190 to 340 allowed, three turns or more), stopped on an empty pattern (⚠ open
+//     (empty flicker)) and playing on a used one; let go, the field is the view's again;
+//   - the display: `pattern 6 → 7` while a chain waits, `pattern 7 1/2` once it lands;
+//   - the save throttle: a drag of 150 pointer moves over about 1.5 s sends a PARAM for each
+//     and the worklet posts at most one snapshot a quarter second (no gap under 150 ms at the
+//     page, at most the drag's quarter seconds plus two), the last holding the drag's last value;
+//   - a version 4 snapshot (straight-sixteenths', fixtures/snapshots-v4.txt) in the page's
+//     storage loads (result 0) as pattern 1, the chain pattern 1 alone; the play key plays
+//     straight-sixteenths' two bars line for line; saved again it is version 5, 1 640 bytes.
+//   - the bank (issue 164; D141, D142, proposed): with nothing stored, a person's page (the
+//     checks' "first") opens on the bank's first beat, pib_read of the file bank.txt's first
+//     line names, byte for byte, and it plays beat-amen-break's views and trace; a beat from the
+//     Beats list replaces it and keeps it, once, in the storage's second key; Your last beat
+//     brings it back; Empty is pi_init's beat; a beat stored wins over the default; a bank whose
+//     first beat does not read leaves the page empty and says why; and no other phase opens on
+//     the bank (D142 item 5: under ?auto the page starts empty).
 // Each line fails once on a planted fault (PLAN.md, Session 12's Handover).
 //
 // SPDX-License-Identifier: MIT
@@ -99,7 +132,7 @@ if (!reportPath) {
   process.exit(2);
 }
 const browsers = asked.length ? asked : ["chromium", "firefox"];
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".wasm": "application/wasm", ".s16": "application/octet-stream", ".txt": "text/plain" };
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".wasm": "application/wasm", ".s16": "application/octet-stream", ".txt": "text/plain", ".beat": "text/plain" };
 const report = readFileSync(reportPath, "utf8");
 const sixteenths = JSON.parse(readFileSync(join(root, "fixtures/straight-sixteenths.json"), "utf8"));
 
@@ -114,6 +147,13 @@ const server = createServer((req, res) => {
       results.push(r);
       if (r.done && finished) finished();
     });
+    return;
+  }
+  // Issue 164: a bank whose first beat does not read, for the page's "badbank" check.
+  const BADBANK = { "/play-badbank/bank.txt": "amen-break.beat\n", "/play-badbank/amen-break.beat": "pocket-instruments beat 1\ntempo 999\n" };
+  const bad = BADBANK[req.url.split("?")[0]];
+  if (bad) {
+    res.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store" }).end(bad);
     return;
   }
   const path = normalize(join(root, decodeURIComponent(req.url.split("?")[0])));
@@ -141,7 +181,7 @@ function judge(phases) {
   const bad = [];
   const p = Object.fromEntries(phases.map((r) => [r.phase, r]));
   for (const r of phases) for (const f of r.failed) bad.push(`phase ${r.phase}: ${f}`);
-  for (const name of ["1", "reload", "bpm", "latch", "keep", "punch", "shuffle", "written", "fxlatch", "keys", "still"]) if (!p[name]) bad.push(`phase ${name} never reported`);
+  for (const name of ["1", "reload", "bpm", "latch", "keep", "punch", "shuffle", "written", "fxlatch", "keys", "still", "pchoose", "pchain", "pcopy", "pchange", "pshift", "old", "beat", "first", "kept", "badbank"]) if (!p[name]) bad.push(`phase ${name} never reported`);
   // Each phase reports under its own name: p.reload.reload, p.bpm.bpm. (A first draft read
   // p.bpm.last, and undefined equalled undefined: the bpm line passed with nothing checked.)
   const one = p["1"] || {}, reload = p.reload?.reload || {}, bpm = p.bpm?.bpm || {};
@@ -176,7 +216,9 @@ function judge(phases) {
   if (!(L.shiftKeys?.held === 1 << 16 && L.shiftKeys?.sel === 4 && L.shiftKeys?.after === 0 && L.shiftKeys?.lit === false)) bad.push(`D113: Shift+7 q: ${JSON.stringify(L.shiftKeys)}`);
   if (!(L.dblA === 32768 && L.dblBpm?.swing === 0 && L.dblBpm?.tempo === 120000)) bad.push(`double-click: A ${L.dblA}; with bpm ${JSON.stringify(L.dblBpm)}`);
   const K = p.keep?.keep || {};
-  const keepOk = K.size === 1464 && K.loadedCap === true && K.chosen?.a === 60000 && K.chosen?.mark === 60000 &&
+  // ABI 16 (§21): version 5, 276 bytes and 1 364 a pattern written (version 4's 1464 until then).
+  const patternsWritten = [...Array(16).keys()].filter((p) => (K.written >> p) & 1).length;
+  const keepOk = K.version === 5 && K.size === 276 + 1364 * patternsWritten && K.loadedCap === true && K.chosen?.a === 60000 && K.chosen?.mark === 60000 &&
     K.chosen?.capStayed === true && K.marks?.join() === "20000,60000" && K.kept?.keep === 0b10001 &&
     K.kept?.step1?.join() === "60000,32768" && K.kept?.step5?.join() === "20000,32768";
   if (!keepOk) bad.push(`§20, the hand and what a step keeps: ${JSON.stringify(K)}`);
@@ -245,13 +287,95 @@ function judge(phases) {
     if (S.reduced.travel !== 1) bad.push(`reduced motion and the weave moved inside a step: ${JSON.stringify(S.reduced)}`);
     if (S.stoppedPaints !== 0) bad.push(`stopped, the weave was painted ${S.stoppedPaints} times`);
   }
+  // Issue 141 (ENGINE.md §21; D133, D135, D136), written before the page's code changed.
+  // The four patterns-* fixtures by touch: their views, as text (format 5), and their traces.
+  for (const [name, key] of [["patterns-choose-and-play", "pchoose"], ["patterns-chain", "pchain"], ["patterns-copy-and-clear", "pcopy"], ["patterns-change-playing", "pchange"]]) {
+    const F = p[key]?.[key] || {};
+    if (!F.want?.length || F.got?.join("\n") !== F.want.join("\n"))
+      bad.push(`${name}'s views:\n${(F.want || []).map((w, i) => `     got  ${F.got?.[i]}\n     want ${w}`).join("\n")}`);
+    if (!F.wantTrace?.length || F.trace?.join("\n") !== F.wantTrace.join("\n")) {
+      const at = (F.trace || []).findIndex((l, i) => l !== F.wantTrace?.[i]);
+      bad.push(`${name}'s trace: ${F.trace?.length} lines, not ${F.wantTrace?.length}; first difference at line ${at + 1}: "${F.trace?.[at]}" for "${F.wantTrace?.[at]}"`);
+    }
+  }
+  // D135 by a mouse and the keys; the lights while pattern is down; the display; the throttle.
+  const D = p.pshift?.pshift || {}, same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const flickerOk = (F) => F?.first === 1 && F.inner?.length >= 3 && F.inner.every((d) => d >= 190 && d <= 340) && F.active?.length === 1;
+  const T = D.throttle || {};
+  const shiftChecks = {
+    "D135 item 1: Shift+click on a grid key keeps a latched pattern": D.mouse?.afterFirst?.held === 1 << 17 && D.mouse.afterFirst.lit === true &&
+      same(D.mouse.afterFirst.latched, [17]) && D.mouse.afterSecond?.held === 1 << 17 && D.mouse.afterSecond.lit === true,
+    "D135 item 1: a plain click ends the chain, 2 3 1, pattern let go": D.mouse?.end?.chain === "120" && D.mouse.end.pat === 1 && D.mouse.end.held === 0 &&
+      D.mouse.end.lit === false && same(D.mouse.end.latched, []),
+    "D135 item 1 by the computer keys: Shift+8, Shift+3, 4": D.keys?.afterFirst?.held === 1 << 17 && same(D.keys.afterFirst.latched, [17]) &&
+      D.keys?.end?.chain === "23" && D.keys.end.held === 0 && same(D.keys.end.latched, []),
+    "D135 item 2: Shift+click write latches it and flips write mode": D.copy?.writeLatched?.held === 1 << 22 && D.copy.writeLatched.write === 1 && D.copy.writeLatched.lit === true,
+    "D135 item 2: Shift+click write, pattern, click 6 copies; write mode back; both let go": D.copy?.end?.used === 0x24 && D.copy.end.pat === 2 &&
+      D.copy.end.write === 0 && same(D.copy.end.latched, []) && same(D.copy.end.lit, [false, false]),
+    "D135 item 2 by the computer keys: Shift+8, Shift+p, e copies to 7": D.copyKeys?.used === 0x64 && D.copyKeys.pat === 2 && D.copyKeys.write === 0 && same(D.copyKeys.latched, []),
+    "clear by a mouse: Shift+click function, click pattern: the active pattern only": D.clear?.used === 0x60 && D.clear.pat === 2,
+    "esc lets a latched pattern go": D.esc?.held === 0 && same(D.esc.latched, []),
+    "§21: an empty active pattern flickers, stopped (⚠ open (empty flicker))": flickerOk(D.flickerEmpty) && same(D.flickerEmpty.used, [0]) &&
+      D.afterFlicker?.on === !!D.afterFlicker?.field,
+    "§21: playing, the active pattern flickers while pattern is held": flickerOk(D.flickerPlaying) && same(D.flickerPlaying.used, [1]),
+    "§21: playing with pattern held, no frame, core or twill was drawn where each would show": D.hidden?.framesHidden > 10 && D.hidden?.coresHidden > 0 && D.hidden?.twillsHidden > 0,
+    "§21: the display says the pattern waiting, then the chain's place": D.waiting === "pattern 6 → 7" && D.landed === "pattern 7 1/2",
+    "§21: a slider drag of many changes saves at most four times a second, and its last value": T.params >= 100 && T.saves >= 2 &&
+      T.saves <= Math.ceil(T.dragMs / 250) + 2 && T.gaps?.every((g) => g >= 150) && T.lastSaved === T.last,
+  };
+  for (const [name, ok] of Object.entries(shiftChecks)) if (!ok) bad.push(`${name}: ${JSON.stringify(D)}`);
+  const PH = phases.reduce((t, r) => { for (const k of Object.keys(r.pheld || {})) t[k] = (t[k] || 0) + r.pheld[k]; return t; }, {});
+  if (!(PH.chainShown > 0 && PH.nextShown > 0)) bad.push(`§21: the display never drew a chain's place or a waiting pattern: ${JSON.stringify(PH)}`);
+  // A beat saved before this (§21): a version 4 snapshot in the page's storage loads and plays as it did.
+  const O = p.old?.old || {};
+  const oldOk = O.loaded === 0 && O.keptVersion === 4 && O.keptSize === 1464 && O.view?.pat === 0 && O.view?.chain === "0" &&
+    O.saved?.version === 5 && O.saved?.size === 1640 && O.saved?.written === 1 && O.trace?.join("\n") === want.join("\n");
+  if (!oldOk) bad.push(`a version 4 beat from the page's storage: ${JSON.stringify({ ...O, trace: O.trace?.length })}`);
+  // The beat file (docs/BEAT.md; issue 141's last box), through the page's buttons and file input.
+  const B = p.beat?.beat || {};
+  const beatChecks = {
+    "a refused file shows the crate's message and changes nothing": !!B.bad?.want && B.bad.got === B.bad.want && B.bad.ask === false && B.bad.unchanged === true,
+    "a newer beat file shows the crate's message and changes nothing": /this is beat 2/.test(B.newer?.want || "") && B.newer.got === B.newer.want && B.newer.ask === false && B.newer.unchanged === true,
+    "opening asks first; keeping the beat changes nothing": B.ask?.shown === true && /replaces the beat here/.test(B.ask.text) && B.kept?.hidden === true && B.kept.unchanged === true,
+    "the worked example opens": B.opened === "Opened Four and a fill." && B.loaded === 0,
+    "saved, it is the file byte for byte": B.saved?.same === true && B.saved.name === "four-and-a-fill.beat" && B.saveSaid === "Saved four-and-a-fill.beat.",
+    "own 9 is said on opening": B.own === "Opened Four and a fill. Key 9 used its writer's own sample; playing the starter pack's.",
+  };
+  for (const [name, ok] of Object.entries(beatChecks)) if (!ok) bad.push(`${name}: ${JSON.stringify({ ...B, trace: undefined, wantTrace: undefined, views: undefined, wantViews: undefined })}`);
+  if (!B.wantViews?.length || B.views?.join("\n") !== B.wantViews.join("\n"))
+    bad.push(`beat-four-and-a-fill's views:\n${(B.wantViews || []).map((w, i) => `     got  ${B.views?.[i]}\n     want ${w}`).join("\n")}`);
+  if (!B.wantTrace?.length || B.trace?.join("\n") !== B.wantTrace.join("\n")) {
+    const at = (B.trace || []).findIndex((l, i) => l !== B.wantTrace?.[i]);
+    bad.push(`beat-four-and-a-fill's trace: ${B.trace?.length} lines, not ${B.wantTrace?.length}; first difference at line ${at + 1}: "${B.trace?.[at]}" for "${B.wantTrace?.[at]}"`);
+  }
+  // The bank and the beat a new player opens on (issue 164; D141, D142, proposed).
+  const F = p.first?.first || {}, KP = p.kept?.kept || {}, BB = p.badbank?.badbank || {};
+  const bankChecks = {
+    "a first start opens on the bank's first beat, pib_read of the file, byte for byte": F.loaded === 0 && F.defaultIsFile === true && F.engineIsFile === true && /^A new beat: /.test(F.said || ""),
+    "beat-amen-break is the bank's first beat (bank.txt's first line moved: the fixture must follow it)": F.fixtureIsDefault === true,
+    "the Beats list shows every beat in bank.txt": F.shown > 1 && F.lastHidden === true,
+    "a beat from the list replaces the beat and keeps the one replaced, in the storage too": F.secondLoaded === true && F.keptIsDefault === true && F.keptStored === true && F.lastShown === true,
+    "Your last beat brings the replaced beat back": F.backLoaded === true && F.backKeptIsSecond === true,
+    "Empty gives pi_init's beat, and keeps the one it replaced": F.emptyLoaded === true && F.emptyView?.used === 0 && F.emptyView?.chain === 1 && F.emptyKeptIsDefault === true,
+    "under ?auto the page keeps no beat of its own, the default included": F.stored === null,
+    "a beat stored wins over the default": KP.loaded === 0 && KP.isMine === true && KP.defaultOpened === false && !/new beat/.test(KP.said || ""),
+    "a bank whose first beat does not read: empty, and why": /^Started empty: the bank's first beat did not open: amen-break\.beat: line 2/.test(BB.said || "") && BB.loaded === null && BB.isEmpty === true && BB.firstDisabled === true,
+  };
+  for (const [name, ok] of Object.entries(bankChecks)) if (!ok) bad.push(`${name}: ${JSON.stringify({ first: { ...F, trace: undefined, wantTrace: undefined, views: undefined, wantViews: undefined }, kept: KP, badbank: BB })}`);
+  if (!F.wantViews?.length || F.views?.join("\n") !== F.wantViews.join("\n"))
+    bad.push(`the default's views (beat-amen-break):\n${(F.wantViews || []).map((w, i) => `     got  ${F.views?.[i]}\n     want ${w}`).join("\n")}`);
+  if (!F.wantTrace?.length || F.trace?.join("\n") !== F.wantTrace.join("\n")) {
+    const at = (F.trace || []).findIndex((l, i) => l !== F.wantTrace?.[i]);
+    bad.push(`the default's trace (beat-amen-break): ${F.trace?.length} lines, not ${F.wantTrace?.length}; first difference at line ${at + 1}: "${F.trace?.[at]}" for "${F.wantTrace?.[at]}"`);
+  }
+  for (const r of phases) if (r.defaultOpened !== (r.phase === "first")) bad.push(`phase ${r.phase}: opened on the bank's first beat: ${r.defaultOpened} (D142 item 5: only a person's first start does)`);
   const p6 = one.p6 || {};
   const label = p6.hex && new RegExp(`^# straight-sixteenths .* snapshot ${p6.hex}$`, "m").test(report);
   if (!p6.playing) bad.push("P6: it was not playing while the keys went in");
   if (!label) bad.push(`P6: the page's snapshot is not one the wasm host ran straight-sixteenths from: ${p6.hex}`);
   if (p6.stored !== p6.hex) bad.push("P6: what the browser kept is not the snapshot the page was sent");
   const whites = phases.reduce((n, r) => n + (r.core ? 1 : 0), 0);
-  return { bad, drawn, p6, pw, whites, woven, S };
+  return { bad, drawn, p6, pw, whites, woven, S, D };
 }
 
 let ran = 0, failed = 0;
@@ -270,7 +394,7 @@ for (const name of browsers) {
   child.kill();
   await new Promise((r) => setTimeout(r, 500));
   rmSync(profile, { recursive: true, force: true });
-  const { bad, drawn, p6, pw, whites, woven, S } = judge(results);
+  const { bad, drawn, p6, pw, whites, woven, S, D } = judge(results);
   if (!ok) bad.unshift("the page did not finish within two minutes");
   if (bad.length) failed++;
   if (process.env.PI_DEBUG) console.log(JSON.stringify(results.map((r) => ({ ...r, trace: undefined })), null, 1));
@@ -279,7 +403,9 @@ for (const name of browsers) {
     `P6: ${p6.hex ? "snapshot " + p6.hex.slice(32, 48) + "…" : "no snapshot"}, audio ${p6.behindMs} ms behind the page's clock over ${p6.seconds} s; ` +
     `lights held to §14 in ${whites} phases (cores: ${pw.writeOn ?? 0} with write on, ${pw.writeOff ?? 0} off, ${pw.fern ?? 0} fern; twill ${pw.twill ?? 0}; dash ${pw.dash ?? 0}); ` +
     `the weave held to pi_weave in ${woven} drawings${REDUCED ? " (the browser asking for reduced motion)" : ""}: moving, ${S.moving?.whites} with a flash and ${S.moving?.travel} drawings in a step; ` +
-    `reduced, ${S.reduced?.whites} and ${S.reduced?.travel}; stopped, ${S.stoppedPaints} paints`);
+    `reduced, ${S.reduced?.whites} and ${S.reduced?.travel}; stopped, ${S.stoppedPaints} paints; ` +
+    `patterns: the flicker ${D?.flickerPlaying?.inner?.join("/") ?? "-"} ms, held while playing ${D?.hidden?.framesHidden ?? 0} drawings with no frame; ` +
+    `a drag of ${D?.throttle?.params ?? 0} changes in ${D?.throttle?.dragMs ?? 0} ms saved ${D?.throttle?.saves ?? 0} times`);
   for (const b of bad) console.log(`  ${b}`);
 }
 server.close();

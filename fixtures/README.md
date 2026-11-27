@@ -745,6 +745,16 @@ snapshot from the ABI 15 core, committed first, never regenerated.
 
 ### `beat-four-and-a-fill`
 
+**Built (issue 140, 2026-11-27):** moved up from `designed/` unchanged, in a commit of its own,
+and passed at its first run in Rust, C++, Node and the terminal host (the beat read by each
+host's beat reader: the crate, `libpi_beat.a`, `pi_beat.wasm`). Each harness's engine starts
+from another seed (the fixture's plus 12 345), so the beat's own seed is what plays; no tempo is
+sent. The report holds the beat's bytes once (`# beat-four-and-a-fill beat <hex>`), then its 18
+runs. ~~The Rhythm module's self-test leaves it out (`rack/rhythm.jq`): it reads no beat file.~~
+Since issue 142 the Rhythm module's self-test plays it too, on both clocks: a second thread opens
+the beat file through the module's own path (`Rhythm::openBeat`, as the menu's Open does), the
+engine made from the fixture's seed plus 12 345 loads it, and the trace and views must match.
+
 `docs/BEAT.md`'s worked example. The beat is loaded before frame 0, then the play edit at 0:
 tick 0 is pattern 1's step 0, the chain at its first pattern.
 
@@ -761,3 +771,65 @@ tick 0 is pattern 1's step 0, the chain at its first pattern.
   `sampled=0100`, `fxsounds=feff`; `a=30000 b=36000`, the hand's; `ea=32768`, the kick's
   kept pair `a`. At 63, pattern 2: field `0511`, stitch `f044`, the lane `3000`, `pos=3`;
   fires 16, 4, 14 and 6. At 79, pattern 1 again, `pos=0`: fires 20, 4, 18 and 8.
+
+## Two views worked again for D133 (2026-11-27; issue 139, the build) ⚠
+
+`ENGINE.md` §21 says "Formats 1 to 4 are unchanged: every existing fixture's views stay the
+same bytes". Two existing views do not: each has pattern held, and §21's "pattern held" row
+(D133 item 5, accepted by Kenny on 2026-11-27, recorded in D136) changes what that row shows.
+The design's own `patterns-choose-and-play` (its view at 5: a chain of one, `stitch=0001`)
+confirms the row as written, so the row stands and these two lines were worked again by hand
+from it, before the core that gives them was committed. ⚠ For Kenny: §21's sentence is the one
+that is wrong; nothing else on either line, no `expect` and no trace moves.
+
+| Fixture | View `at` | Row | Was | Now | Why |
+|---|---|---|---|---|---|
+| `keys-bpm-family` | 10 | pattern held (function too) | `stitch=0000` | `stitch=0001` | the chain is pattern 1 alone; clear has just emptied pattern 1, so no pattern is used (`field=0000`) and the bar is on the active one, pattern 1, as before |
+| `keys-tap-and-choose` | 13 | pattern held | `field=0000 stitch=0000` | `field=0001 stitch=0040` | pattern 1 is used (track 3's step 2, counted from 0: the step-0 edit); pattern + key 7 while playing is now a choice (§21's keys), so pattern 7 is the next chain and is stitched while it waits; the bar is on pattern 1, as before. It would land where pattern 1 wraps, tick 2304, after the run's last step (tick 1440): the trace does not move |
+
+Each fixture's `about` says the same in a sentence. A view of format 1 to 4 has no bytes 64 to
+87, so nothing else of either shows.
+
+## `beat-amen-break`, worked by hand (2026-11-27; issue 164, D141, D142 proposed; in `designed/` until the hosts read the bank)
+
+**Built (issue 164, the same day):** moved up from `designed/` unchanged, in a commit of its own,
+and passed at its first run in Rust, C++, Node and the terminal host. Since then it is also
+played from each host's own bank: the terminal's first start, the page's first start (`make
+play`, both browsers) and the Rhythm module's self-test on both clocks, from the plugin's
+`res/beats/`.
+
+The bank's default beat, the beat a new player opens on (`docs/BANK.md`). Its `beat` is the
+bank's own file, `../beats/amen-break.beat`, named from `fixtures/` (each harness reads a
+fixture's `beat` beside the fixture), so the fixture and the bank cannot drift: there is no
+copy of the beat in `fixtures/`. Worked from the file's rows and `ENGINE.md` §5, §14, §17, §20
+and §21, with no engine and no reader; a throwaway script laid the JSON out from the step lists
+typed below (as in Session 10). `beat/expected/amen-break.txt` (the command's grids) was not
+read for it.
+
+- **The file, read:** tempo 136 (`mbpm` 136 000, so `F` is true to the beat's tempo), no swing,
+  volume 16 and sliders 32 768 by default, seed 1 and no probability (no draw is taken), no lane.
+  `sound 1 sample` and `sound 2 sample`: `sampled=0003`; no `dry`: `fxsounds=ffff`. Chain
+  `1 2 3 4`: `chain=0123`; four patterns written: `used=000f`.
+- **The steps, counted from 0** (a row's character *n* is step *n*):
+
+  | Pattern | kick (0) | snare (1) | hat (2) | cymbal (6) | hits |
+  |---|---|---|---|---|---|
+  | 1, 2 | 0 2 10 11 | 4 7 9 12 15 | 0 2 4 6 8 10 12 14 | | 4 + 5 + 8 = 17 |
+  | 3 | 0 2 10 | 4 7 9 14 | 0 2 4 6 8 10 12 14 | | 3 + 4 + 8 = 15 |
+  | 4 | 2 3 10 | 1 4 7 9 14 | 0 2 4 6 8 12 14 | 10 | 3 + 5 + 7 + 1 = 16 |
+
+- **The trace:** the play edit at 0, so tick 0 is pattern 1's step 0 (§21: play restarts the
+  chain). Grid step *g* is tick 96*g*; swing 0 moves nothing. The chain moves on where each
+  pattern wraps (§21, "Advancing"): pattern 2 at 1536, 3 at 3072, 4 at 4608, and pattern 1 again
+  at 6144, step 64, the run's last: its kick and hat. In a step, the step line, then its hits in
+  rising track. 65 step lines and 17 + 17 + 15 + 16 + 2 = 67 hits: 132 lines.
+- **The views,** write off (§14's write-off row): field the kick's steps of the active pattern,
+  stitch every other sound's, bar the chosen sound (`0001`), `sounds=1`. The kick's steps are
+  `x`, keeping nothing, so `a b` and `ea eb` are its own 32 768 (§20).
+
+  | `at` | Pattern, `pos` | field | stitch | fires (kick, snare, hat, cymbal) |
+  |---|---|---|---|---|
+  | 15 | 1, 0 | `0c05` (0 2 10 11) | `d7d5`: snare `9290` and hat `5555` | 4, 5, 8, 0 |
+  | 47 | 3, 2 | `0405` (0 2 10) | `57d5`: snare `4290` and hat `5555` | 11, 14, 24, 0 |
+  | 63 | 4, 3 | `040c` (2 3 10) | `57d7`: snare `4292`, hat `5155`, cymbal `0400` | 14, 19, 31, 1 |
+  | 64 | 1, 0, step 0 | `0c05` | `d7d5` | 15, 19, 32, 1 |

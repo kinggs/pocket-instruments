@@ -9,7 +9,9 @@
      the Loom look (design/DESIGN.md, "The phone"; design/loom/phone.html is the picture).
      The page keeps no copy of the workflow: it sends what a finger did (KEY_DOWN, KEY_UP,
      PARAM; ENGINE.md §13) and draws the view the core posts back (§14). A touch never latches:
-     a phone has real multi-touch (D23). Shift+click and Shift+key latch (D60, D61, D113; fx by D78). The display says
+     a phone has real multi-touch (D23). Shift+click and Shift+key latch (D60, D61, D113; fx by D78; write, and Shift on a grid key
+     keeping pattern's latch, by D135). Patterns (ENGINE.md §21) are the core's: the page sends
+     the keys, draws the pattern-held grid from the view and flickers the active key. The display says
      the effect heard and the lane (D81), and weaves as the pattern plays: the cells are the
      core's (pi_weave, ENGINE.md §16; a first attempt, D84) and the page only paints them.
      ?auto runs its own checks (web/play.mjs).
@@ -55,6 +57,10 @@
      since D112 item 3 (was madder). */
   .lane { height: 4px; margin-bottom: -4px; }
   .lane span.on { background: var(--fern); }
+  /* ENGINE.md §21, "The display": which pattern plays, the chain's place while a chain of more
+     than one runs, and the pattern waiting. ⚠ A stand-in until Kenny rules a look on the canvas
+     (CONTRIBUTING, "A look"): the words are WORKFLOW.md's (`pattern 3`, `2/4`, `→ 5`). */
+  .patline { flex: none; font-size: 16px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
   .marks span { height: 6px; background: var(--thread); align-self: end; }
   .marks span.q { height: 10px; }
   .marks span.now { height: 16px; background: var(--ochre); }
@@ -143,6 +149,7 @@
   .sheet p { margin: 8px 0; color: var(--lilac); font-size: 16px; line-height: 1.5; }
   .sheet a { color: var(--ecru); }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .beats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; } /* the bank's list (issue 164): a stand-in ⚠ */
   .sheet button { min-height: 64px; padding: 6px 10px; background: var(--tile); text-align: left; font-size: 16px; }
   /* A row a sound: its name plays it; its switch sets code or sample and plays the result. */
   .sounds { display: flex; flex-direction: column; gap: 6px; }
@@ -195,6 +202,7 @@
     <div class="display" aria-live="off">
       <div class="left">
         <div class="weave" id="weave"><span id="hint">touch a key to start</span><canvas id="cloth" hidden role="img" aria-label="A cloth being woven as the pattern plays"></canvas></div>
+        <div class="patline" id="patline">pattern 1</div>
         <div class="lane" id="lane" aria-hidden="true"></div>
         <div class="marks" id="marks" aria-hidden="true"></div>
       </div>
@@ -256,6 +264,24 @@
   <div class="sounds" id="sounds"></div>
   <p id="status">Loading…</p>
 
+  <!-- The beat file (docs/BEAT.md; D134; issue 141). ⚠ A stand-in until Kenny rules a look: two
+       buttons, a question before a beat is replaced, a line of words. -->
+  <h2>Beat</h2>
+  <p>Save the beat as a <b>.beat</b> file, a text you can read, keep or send. Open one to play
+  it here: you are asked first, because it replaces the beat that is here.</p>
+  <div class="two"><button id="beatOpen">Open a beat</button><button id="beatSave">Save the beat</button></div>
+  <input type="file" id="beatFile" hidden>
+  <div id="beatAsk" hidden>
+    <p id="beatAskText"></p>
+    <div class="two"><button id="beatYes">Open it</button><button id="beatNo">Keep this one</button></div>
+  </div>
+  <p id="beatMsg" role="status"></p>
+  <!-- The bank (docs/BANK.md; D141, D142, proposed for Kenny; issue 164). ⚠ A stand-in until
+       Kenny rules a look: a list of words, built from beats/bank.txt when the page starts. -->
+  <p>Or start from one of ours, or from nothing. A beat from here replaces the one that is here,
+  which is kept, once, as <b>Your last beat</b>.</p>
+  <div class="beats" id="beats"></div>
+
   <h2>Playing it</h2>
   <p>Hold <b>sound</b> and tap a key to choose a sound. <b>write</b> turns the keys into the
   chosen sound's sixteen steps. <b>play</b> starts and stops. Hold <b>bpm</b>: a key sets the
@@ -269,11 +295,20 @@
   While it plays, hold <b>fx</b> and a key for an effect: it is heard at once, the display says
   <b>fx</b> and its number, and the steps it plays over keep it (a small mark above each). Hold
   <b>fx</b> alone to take the effects off the steps it passes.
+  Sixteen patterns: hold <b>pattern</b> and tap a key to choose one; keep holding and tap more
+  keys to chain them, in order, up to sixteen. While it plays, the change waits for the end of
+  the bar. Hold <b>write</b> and <b>pattern</b> and tap a key to copy the pattern playing there.
+  <b>function</b> and <b>pattern</b> clear the pattern playing, and only it. While pattern is
+  held the keys are the patterns: lit ones hold something, the one playing flickers, the corner
+  square marks the chain. The display says which pattern plays, where the chain is (<b>2/4</b>)
+  and what waits (<b>→ 5</b>).
   With a mouse or one hand: <b>Shift+click</b> or <b>Shift+key</b> sound, pattern, bpm or
   function to hold it down; the next key lets it go (so Shift+click sound, click 16), or
   Shift it again. <b>Shift+fx</b> stays on until you Shift it again: each key then plays that
   effect for as long as you hold it, and while it is on the keys show where each effect comes
-  from. <b>esc</b> lets every latch go. <b>?</b>, or the <b>?</b> in the display's corner,
+  from. To chain with a mouse, Shift+click <b>pattern</b>, Shift+click each key but the last,
+  then click the last. To copy, Shift+click <b>write</b> and <b>pattern</b>, then click the key.
+  The same with the computer keys: Shift+<b>8</b>, Shift+<b>p</b>. <b>esc</b> lets every latch go. <b>?</b>, or the <b>?</b> in the display's corner,
   shows every key: <b>space</b> plays, <b>, .</b> tempo, <b>&lt; &gt;</b> swing, <b>- =</b>
   volume, <b>t g y h</b> the sliders, <b>m</b> this sheet.</p>
   <p>On a key: the ochre frame is the step playing; the hatched band, the effect heard; a lit
@@ -315,9 +350,16 @@ const CODES = {
   Digit7: 16, Digit8: 17, Digit9: 18, KeyU: 19, KeyI: 20, KeyO: 21, KeyP: 22,
 };
 const STORE = "pocket-instruments/rhythm/beat"; // the snapshot, base64
+const PREVIOUS = "pocket-instruments/rhythm/previous"; // the beat a load from the bank replaced, once (D141)
 const SEED = 1;                                  // keys cannot set a probability, so no draw depends on it
 const params = new URLSearchParams(location.search);
 const auto = params.get("auto");                 // web/play.mjs's checks; see the end
+// Under ?auto the default is never loaded (D142 item 5), but for the checks of a person's first
+// start: "first" (nothing stored), "kept" (a beat stored) and "badbank" (a broken bank).
+const person = !auto || auto === "first" || auto === "kept" || auto === "badbank";
+// The bank: beats/ beside the page (pages.yml publishes it). `bank` names another folder under
+// ?auto only, for the broken bank's check (web/play.mjs serves one).
+const BANK = (auto && params.get("bank")) || "../beats/";
 const $ = (id) => document.getElementById(id);
 
 // --- The face, built once. Every light on it is set by draw(), from a view. ---
@@ -392,8 +434,9 @@ const b64 = {
   from: (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0)).buffer,
 };
 function kept() {
-  // Under ?auto only the reload check reads what was kept.
-  if (auto && auto !== "reload") return null;
+  // Under ?auto only the reload check, the old beat's (a version 4 snapshot) and the first start's
+  // read what was kept.
+  if (auto && auto !== "reload" && auto !== "old" && !person) return null;
   try { const s = localStorage.getItem(STORE); return s ? b64.from(s) : null; } catch { return null; }
 }
 
@@ -420,9 +463,14 @@ async function start() {
         try { if (!auto || auto === "reload" || auto === "1") localStorage.setItem(STORE, b64.to(d.snapshot)); } catch {}
       }
     }
-    listeners.forEach((f) => f(d));
+    listeners.slice().forEach((f) => f(d)); // a copy: a listener that takes itself out must not make the next one miss this message (issue 164)
   };
   for (const msg of early.splice(0)) node.port.postMessage(msg);
+  // D142 (proposed): a person's page with no beat stored (or storage it cannot read) is a new
+  // player's, and opens on the bank's first beat, read now by the beat reader and loaded as an
+  // opened file is. A stored beat, of any version, refused or not, always wins.
+  if (snapshot === null && person) await openDefault();
+  bankList(); // the Beats list, not waited for
 }
 
 // Sound starts on the first touch (and that touch is a press: its message is queued for the
@@ -432,10 +480,15 @@ const wake = () => { if (ctx.state !== "running") ctx.resume(); };
 // --- Holding keys: a finger, a pointer or a computer key. A key is down while anything holds it. ---
 const holders = Array.from({ length: 23 }, () => new Set());
 const gridDown = () => holders.slice(0, 16).some((s) => s.size > 0);
-function press(k, who) {
+// D135 item 1: a grid key pressed with Shift keeps a latched pattern latched when it ends, so a
+// mouse or one hand can chain (Shift+pattern, Shift+a, Shift+b, c). Remembered from the press,
+// by key and holder, because a release does not say whether Shift was down when it began.
+const shifted = new Set();
+function press(k, who, shift = false) {
   if (holders[k].has(who)) return;
   // D78: while fx is latched it goes down before a grid key, so each press punches.
   if (k < 16 && latched.has(KEY.fx)) press(KEY.fx, "L");
+  if (k < 16 && shift) shifted.add(`${k} ${who}`);
   holders[k].add(who);
   if (holders[k].size === 1) send([CMD.keyDown, k, 0, 0]);
 }
@@ -445,15 +498,19 @@ function release(k, who) {
   // D78: and comes up after the last grid key, so between presses no arriving step is emptied.
   if (k < 16 && latched.has(KEY.fx) && !gridDown()) release(KEY.fx, "L");
   // D60: any other press that ends finishes the gesture, and every latched key lets go. But
-  // fx: its latch stays until it is Shift+clicked again (D78, D113).
-  if (who !== "L") [...latched].filter((j) => j !== KEY.fx).forEach(unlatch);
+  // fx: its latch stays until it is Shift+clicked again (D78, D113). And D135 item 1: a grid
+  // key pressed with Shift keeps pattern's latch (⚠ pattern's alone: write, latched for a
+  // copy, lets go as the others do; D135 names only pattern).
+  const keep = shifted.delete(`${k} ${who}`);
+  if (who !== "L") [...latched].filter((j) => j !== KEY.fx && !(keep && j === KEY.pattern)).forEach(unlatch);
 }
 // D60, D61, D113: Shift+click or Shift+key (Ctrl+click until D113) holds sound, pattern, bpm or
-// function down ("L") until a press ends or it is latched again. Play and write are left
-// out: they stay on alone. D78: Shift on fx latches it until it is Shift-pressed again,
-// and holds nothing by itself: fx is down only while a grid key is (a key already down
-// brings it down at once).
-const LATCHING = new Set([KEY.sound, KEY.pattern, KEY.bpm, KEY.function, KEY.fx]);
+// function down ("L") until a press ends or it is latched again. Play is left out: it stays
+// on alone. D135 item 2: write latches too, a modifier for copy (its press still flips write
+// mode at once; a copy puts it back, ENGINE.md §21); D60 had left it out. D78: Shift on fx
+// latches it until it is Shift-pressed again, and holds nothing by itself: fx is down only
+// while a grid key is (a key already down brings it down at once).
+const LATCHING = new Set([KEY.sound, KEY.pattern, KEY.bpm, KEY.function, KEY.fx, KEY.write]);
 const latched = new Set();
 function latch(k) { latched.add(k); if (k !== KEY.fx || gridDown()) press(k, "L"); schedule(); }
 function unlatch(k) { latched.delete(k); release(k, "L"); schedule(); }
@@ -469,7 +526,7 @@ for (const el of [...keys, ...fkeys]) {
     if (e.button !== 0) return; // a right-click does nothing (D61)
     if (e.shiftKey && LATCHING.has(k)) return (latched.has(k) ? unlatch : latch)(k);
     try { el.setPointerCapture(e.pointerId); } catch {}
-    press(k, `p${e.pointerId}`);
+    press(k, `p${e.pointerId}`, e.shiftKey);
   });
   const up = (e) => { wake(); release(k, `p${e.pointerId}`); };
   el.addEventListener("pointerup", up);
@@ -487,9 +544,9 @@ addEventListener("keydown", (e) => {
   e.preventDefault();
   wake();
   if (e.repeat) return;
-  // D113: Shift+key latches the five, as Shift+click does.
+  // D113: Shift+key latches the six, as Shift+click does (write since D135).
   if (e.shiftKey && LATCHING.has(k)) return (latched.has(k) ? unlatch : latch)(k);
-  press(k, `c${e.code}`);
+  press(k, `c${e.code}`, e.shiftKey);
 });
 addEventListener("keyup", (e) => {
   if (e.code === "Space") e.preventDefault(); // a focused button would take it as a click
@@ -707,6 +764,14 @@ const shown = (v, which) => u16(v, 20 + 2 * which);
 const lastFires = new Array(16).fill(null);
 const coreUntil = new Array(16).fill(0);  // D120: the core, half a step from a firing, in every row
 const sheetUntil = new Array(16).fill(0); // the sheet's names go white on any firing, in either mode
+// §21: the active pattern's key, a quarter of a second lit and a quarter dark while pattern is
+// down (R90: "2 flickers"; ⚠ the rate is ours, not measured).
+const FLICKER_MS = 250;
+let flickerFrom = null;                   // when pattern went down, as this page drew it
+// §21, "The display": which pattern plays (byte 64); while a chain of more than one runs, its
+// place (65 + 1 of 66); while a next chain waits (67), the pattern it begins with (80's low
+// four bits). In WORKFLOW.md's words: `pattern 3`, `2/4`, `→ 5`. ⚠ A stand-in.
+const patternLine = (v) => `pattern ${v[64] + 1}` + (v[66] > 1 ? ` ${v[65] + 1}/${v[66]}` : "") + (v[67] ? ` → ${(v[80] & 15) + 1}` : "");
 let queued = false, wakeAt = 0;
 function schedule() {
   if (queued) return;
@@ -728,6 +793,16 @@ function draw() {
   const hold = Math.max(40, Math.min(120, 7500000 / Math.max(1, mbpm)));
   // The source marks (D112 item 4): while sound, or fx, is held or latched. Sound's first.
   const soundDown = !!((held >> KEY.sound) & 1) || latched.has(KEY.sound);
+  // ENGINE.md §21, "What a host does while held bit 17 (pattern) is set, or the host holds
+  // pattern latched": field, stitch, bar and pressed as the view says, and no frame, core or
+  // twill (R90: "it stops the normal playing views"). The active pattern's key (byte 64)
+  // flickers: its field lit and dark in turn, a quarter of a second each, from the moment
+  // pattern went down, used or not (⚠ open (empty flicker): the recommended default).
+  const patternDown = !!((held >> KEY.pattern) & 1) || latched.has(KEY.pattern);
+  if (patternDown && flickerFrom === null) flickerFrom = now;
+  if (!patternDown) flickerFrom = null;
+  const flickerLit = patternDown && Math.floor((now - flickerFrom) / FLICKER_MS) % 2 === 0;
+  const active = v[64];
   for (let n = 0; n < 16; n++) {
     const fires = v[32 + n];
     if (lastFires[n] !== null && fires !== lastFires[n]) {
@@ -735,17 +810,17 @@ function draw() {
       coreUntil[n] = now + hold;
     }
     lastFires[n] = fires;
-    const core = now < coreUntil[n];
+    const core = !patternDown && now < coreUntil[n];
     const c = keys[n].classList;
-    c.toggle("on", !!((field >> n) & 1));
+    c.toggle("on", patternDown && n === active ? flickerLit : !!((field >> n) & 1));
     c.toggle("ghost", !!((stitch >> n) & 1));
     c.toggle("bar", !!((bar >> n) & 1));
     c.toggle("ochre", !!((held >> KEY.pattern) & 1));
-    c.toggle("play", !!(playing && stepped && step === n));
+    c.toggle("play", !patternDown && !!(playing && stepped && step === n));
     c.toggle("press", !!((held >> n) & 1));
     c.toggle("core", core);
     c.toggle("fern", core && !!heard && !!((through >> n) & 1));
-    c.toggle("twill", heard === n + 1);
+    c.toggle("twill", !patternDown && heard === n + 1);
     c.toggle("dash", soundDown && !!((sampled >> n) & 1));
     marks[n].classList.toggle("now", !!(playing && stepped && step === n));
     ticks[n].classList.toggle("on", !!((lane >> n) & 1));
@@ -761,6 +836,7 @@ function draw() {
   $("write").hidden = !(flags & 2);
   $("fxmark").hidden = !heard;
   $("fxmark").textContent = heard ? `fx ${heard}` : "fx";
+  $("patline").textContent = patternLine(v);
   weave(v);
   // §20: after a load, the hand is what was loaded; until the first view, likewise.
   if (latest.taken >= reseatAt) { hand.fill(null); reseatAt = Infinity; }
@@ -780,17 +856,207 @@ function draw() {
   });
   rhythm.drawn = v;
   rhythm.afterDraw?.(v);
-  // Wake again when the next white is due to go out.
-  const next = Math.min(...coreUntil.filter((t) => t > now), ...sheetUntil.filter((t) => t > now));
+  // Wake again when the next white is due to go out, or the flicker is due to turn.
+  const turn = patternDown ? flickerFrom + (Math.floor((now - flickerFrom) / FLICKER_MS) + 1) * FLICKER_MS : Infinity;
+  const next = Math.min(turn, ...coreUntil.filter((t) => t > now), ...sheetUntil.filter((t) => t > now));
   if (Number.isFinite(next) && next !== wakeAt) { wakeAt = next; setTimeout(schedule, next - now + 1); }
 }
 addEventListener("resize", schedule);
 schedule();
 
+// --- The beat file (docs/BEAT.md; D134): text to snapshot bytes and back by the beat crate's
+// .wasm (web/pi_beat.wasm; beat/include/pi_beat.h), on this main thread, never in the worklet.
+// The page reads no text itself: one pair of calls, beatRead and beatWrite, and the bytes go to
+// and come from the engine by the page's ordinary load and save (§8). ---
+const PIB = { TEXT_MAX: 98304, MSG_MAX: 192, SNAPSHOT_MAX: 22100 };
+let beatLib = null;                    // the module, loaded on the first open or save
+async function beatModule() {
+  if (!beatLib) beatLib = (async () => {
+    const { instance } = await WebAssembly.instantiate(await (await fetch("pi_beat.wasm")).arrayBuffer(), {});
+    const pib = instance.exports, base = pib.memory.grow(2) * 65536; // pi_beat.h: two pages hold every buffer
+    return { pib, text: base, snap: base + PIB.TEXT_MAX, msg: base + PIB.TEXT_MAX + PIB.SNAPSHOT_MAX, own: base + PIB.TEXT_MAX + PIB.SNAPSHOT_MAX + PIB.MSG_MAX };
+  })();
+  return beatLib;
+}
+// Text (bytes) to a snapshot: { snap, own } (own: bit k − 1, key k's own sample), or { code, msg }.
+async function beatRead(text) {
+  const b = await beatModule();
+  if (text.length > PIB.TEXT_MAX) return { code: -1, msg: `the file is ${text.length} bytes; a beat is at most ${PIB.TEXT_MAX}` };
+  new Uint8Array(b.pib.memory.buffer, b.text, text.length).set(text);
+  const n = b.pib.pib_read(b.text, text.length, b.snap, PIB.SNAPSHOT_MAX, b.own, b.msg, PIB.MSG_MAX);
+  const mem = new Uint8Array(b.pib.memory.buffer);
+  if (n < 0) return { code: n, msg: new TextDecoder().decode(mem.subarray(b.msg, mem.indexOf(0, b.msg))) };
+  return { snap: mem.slice(b.snap, b.snap + n), own: new DataView(b.pib.memory.buffer).getUint32(b.own, true) };
+}
+// A snapshot (version 5, at the length pi_save returned) to text: bytes, or a code below zero.
+async function beatWrite(snap, own) {
+  const b = await beatModule();
+  new Uint8Array(b.pib.memory.buffer, b.snap, snap.length).set(snap);
+  const n = b.pib.pib_write(b.snap, snap.length, own >>> 0, b.text, PIB.TEXT_MAX);
+  return n < 0 ? n : new Uint8Array(b.pib.memory.buffer).slice(b.text, b.text + n);
+}
+const beatSay = (s) => { $("beatMsg").textContent = s; };
+// D34: a key whose writer played their own sample plays the starter pack's here (BEAT.md's words).
+const ownWords = (own) => [...Array(16).keys()].filter((k) => (own >> k) & 1)
+  .map((k) => `Key ${k + 1} used its writer's own sample; playing the starter pack's.`).join(" ");
+// The beat's name (snapshot bytes 112 to 143, UTF-8, zero-padded), for a file's name and a line.
+const beatName = (snap) => { const n = snap.subarray(112, 144); const end = n.indexOf(0); return new TextDecoder().decode(n.subarray(0, end < 0 ? 32 : end)).trim(); };
+// A snapshot holding everything sent so far (§8), asked for now.
+function freshSnapshot() {
+  return new Promise((res) => {
+    const want = sent;
+    listeners.push(function f(d) { if (d.snapshot && d.taken >= want) { listeners.splice(listeners.indexOf(f), 1); res(new Uint8Array(d.snapshot)); } });
+    post({ save: true }, 0);
+  });
+}
+// Save: the latest snapshot as text, given as a download named for the beat. This page loads no
+// sample of the player's own, so `own` is 0 (⚠ BEAT.md: `own` marks keys playing the writer's own).
+$("beatSave").addEventListener("click", async () => {
+  wake();
+  if (!node) return beatSay("The engine has not started yet.");
+  const snap = await freshSnapshot();
+  const text = await beatWrite(snap, 0);
+  if (typeof text === "number") return beatSay(`The beat could not be written as text (${text}).`);
+  const file = `${(beatName(snap).replace(/[^A-Za-z0-9 _-]/g, "").trim().replace(/\s+/g, "-") || "rhythm").toLowerCase()}.beat`;
+  rhythm.onSave?.(file, text);
+  if (!auto) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    a.download = file;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }
+  beatSay(`Saved ${file}.`);
+});
+// Open: the file is read first; a refused one changes nothing and says why, in the crate's
+// words. A good one is not loaded until the player says so, since it replaces the beat here.
+let pendingBeat = null;
+$("beatOpen").addEventListener("click", () => { wake(); $("beatFile").value = ""; $("beatFile").click(); });
+$("beatFile").addEventListener("change", async () => {
+  const f = $("beatFile").files[0];
+  if (!f) return;
+  const got = await beatRead(new Uint8Array(await f.arrayBuffer()));
+  pendingBeat = null;
+  $("beatAsk").hidden = true;
+  if (got.code !== undefined) return beatSay(`${f.name} was not opened: ${got.msg}`);
+  pendingBeat = { ...got, file: f.name };
+  const name = beatName(got.snap);
+  $("beatAskText").textContent = `Open ${name ? `"${name}" from ` : ""}${f.name}? It replaces the beat here; save this one first to keep it.`;
+  $("beatAsk").hidden = false;
+  beatSay("");
+});
+$("beatNo").addEventListener("click", () => { pendingBeat = null; $("beatAsk").hidden = true; beatSay("Kept the beat that is here."); });
+// A snapshot loaded by the page's ordinary load, and what is said once the engine has taken it:
+// `ok(name)` or the refusal. Open and the Beats list both load through it.
+function loadSnap(snap, label, ok) {
+  return new Promise((res) => {
+    listeners.push(function f(d) {
+      if (!d.snapshot || d.result === null || d.result === undefined) return;
+      listeners.splice(listeners.indexOf(f), 1);
+      beatSay(d.result === 0 ? ok(beatName(snap)) : `${label} was not opened: the engine refused it (${d.result}).`);
+      res(d.result);
+    });
+    post({ load: snap.slice().buffer }, 1);
+  });
+}
+$("beatYes").addEventListener("click", () => {
+  const b = pendingBeat;
+  if (!b) return;
+  pendingBeat = null;
+  $("beatAsk").hidden = true;
+  wake();
+  loadSnap(b.snap, b.file, (name) => [`Opened ${name || b.file}.`, ownWords(b.own)].filter(Boolean).join(" "));
+});
+
+// --- The bank (docs/BANK.md; D141, D142, proposed for Kenny to rule; issue 164): beats/ beside
+// the page, in bank.txt's order. bank.txt's first line is the beat a new player opens on; nothing
+// here names which. Each beat is fetched and read by beatRead (pib_read) when it is wanted, as an
+// opened file is; there is no copy of any beat in the page. ---
+const EMPTY = new TextEncoder().encode("pocket-instruments beat 1\n"); // pi_init's beat: every line at its default (BEAT.md)
+async function bankFiles() {
+  const r = await fetch(`${BANK}bank.txt`, { cache: "no-store" });
+  if (!r.ok) throw new Error(`the bank's list could not be fetched (${r.status})`);
+  return (await r.text()).split("\n").map((l) => l.trim()).filter(Boolean);
+}
+// The bank's n-th beat (from 1): { file, snap, name }, or { file, msg }.
+async function bankBeat(n) {
+  let file = "";
+  try {
+    const files = await bankFiles();
+    if (!files.length) return { file, msg: "the bank lists no beat" };
+    file = files[n - 1];
+    if (!file) return { file, msg: `the bank has beats 1 to ${files.length}, not ${n}` };
+    const r = await fetch(`${BANK}${file}`, { cache: "no-store" });
+    if (!r.ok) return { file, msg: `${file} could not be fetched (${r.status})` };
+    const got = await beatRead(new Uint8Array(await r.arrayBuffer()));
+    if (got.code !== undefined) return { file, msg: `${file}: ${got.msg}` };
+    return { file, snap: got.snap, name: beatName(got.snap) || file };
+  } catch (e) {
+    return { file, msg: String(e.message || e) };
+  }
+}
+async function openDefault() {
+  const b = await bankBeat(1);
+  if (!b.snap) return beatSay(`Started empty: the bank's first beat did not open: ${b.msg}`);
+  rhythm.defaultSnap = b.snap; // what the checks hold the opened beat to
+  await loadSnap(b.snap, b.file, (name) => `A new beat: ${name}, from the bank below. Empty is there too.`);
+}
+// What the Beats list's last load replaced, kept once (D141 item 6): in the storage under a second
+// key, and here, so it is there in a page that cannot keep it.
+let lastBeat = null;
+function previous() {
+  if (lastBeat) return lastBeat;
+  if (!person && auto) return null;
+  try { const s = localStorage.getItem(PREVIOUS); return s ? new Uint8Array(b64.from(s)) : null; } catch { return null; }
+}
+// A load from the list: the beat here kept first, then `snap` loaded.
+async function replaceWith(snap, label, ok) {
+  wake();
+  if (!node) return beatSay("The engine has not started yet.");
+  const here = await freshSnapshot();
+  lastBeat = here;
+  try { if (!auto || person) localStorage.setItem(PREVIOUS, b64.to(here)); } catch {}
+  const r = await loadSnap(snap, label, ok);
+  showLast();
+  return r;
+}
+function showLast() { const b = $("beatLast"); if (b) b.hidden = !previous(); }
+async function bankList() {
+  const box = $("beats");
+  const add = (text, f) => { const b = document.createElement("button"); b.textContent = text; b.addEventListener("click", f); box.appendChild(b); return b; };
+  box.textContent = "";
+  add("Your last beat", async () => {
+    const p = previous();
+    if (p) await replaceWith(p, "Your last beat", (name) => `Your last beat${name ? `, ${name},` : ""} is back; the one it replaced is kept in its place.`);
+  }).id = "beatLast";
+  showLast();
+  let files = [];
+  try { files = await bankFiles(); } catch (e) { beatSay(String(e.message || e)); }
+  for (let n = 1; n <= files.length; n++) {
+    const b = await bankBeat(n);
+    const btn = add(b.snap ? b.name : `${files[n - 1]} (${b.msg})`, async () => {
+      const again = await bankBeat(n); // read when wanted: the file as it is now
+      if (!again.snap) return beatSay(`Not loaded, and nothing changed: ${again.msg}`);
+      await replaceWith(again.snap, again.file, (name) => `${name || again.file}, from the bank. Your last beat is kept.`);
+    });
+    btn.dataset.bank = n;
+    btn.disabled = !b.snap;
+  }
+  add("Empty", async () => {
+    const got = await beatRead(EMPTY);
+    await replaceWith(got.snap, "Empty", () => "Empty: every pattern clear. Your last beat is kept.");
+  }).id = "beatEmpty";
+  rhythm.bankShown = files.length;
+}
+
 // What the checks reach (web/play.mjs). The page itself uses none of it.
 const rhythm = {
-  ctx, keys, fkeys, ticks, sliders, sounds, latched, latest, listeners, slide, send, drawn: null, afterDraw: null, onPost: null,
+  ctx, keys, fkeys, ticks, sliders, sounds, latched, latest, listeners, slide, send, drawn: null, afterDraw: null, onPost: null, onSave: null, // onSave(file, text): what a save gives
   cloth, paints: 0,                    // the weave's canvas, and how often it has been painted
+  defaultSnap: null, bankShown: null,  // issue 164: the default the page opened on; how many beats the list shows
+  previous: () => previous(),
   reduced: () => still.matches,        // a check may ask for reduced motion without the browser's setting
   get sent() { return sent; },
   post: (msg) => post(msg, msg.load || msg.mark ? 1 : 0),

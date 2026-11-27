@@ -1803,3 +1803,96 @@ above; these are what only the chain showed.
   cancelled main's push run (harmless: the next run rebuilt the root from main) and #117's close
   run, which left `pr-117/` online. A workflow that queues must make each run repair what an
   earlier one would have done, not trust every event to get its own run.
+
+## 2026-11-27 — sixteen patterns in the core (issue 139)
+
+- **A design's "nothing old moves" is a claim to check, not a fact to build on.** §21 said
+  every format 1 to 4 view stays the same bytes; its own pattern-held row moved two of them.
+  The row, a ruled decision and a hand-worked fixture agreed, so the sentence was the error.
+  Grep the existing fixtures for every row a design changes before believing the sentence.
+- **A slower thread can wake a race the old timing hid.** With 22 KB snapshots the race
+  harness's second thread slowed tenfold against the audio thread, and D130's bpm press (timed
+  in frames) read as a hold on one side and a press on the model's, which counts a frame a
+  message: up to ten bad rounds in 6 400. Nothing in the core was wrong. Every rule timed in
+  frames is a rule the race model cannot keep; such keys go into its churn only in a form whose
+  timing cannot matter.
+- **A plant aimed at index 0 tests nothing when the answer is index 0.** Dropping the firing's
+  pattern read pattern 1's values, which the first test expected anyway. Put the thing under
+  test somewhere a zero cannot reach by accident.
+- **Keep a converter only if it checks itself on old bytes.** Hundreds of tests read version
+  4's offsets. One function lays a one-pattern version 5 out as version 4 and panics on
+  anything version 4 cannot hold; every committed version 4 snapshot loads, saves as version 5
+  and comes back through it to its own bytes, so the converter is held to what an old core wrote.
+- **A struct twenty times larger changed a per-call cost the bench sees, and not by layout
+  alone.** One frame a call costs 1.7 and 3.5 ns more; putting the bank last changed nothing
+  and putting its small fields first made it worse. Measured, written down, not explained.
+
+## 2026-11-27 — patterns in Rack (issue 142)
+
+- **A save throttle needs a way out for the save that matters.** Four saves a second is easy;
+  a patch written inside the quarter second after the last move would have held the move
+  before it. `dataToJson` now asks the audio thread for the save it owes and waits a frame. The
+  self-test that proves it stops a drag and saves the patch at once from a second thread, as
+  Rack would; with the ask planted out, 37 of 40 patch saves missed the last move.
+- **`make` does not rebuild when only a flag changes.** `PI_FACE_SHOT=4` after `=3` gave the
+  same picture twice. Delete `rack/build/src/Rhythm.cpp.o` between face builds.
+- **A generator's fix read off the memory map alone was half a fix.** Moving
+  `make-showcase.mjs`'s buffers past the 32 KiB engine was right, and its first read-back check
+  then refused the beat: it read version 4's offsets from a version 5 snapshot. Run a generator
+  after any change to the core it calls, even when its output is not to be committed.
+- **Issue 59's symptom comes with a larger patch.** With all 52 modules in one patch, 2 or 3 runs
+  in 6 had every module meant for an LFO's edges report "on the table" with "1 cut short", and
+  the loop modules report a layout their cables do not need, after they had started on those
+  cables. The plugin from before issue 142 did the same on that patch, and so did the patch with
+  the new loop modules made plain instruments; the 40-module patch alone, 0 in 6. A clean run
+  shows "0 cut short" there. ⚠ A reading: the cables were seen and later lost, not never seen.
+  Not chased (issue 59): the self-test runs issue 142's modules in a second patch, 12 in 12.
+
+## 2026-11-27 — the beat file's reader and writer (issue 140)
+
+- **A size guessed "by arithmetic" was a third short.** `docs/BEAT.md` put the worst beat file
+  under 64 KiB; built and measured it is 94 349 bytes. The guess counted the `keep` lists and not
+  the `prob` lists beside them, nor the 46 value lines. Sum every line's widest form in a test
+  and build a case that comes within a KiB of it; then the constant is a measurement.
+- **The CRC of a snapshot, CRC included, is one number.** Hashing whole snapshots with the zip
+  CRC for a report gave `2144df1c` for every one: a CRC appended to its own data always leaves
+  that residue. Use another hash (FNV-1a here) to tell snapshots apart.
+- **A second Rust crate's panic handler must be optional.** A `no_std` static library needs
+  one; the core's tests, which link the beat crate with the standard library, must not get a
+  second. A default feature (`panic-handler`) that the dev-dependency turns off does both.
+- **Two Rust static libraries link into one C++ program and one Rust test on Linux** (the core's
+  and the beat's): their shared `core` symbols are local or in archive members the linker takes
+  once. Not tried on Rack's macOS and Windows toolchains ⚠.
+
+## 2026-11-27 — the race check's flake was its own model (issue 169)
+
+- **Changing what a check presses treats a symptom; widen the model to the specification.**
+  Issue 139's build stopped pressing bpm alone because its release raced the model. The
+  failures fell but did not stop: a grid key already down leaves bpm unused, and the same
+  frame-counted release (D130) came back once in some hundreds of runs. The fix was to let the
+  model hold every outcome the specification allows (a press or a hold) and to press bpm
+  freely again.
+- **Load reproduces what one run hides.** Twenty runs with 28 cores busy turned a one-in-many
+  CI flake into nine failures in twenty, each with the inputs kept. Print the differing bytes
+  of the first bad round before reasoning: every one was the tempo and the CRC, which named
+  the cause in a minute.
+- **A diagnostic print is code under the sanitizer too.** The first instrumented copy read the
+  audio thread's block counter unguarded and ThreadSanitizer reported it, which looked like a
+  core race until read.
+
+## 2026-11-27 — the bank on three hosts (issue 164)
+
+- **In a headless Rack, a module's other threads have no `APP`.** `Module::toJson` crashed in
+  `ParamQuantity::toJson` and `Module::onReset` in `ParamQuantity::setImmediateValue` when a
+  self-test thread called them: Rack's context is per thread. Even `dataFromJson`, called while
+  a patch loads, saw `APP` null there. A self-test thread can call only what the module owns:
+  `dataToJson`, `dataFromJson`, and its own part of `onReset` (split out as `initialize()`).
+- **Rack calls `dataFromJson` before `onAdd` when it loads a patch,** for a module whose JSON
+  has `"data"`, even `{}`; a module with no `"data"` gets no `dataFromJson` at all. So a flag
+  set in the constructor and cleared by `dataFromJson` tells a new module from a saved one by
+  the time `onAdd` runs. Seen in the self-test (none of its 48 modules with data was new); the
+  module browser's own order is still to try by hand.
+- **A listener that removes itself while `forEach` walks the array makes the next listener
+  miss that message.** The page's `listeners.forEach` skipped a load's result whenever a
+  check's one-shot listener sat just before it; the bank's list was the first code to load
+  while a check waited on a snapshot. Walk a copy.

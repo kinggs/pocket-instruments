@@ -1,0 +1,12 @@
+pocket-instruments beat 1
+name Stutter
+credit Pocket Instruments contributors, 2026; CC0
+volume 12
+seed 1
+sound 3 dry
+
+pattern 1
+1  kick  x...x...x...x...
+2  snare ....x.......x...
+3  hat   x.x.x.x.x.x.x.x.
+fx 9=7 10=7 11=7 12=7 13=11 14=11 15=11 16=11

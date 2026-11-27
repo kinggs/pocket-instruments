@@ -22,7 +22,8 @@ pub const KEY_PLAY: usize = 21;
 pub const KEY_WRITE: usize = 22;
 
 pub const VOLUME_MAX: u8 = 16;
-pub const VIEW_SIZE: usize = 64;
+/// §21 (ABI 16; D133 item 5): 88 bytes, 64 until then. Bytes 0 to 63 keep their meaning.
+pub const VIEW_SIZE: usize = 88;
 
 /// The bpm key's presets, rising, in thousandths of a bpm.
 const PRESETS: [u32; 3] = [80_000, 120_000, 140_000];
@@ -58,6 +59,11 @@ pub struct Keys {
     /// §17: what a step arriving now takes into the lane: `NO_WRITE` while fx is up, else
     /// the punch (0 for fx alone). Kept here so the sequencer is handed one byte.
     pub lane_write: u8,
+    /// §21: write mode as it was before write last went down, which a copy puts back
+    /// (D133 item 6 ⚠).
+    write_was: bool,
+    /// §21: a grid key has begun a chain since pattern last went down, so the next one adds.
+    chained: bool,
 }
 
 impl Keys {
@@ -72,6 +78,8 @@ impl Keys {
             punched: [0; 16],
             npunched: 0,
             lane_write: NO_WRITE,
+            write_was: false,
+            chained: false,
         }
     }
 
@@ -131,14 +139,24 @@ impl Engine {
                     self.edit(CMD_PLAY, 0, 0, 1, out);
                 }
             }
-            KEY_WRITE => self.keys.write = !self.keys.write, // on the press, not the release ⚠
-            KEY_PATTERN if self.keys.down(KEY_FUNCTION) => self.clear(),
+            KEY_WRITE => {
+                // On the press, not the release ⚠; and (§21) what it was, for a copy to put back.
+                self.keys.write_was = self.keys.write;
+                self.keys.write = !self.keys.write;
+            }
+            KEY_PATTERN => {
+                // §21: a new press of pattern begins a new chain at its first grid key.
+                self.keys.chained = false;
+                if self.keys.down(KEY_FUNCTION) {
+                    self.clear();
+                }
+            }
             KEY_BPM => {
                 self.keys.bpm_used = false;
                 self.keys.bpm_at = self.frames_run.wrapping_add(out.frame as u64);
             }
             KEY_FX => self.keys.update_lane_write(), // only held; fx alone empties arriving steps
-            KEY_SOUND | KEY_PATTERN | KEY_FUNCTION => {} // only held
+            KEY_SOUND | KEY_FUNCTION => {} // only held
             n => self.grid_down(n, out),
         }
     }
@@ -159,11 +177,23 @@ impl Engine {
             k.punched[k.npunched as usize & 15] = n as u8;
             k.npunched = (k.npunched + 1).min(16);
             k.update_lane_write();
-        } else if self.keys.down(KEY_PATTERN) || self.keys.down(KEY_FUNCTION) {
-            // Later rows of WORKFLOW.md: patterns.
+        } else if self.keys.down(KEY_PATTERN) && self.keys.down(KEY_WRITE) {
+            // §21: copy. The active pattern to slot n, as `COPY` would; write mode back to what
+            // it was before write last went down (D133 item 6 ⚠), onto itself too ⚠ (build's
+            // reading: "does nothing" read as the copy's bytes). Counts as no chain key.
+            self.edit(CMD_COPY, 0, 0, n as u32, out);
+            self.keys.write = self.keys.write_was;
+        } else if self.keys.down(KEY_PATTERN) {
+            // §21: the first grid key since pattern went down begins a new chain of that one
+            // pattern, as `PATTERN` would; each further one adds to it, as `CHAIN` would.
+            let kind = if self.keys.chained { CMD_CHAIN } else { CMD_PATTERN };
+            self.keys.chained = true;
+            self.edit(kind, 0, 0, n as u32, out);
+        } else if self.keys.down(KEY_FUNCTION) {
+            // Function held: nothing.
         } else if self.keys.write {
             let sel = self.keys.sel as usize;
-            let on = self.pat.on[sel] >> n & 1;
+            let on = self.bank.pat().on[sel] >> n & 1;
             self.edit(CMD_STEP, sel, n, 1 - on as u32, out); // a second tap takes it off ⚠
             if on == 0 {
                 // §20: the step keeps the chosen sound's own A and B as they are now, which
@@ -184,27 +214,29 @@ impl Engine {
         }
     }
 
-    /// Function + pattern. Every step off, every probability back to 100 ⚠, the lane
-    /// emptied (§17), and every step's kept values forgotten (§20). Length, swing, tempo,
-    /// sliders, volume and the sounds' fx switches stay.
+    /// Function + pattern. Since ABI 16 (§21) the active pattern only: every step off, every
+    /// probability back to 100 ⚠, the lane emptied (§17), and every step's kept values
+    /// forgotten (§20). Its length, the other fifteen, the chain, swing, tempo, sliders,
+    /// volume and the sounds' fx switches stay.
     /// Session 42 (D105 item 5, D107 item 2; Antigravity's): written as loops, so the compiler
     /// does not unroll sixteen sixteen-wide comparisons; out of line, as a key's press is cold.
     #[inline(never)]
     fn clear(&mut self) {
         let mut changed = false;
+        let pat = self.bank.pat_mut();
         for t in 0..TRACKS {
-            changed |= self.pat.keep[t] != 0 || self.pat.on[t] != 0;
-            self.pat.keep[t] = 0;
-            self.pat.on[t] = 0;
+            changed |= pat.keep[t] != 0 || pat.on[t] != 0;
+            pat.keep[t] = 0;
+            pat.on[t] = 0;
             for s in 0..STEPS {
-                changed |= self.pat.prob[t][s] != 100;
-                self.pat.prob[t][s] = 100;
-                self.pat.kept[t][s] = [0; 2];
+                changed |= pat.prob[t][s] != 100;
+                pat.prob[t][s] = 100;
+                pat.kept[t][s] = [0; 2];
             }
         }
         for s in 0..STEPS {
-            changed |= self.pat.fx[s] != 0;
-            self.pat.fx[s] = 0;
+            changed |= pat.fx[s] != 0;
+            pat.fx[s] = 0;
         }
         self.saved_if(changed);
     }
@@ -273,7 +305,7 @@ impl Engine {
             return self.voices.params[self.keys.sel as usize & 15][slider & 1];
         }
         if slider == 0 {
-            return (self.pat.swing as u32 * FULL / SWING_SPAN) as u16;
+            return (self.swing as u32 * FULL / SWING_SPAN) as u16;
         }
         // The tempo in whole bpm, rounded down, and held to the slider's own range.
         let bpm = (self.clock.mbpm / 1000).clamp(FINE_MIN, FINE_MIN + FINE_SPAN);
@@ -285,6 +317,8 @@ impl Engine {
         *b = [0; VIEW_SIZE];
         let k = &self.keys;
         let sel = k.sel as usize & 15;
+        let pat = self.bank.pat();
+        let (shown, shown_len) = self.bank.shown();
 
         // What the grid shows: the first row of §14's table that applies.
         // D121: the bar is the chosen sound in every row but pattern held (was only sound held).
@@ -293,27 +327,33 @@ impl Engine {
             field = (((1u32 << k.volume) - 1) & 0xFFFF) as u16;
         } else if k.down(KEY_SOUND) {
             // D120 (D119 item 7): the sounds in use, any of their sixteen steps on. Was none (D51).
-            for (t, on) in self.pat.on.iter().enumerate() {
+            for (t, on) in pat.on.iter().enumerate() {
                 if *on != 0 {
                     field |= 1 << t;
                 }
             }
             sounds = true;
         } else if k.down(KEY_PATTERN) {
-            bar = 1; // the one pattern
+            // §21 (R90): the used patterns; the chain's patterns stitched, the next chain while
+            // one waits (⚠ open (chain lights): the default); the bar on the active one.
+            field = self.bank.used();
+            for p in shown.iter().take(shown_len as usize) {
+                stitch |= 1 << (p & 15);
+            }
+            bar = 1 << (self.bank.active & 15);
         } else if k.write {
-            field = self.pat.on[sel];
+            field = pat.on[sel];
             for t in (0..TRACKS).filter(|t| *t != sel) {
-                stitch |= self.pat.on[t];
+                stitch |= pat.on[t];
             }
         } else {
             // Since Session 20 (D82): the chosen sound's steps, as the hardware lights them
             // in both modes (D71). Until then the field was dark here (D37). Since D120
             // (D112 item 1) the stitch too, as with write on; until then none (D82 item 3).
             // No bar, and still sounds: a tap fires its own sound.
-            field = self.pat.on[sel];
+            field = pat.on[sel];
             for t in (0..TRACKS).filter(|t| *t != sel) {
-                stitch |= self.pat.on[t];
+                stitch |= pat.on[t];
             }
             sounds = true;
         }
@@ -344,8 +384,8 @@ impl Engine {
         b[25] = self.seq.step();
         b[26] = k.sel;
         b[27] = k.volume;
-        b[28] = self.pat.length;
-        b[29] = self.pat.swing;
+        b[28] = pat.length; // §21: the active pattern's
+        b[29] = self.swing;
         // §14, designed 2026-11-25 (ABI 15): `ext`, the tempo the edges are playing, in tenths
         // of a bpm, 0 for none. Bytes 4 to 7 stay the stored tempo.
         b[30..32].copy_from_slice(&self.clock.ext(self.sample_rate).to_le_bytes());
@@ -360,17 +400,31 @@ impl Engine {
         b[54] = if self.seq.started() { self.on_step.count_ones() as u8 } else { 0 };
         b[55] = self.heard();
         let mut steps = 0u16;
-        for (s, e) in self.pat.fx.iter().enumerate() {
+        for (s, e) in pat.fx.iter().enumerate() {
             if *e != 0 {
                 steps |= 1 << s;
             }
         }
         b[56..58].copy_from_slice(&steps.to_le_bytes());
-        b[58..60].copy_from_slice(&self.pat.fx_sounds.to_le_bytes());
+        b[58..60].copy_from_slice(&self.fx_sounds.to_le_bytes());
         // §20: the second mark: what the chosen sound was last hit with, its own until then.
         let [ea, eb] = if self.hit_any >> sel & 1 == 1 { self.hit[sel] } else { self.voices.params[sel] };
         b[60..62].copy_from_slice(&ea.to_le_bytes());
         b[62..64].copy_from_slice(&eb.to_le_bytes());
+        // §21 (ABI 16): the active pattern, the chain's position and length, the next chain's
+        // length, the used patterns, 70 and 71 zero, then the chain and the next chain as
+        // nibbles, entry 2i low and 2i + 1 high, zero past their lengths.
+        let bank = &self.bank;
+        b[64] = bank.active;
+        b[65] = bank.pos;
+        b[66] = bank.chain_len;
+        b[67] = bank.next_len;
+        b[68..70].copy_from_slice(&bank.used().to_le_bytes());
+        for (at, list, len) in [(72, &bank.chain, bank.chain_len), (80, &bank.next, bank.next_len)] {
+            for (i, p) in list.iter().enumerate().take(len as usize) {
+                b[at + i / 2] |= (p & 15) << (4 * (i & 1));
+            }
+        }
     }
 
     /// §17: the effect sounding now. Nothing until a step has played since play; then the
@@ -380,7 +434,7 @@ impl Engine {
             return 0;
         }
         match self.keys.punch() {
-            0 => self.pat.fx[self.seq.step() as usize & 15],
+            0 => self.bank.pat().fx[self.seq.step() as usize & 15],
             p => p,
         }
     }

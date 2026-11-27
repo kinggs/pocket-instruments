@@ -4,6 +4,7 @@
 //!
 //! SPDX-License-Identifier: MIT
 pub mod audio;
+pub mod bank;
 pub mod beat;
 pub mod ffi;
 pub mod host;
@@ -37,4 +38,4 @@ config: ~/.config/pocket-instruments/config.toml, one key = value a line:
 rhythm: 1234 qwer asdf zxcv the grid; 7 8 9 sound, pattern, bpm; u i o p
 function, fx, play, write; shift+key latches; t g y h sliders; space play;
 , . tempo; < > swing; - = volume; m the sounds; ? every key; esc lets go;
-: w save, e FILE open, q leave; ctrl+q quits";
+: w save, e FILE open, bank [N] a beat, new empty, q leave; ctrl+q quits";

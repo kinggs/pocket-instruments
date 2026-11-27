@@ -254,18 +254,38 @@ pub struct KeyLights {
     pub legend: char,
 }
 
-pub fn key_lights(v: &[u8; PI_VIEW_SIZE], cores: u16, latched: u32, n: usize) -> KeyLights {
+/// The flicker's half: a quarter of a second lit, a quarter dark (`ENGINE.md` §21; the rate is
+/// ours ⚠). With reduced motion nothing flashes (`--reduced-motion`), so the key stays lit ⚠.
+pub const FLICKER_MS: u64 = 250;
+
+pub fn flicker_lit(now_ms: u64, reduced: bool) -> bool {
+    reduced || (now_ms / FLICKER_MS) % 2 == 0
+}
+
+/// Whether the grid shows the patterns: pattern held (the view's bit 17), or latched by this
+/// host (§21, "What a host does while held bit 17 (pattern) is set").
+pub fn pattern_shown(v: &[u8; PI_VIEW_SIZE], latched: u32) -> bool {
+    (u32_at(v, PI_VIEW_HELD) | latched) >> PI_KEY_PATTERN & 1 != 0
+}
+
+/// `flicker` is the flicker's half now (`flicker_lit`): the active pattern's field while the
+/// grid shows the patterns.
+pub fn key_lights(v: &[u8; PI_VIEW_SIZE], cores: u16, latched: u32, flicker: bool, n: usize) -> KeyLights {
     let flags = v[PI_VIEW_FLAGS];
     let held = u32_at(v, PI_VIEW_HELD);
     let bit = |m: u16| m >> n & 1 != 0;
     let pressed = held >> n & 1 != 0;
-    let lit = bit(u16_at(v, PI_VIEW_FIELD));
-    let playhead = flags & PI_VIEW_FLAG_PLAYING != 0 && flags & PI_VIEW_FLAG_STEP != 0 && v[PI_VIEW_STEP] as usize == n;
+    // §21: while pattern is held the core lights field (the used patterns), stitch (the chain
+    // shown) and bar (the active pattern); the host draws no frame, core or twill (R90) and
+    // flickers the active pattern's field, used or not (⚠ open (empty flicker), its default).
+    let patterns = pattern_shown(v, latched);
+    let lit = if patterns && v[PI_VIEW_PATTERN] as usize == n { flicker } else { bit(u16_at(v, PI_VIEW_FIELD)) };
+    let playhead = !patterns && flags & PI_VIEW_FLAG_PLAYING != 0 && flags & PI_VIEW_FLAG_STEP != 0 && v[PI_VIEW_STEP] as usize == n;
     let face = if pressed { Tok::White } else if lit { Tok::Ecru } else { Tok::Tile };
     let frame = if pressed { Tok::Ground } else if playhead { Tok::Ochre } else { face };
-    let heard = v[PI_VIEW_HEARD] as usize;
-    let core = (cores >> n & 1 != 0).then(|| if heard != 0 && bit(u16_at(v, PI_VIEW_FX_SOUNDS)) { Tok::Fern } else { Tok::White });
-    let bar = bit(u16_at(v, PI_VIEW_BAR)).then(|| if held >> PI_KEY_PATTERN & 1 != 0 { Tok::Ochre } else { Tok::Madder });
+    let heard = if patterns { 0 } else { v[PI_VIEW_HEARD] as usize };
+    let core = (!patterns && cores >> n & 1 != 0).then(|| if heard != 0 && bit(u16_at(v, PI_VIEW_FX_SOUNDS)) { Tok::Fern } else { Tok::White });
+    let bar = bit(u16_at(v, PI_VIEW_BAR)).then(|| if patterns { Tok::Ochre } else { Tok::Madder });
     // The source mark (D112 item 4; §14): while sound, or fx, is held or latched; sound's
     // first. A terminal sends no ROUTE, so only the dash can show (a sample).
     let down = |k: u8| held >> k & 1 != 0 || latched >> k & 1 != 0;
@@ -404,6 +424,8 @@ pub struct Scene<'a> {
     pub view: &'a [u8; PI_VIEW_SIZE],
     pub weave: &'a [u8; PI_WEAVE_CELLS],
     pub cores: u16,
+    /// The flicker's half now (`flicker_lit`).
+    pub flicker: bool,
     pub host: &'a Host,
     /// A line to show in the footer for a while (saved, a refusal).
     pub message: Option<&'a str>,
@@ -437,6 +459,31 @@ fn tempo_text(v: &[u8; PI_VIEW_SIZE]) -> String {
     }
 }
 
+/// The pattern's words for the status line (`docs/WORKFLOW.md`, "See which pattern plays"):
+/// `pattern 3`; `2/4` while a chain of more than one runs; `→ 5` while a next chain waits (the
+/// pattern it begins with, byte 80's low four bits). Longest first; the line takes the first
+/// that fits.
+pub fn pattern_words(v: &[u8; PI_VIEW_SIZE]) -> [String; 3] {
+    let p = format!("pattern {}", v[PI_VIEW_PATTERN] as u32 + 1);
+    let place = if v[PI_VIEW_CHAIN_LEN] > 1 { format!(" {}/{}", v[PI_VIEW_POS] as u32 + 1, v[PI_VIEW_CHAIN_LEN]) } else { String::new() };
+    let next = if v[PI_VIEW_NEXT_LEN] > 0 { format!(" → {}", (v[PI_VIEW_NEXT] & 15) as u32 + 1) } else { String::new() };
+    [format!("{p}{place}{next}"), format!("{p}{next}"), p]
+}
+
+/// Entry `i` of a chain kept as nibbles in the view (§21: bytes 72 and 80).
+fn entry(v: &[u8; PI_VIEW_SIZE], at: usize, i: usize) -> usize {
+    (v[at + i / 2] >> (4 * (i & 1)) & 15) as usize
+}
+
+/// A chain as a player counts it: `1 2 3`.
+fn chain_text(v: &[u8; PI_VIEW_SIZE], at: usize, len: u8) -> String {
+    (0..len as usize).map(|i| format!("{}", entry(v, at, i) + 1)).collect::<Vec<_>>().join(" ")
+}
+
+fn in_chain(v: &[u8; PI_VIEW_SIZE], at: usize, len: u8, p: usize) -> bool {
+    (0..len as usize).any(|i| entry(v, at, i) == p)
+}
+
 /// The status line: `rhythm`, the pattern; a block for each held or latched function key,
 /// `fx n` while an effect is heard, the write mark, the step, the tempo.
 fn status(g: &mut Grid, s: &Scene, pocket: bool) {
@@ -444,9 +491,6 @@ fn status(g: &mut Grid, s: &Scene, pocket: bool) {
     let w = g.w;
     g.fill(0, 0, w, 1, Tok::Ground);
     let x = g.text(1, 0, "rhythm", Tok::Ecru, Tok::Ground);
-    if !pocket {
-        g.text(x + 2, 0, "pattern 1", Tok::Lilac, Tok::Ground);
-    }
     let flags = v[PI_VIEW_FLAGS];
     let step = if flags & PI_VIEW_FLAG_STEP != 0 { format!("{}", v[PI_VIEW_STEP] + 1) } else { "-".into() };
     let ext = flags & PI_VIEW_FLAG_EDGES != 0;
@@ -466,7 +510,14 @@ fn status(g: &mut Grid, s: &Scene, pocket: bool) {
     right.push((if pocket { step.clone() } else { format!("step {step}") }, Tok::Ecru, Tok::Ground));
     right.push((format!("{} {}", tempo_text(v), if ext { "ext" } else { "bpm" }), Tok::Ecru, Tok::Ground));
     let total: usize = right.iter().map(|(t, ..)| t.chars().count() + 1).sum();
-    let mut x = w.saturating_sub(total);
+    let right_x = w.saturating_sub(total);
+    // The pattern after `rhythm`, as much as fits before the right side (⚠ ours: on the pocket
+    // size, or beside many blocks, the chain's place goes first, then the next).
+    let gap = if pocket { 1 } else { 2 };
+    if let Some(p) = pattern_words(v).into_iter().find(|p| x + gap + p.chars().count() < right_x) {
+        g.text(x + gap, 0, &p, Tok::Lilac, Tok::Ground);
+    }
+    let mut x = right_x;
     for (t, fg, bg) in right {
         x = g.text(x, 0, &t, fg, bg) + 1;
     }
@@ -521,13 +572,16 @@ fn meanings(g: &mut Grid, s: &Scene, k: u8, x: usize, y: usize, w: usize, h: usi
     let (title, about): (&str, String) = match k {
         PI_KEY_SOUND => ("sound", "the grid is sixteen sounds: a key chooses one and plays it".into()),
         PI_KEY_BPM => ("bpm", format!("a key sets the volume; A swing {}, B tempo {}", v[PI_VIEW_SWING], tempo_text(v))),
-        PI_KEY_PATTERN => ("pattern", "one pattern, on key 1; more come with patterns (issue 4)".into()),
-        PI_KEY_FUNCTION => ("function", "with pattern: clears the pattern".into()),
+        PI_KEY_PATTERN => ("pattern", "a key chooses; more keys chain; with write, a key copies".into()),
+        PI_KEY_FUNCTION => ("function", format!("with pattern: clears pattern {}, the one playing", v[PI_VIEW_PATTERN] as u32 + 1)),
         _ => ("fx", "hold a key for its effect; alone, it takes effects off the steps".into()),
     };
     let tx = g.text(x + 1, y, title, fn_colour(k), Tok::Display);
     g.text(tx + 1, y, &about[..about.len().min(w.saturating_sub(tx - x + 2))], Tok::Lilac, Tok::Display);
-    if matches!(k, PI_KEY_PATTERN | PI_KEY_FUNCTION) {
+    if k == PI_KEY_PATTERN {
+        return pattern_list(g, s, x, y, w, h);
+    }
+    if k == PI_KEY_FUNCTION {
         return;
     }
     let col = w / 4;
@@ -552,6 +606,56 @@ fn meanings(g: &mut Grid, s: &Scene, k: u8, x: usize, y: usize, w: usize, h: usi
     }
 }
 
+/// While pattern is held or latched the display lists the sixteen patterns by their keys, each
+/// marked used, in the chain, playing or waiting (`docs/WORKFLOW.md`; D117 item 2's list). A
+/// stand-in until Kenny rules a look (no board draws it): the playing one as the sound list
+/// marks the chosen sound, its key lit in its key's colour, and its name underlined; the other
+/// marks as words under each name, so none is told by hue alone. The row under the title says
+/// the chain and the next.
+fn pattern_list(g: &mut Grid, s: &Scene, x: usize, y: usize, w: usize, h: usize) {
+    let v = s.view;
+    let active = v[PI_VIEW_PATTERN] as usize;
+    let (clen, nlen) = (v[PI_VIEW_CHAIN_LEN], v[PI_VIEW_NEXT_LEN]);
+    let used = u16_at(v, PI_VIEW_USED);
+    let mut line = format!("chain {}", chain_text(v, PI_VIEW_CHAIN, clen));
+    if clen > 1 {
+        line += &format!(", playing {} of {}", v[PI_VIEW_POS] as u32 + 1, clen);
+    }
+    if nlen > 0 {
+        line += &format!("; next {}", chain_text(v, PI_VIEW_NEXT, nlen));
+    }
+    let line: String = line.chars().take(w.saturating_sub(2)).collect();
+    g.text(x + 1, y + 1, &line, Tok::Ecru, Tok::Display);
+    let col = w / 4;
+    let room = col.saturating_sub(3);
+    for n in 0..16usize {
+        let (cx, cy) = (x + 1 + (n % 4) * col, y + 2 + (n / 4) * 2);
+        if cy + 1 >= y + h {
+            continue;
+        }
+        let on = n == active;
+        let (cap_fg, cap_bg) = if on { (Tok::Ground, Tok::Ochre) } else { (Tok::Ecru, Tok::Tile) };
+        g.put(cx, cy, Cell::text(char_of(n as u8), cap_fg, cap_bg));
+        let name: String = format!("pattern {}", n + 1).chars().take(room).collect();
+        for (i, ch) in name.chars().enumerate() {
+            let fg = if on { Tok::Ochre } else { Tok::Ecru };
+            g.put(cx + 2 + i, cy, Cell::Text { ch, fg, bg: Tok::Display, under: on.then_some(Tok::Ochre) });
+        }
+        let mut marks = Vec::new();
+        if used >> n & 1 != 0 {
+            marks.push("used");
+        }
+        if clen > 1 && in_chain(v, PI_VIEW_CHAIN, clen, n) {
+            marks.push("chain");
+        }
+        if nlen > 0 && in_chain(v, PI_VIEW_NEXT, nlen, n) {
+            marks.push("next");
+        }
+        let marks: String = marks.join(" ").chars().take(room).collect();
+        g.text(cx + 2, cy + 1, &marks, Tok::Lilac, Tok::Display);
+    }
+}
+
 fn footer(g: &mut Grid, s: &Scene, y: usize, pocket: bool) {
     let w = g.w;
     g.fill(0, y, w, 1, Tok::Ground);
@@ -571,6 +675,14 @@ fn footer(g: &mut Grid, s: &Scene, y: usize, pocket: bool) {
     let tap = s.host.mode == Mode::Tap;
     let hints: Vec<(&str, &str)> = if pocket {
         vec![("?", "keys"), (":", "command"), ("esc", "let go"), ("^q", "quit")]
+    } else if shown_fn(v, s.host.latched_mask()) == Some(PI_KEY_PATTERN) {
+        // D135: in tap mode 8 is latched; Shift with a key keeps it for a chain; a tap on p
+        // holds write down for a copy. In hold, 8 is held under the keys.
+        if tap {
+            vec![("key", "choose"), ("shift+key", "chain"), ("p, key", "copy"), ("esc", "let go"), ("?", "keys")]
+        } else {
+            vec![("1…v", "choose, then chain"), ("p+key", "copy"), ("esc", "let go"), ("?", "keys")]
+        }
     } else if shown_fn(v, s.host.latched_mask()).is_some() {
         vec![("1…v", "choose"), (if tap { "tap" } else { "shift+key" }, "latch"), ("esc", "let go"), ("?", "keys")]
     } else if write {
@@ -626,6 +738,10 @@ fn helper(g: &mut Grid, y0: usize, h: usize) {
         ("hold one, press the other", "or shift and a function key to latch it"),
         ("fx stays latched", "until shifted again; the rest let go after a key"),
         ("no key-up here?", "a tap latches; with fx: tap starts, stops, switches"),
+        ("patterns", ""),
+        ("8 and keys", "the first chooses a pattern, the rest chain"),
+        ("shift+key", "keeps a latched pattern: a chain, a key at a time"),
+        ("8 p and a key", "copies the pattern there; u 8 clears it"),
         ("one key each", ""),
         ("t g / y h", "slider A / B up, down"),
         ("space  , .  < >", "play; tempo; swing"),
@@ -649,6 +765,20 @@ fn helper(g: &mut Grid, y0: usize, h: usize) {
         y += 1;
     }
     g.text(w.saturating_sub(16), y0, "esc or ? closes", Tok::Lilac, Tok::Display);
+}
+
+/// `:bank`: the bank's beats, numbered (docs/BANK.md; D141, proposed). Words only, a stand-in
+/// until Kenny rules a look: a title, one beat a line, and how to load one.
+fn bank(g: &mut Grid, lines: &[String], y0: usize, h: usize) {
+    let w = g.w;
+    g.fill(0, y0, w, h, Tok::Display);
+    g.text(1, y0, "the bank", Tok::Ochre, Tok::Display);
+    let help = if w >= 80 { ":bank <n> loads one, keeping this beat   esc closes" } else { ":bank <n> loads   esc closes" };
+    g.text(w.saturating_sub(help.chars().count() + 1), y0, help, Tok::Lilac, Tok::Display);
+    for (i, l) in lines.iter().enumerate().take(h.saturating_sub(1)) {
+        let l: String = l.chars().take(w.saturating_sub(3)).collect();
+        g.text(2, y0 + 1 + i, &l, Tok::Ecru, Tok::Display);
+    }
 }
 
 fn sheet(g: &mut Grid, s: &Scene, y0: usize, h: usize) {
@@ -694,6 +824,7 @@ pub fn main_screen(s: &Scene) -> Grid {
     match s.host.overlay {
         Overlay::Helper => helper(&mut g, 1, 22),
         Overlay::Sheet => sheet(&mut g, s, 1, 22),
+        Overlay::Bank(ref l) => bank(&mut g, l, 1, 22),
         _ => {
             g.fill(0, 1, 80, 10, Tok::Ground);
             g.fill(1, 1, 78, 10, Tok::Display);
@@ -705,7 +836,7 @@ pub fn main_screen(s: &Scene) -> Grid {
                 }
             }
             for n in 0..16 {
-                let k = key_lights(v, s.cores, latched, n);
+                let k = key_lights(v, s.cores, latched, s.flicker, n);
                 draw_key(&mut g, 2 + (n % 4) * 7, 11 + (n / 4) * 3, &k, Tok::Ground);
             }
             g.text(31, 11, "t", Tok::Lilac, Tok::Ground);
@@ -735,15 +866,24 @@ pub fn pocket_screen(s: &Scene) -> Grid {
     match s.host.overlay {
         Overlay::Helper => helper(&mut g, 1, 8),
         Overlay::Sheet => sheet(&mut g, s, 1, 8),
+        Overlay::Bank(ref l) => bank(&mut g, l, 1, 8),
         _ => {
             g.fill(0, 1, 48, 1, Tok::Display);
             marks(&mut g, s, None, 1, 1, 1, 2);
             match shown_fn(v, latched) {
-                Some(k) if k == PI_KEY_SOUND || k == PI_KEY_FX || k == PI_KEY_BPM => {
+                Some(k) if k == PI_KEY_SOUND || k == PI_KEY_FX || k == PI_KEY_BPM || k == PI_KEY_PATTERN => {
                     // The pocket size has no display rows: the chosen name goes in the marks' row.
+                    // For pattern that hides the playhead, as §21 asks while pattern is held.
                     let name = match k {
                         PI_KEY_SOUND => NAMES[v[PI_VIEW_SEL] as usize].to_string(),
                         PI_KEY_BPM => format!("volume {}", v[PI_VIEW_VOLUME]),
+                        PI_KEY_PATTERN => {
+                            let mut t = format!("pattern {}  chain {}", v[PI_VIEW_PATTERN] as u32 + 1, chain_text(v, PI_VIEW_CHAIN, v[PI_VIEW_CHAIN_LEN]));
+                            if v[PI_VIEW_NEXT_LEN] > 0 {
+                                t += &format!("  next {}", chain_text(v, PI_VIEW_NEXT, v[PI_VIEW_NEXT_LEN]));
+                            }
+                            t.chars().take(46).collect()
+                        }
                         _ if v[PI_VIEW_HEARD] != 0 => FX_NAMES[v[PI_VIEW_HEARD] as usize - 1].to_string(),
                         _ => "fx: hold a key".into(),
                     };
@@ -753,7 +893,7 @@ pub fn pocket_screen(s: &Scene) -> Grid {
                 _ => {}
             }
             for n in 0..16 {
-                let k = key_lights(v, s.cores, latched, n);
+                let k = key_lights(v, s.cores, latched, s.flicker, n);
                 draw_pocket_key(&mut g, 1 + (n % 4) * 7, 2 + (n / 4) * 2, &k);
             }
             slider(&mut g, 28, 2, 7, 1, s.host.cap(0), u16_at(v, PI_VIEW_HIT_A), 'A');
