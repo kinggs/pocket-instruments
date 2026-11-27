@@ -46,14 +46,14 @@ fn draw(p: u8, rng: &mut Rng) -> bool {
 /// reading of three sounds (R70): `(m + 4) & 15` is the one line to change. Out of line: the
 /// plain firing pays one comparison for it.
 #[inline(never)]
-fn shuffle(k: u32, cur: usize, pat: &Pattern, rng: &mut Rng, out: &mut Out) {
+fn shuffle(k: u32, cur: usize, pat: &Pattern, fx_sounds: u16, rng: &mut Rng, out: &mut Out) {
     for m in 0..TRACKS {
         let mut fire = false;
-        if pat.fx_sounds >> m & 1 == 0 && pat.on[m] >> cur & 1 == 1 {
+        if fx_sounds >> m & 1 == 0 && pat.on[m] >> cur & 1 == 1 {
             fire |= draw(pat.prob[m][cur], rng);
         }
         let s = (m + 4) & 15; // the sound whose note m plays: s + 12 is m
-        if pat.fx_sounds >> s & 1 == 1 && pat.on[s] >> cur & 1 == 1 {
+        if fx_sounds >> s & 1 == 1 && pat.on[s] >> cur & 1 == 1 {
             // Both draws are taken, whatever the first gave.
             let d = draw(pat.prob[s][cur], rng);
             fire |= d;
@@ -64,17 +64,21 @@ fn shuffle(k: u32, cur: usize, pat: &Pattern, rng: &mut Rng, out: &mut Out) {
     }
 }
 
-/// What a snapshot holds of the sequencer.
+/// §21 (D133 item 1): sixteen patterns, in the engine.
+pub const PATTERNS: usize = 16;
+
+/// §21: what a pattern holds. The swing and `fx_sounds` were here until ABI 16; they are the
+/// beat's now (the engine's). A cleared pattern (`clear`, `cleared`) is one snapshot version 5
+/// does not write.
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Pattern {
     /// One word per track; bit `s` is step `s`.
     pub on: [u16; TRACKS],
     pub prob: [[u8; STEPS]; TRACKS],
+    /// §21 (D133 item 3): each pattern's own, 1 to 16.
     pub length: u8,
-    pub swing: u8,
-    /// §17: the lane, one effect a step, 0 for none.
+    /// §17: the lane, one effect a step, 0 for none. Per pattern since ABI 16 (R90).
     pub fx: [u8; STEPS],
-    /// §17: bit `t`, track `t` goes through the effects. All sixteen at `pi_init`.
-    pub fx_sounds: u16,
     /// §20: bit `s` of track `t`, step `s` keeps the A and B it was written with,
     /// `kept[t][s]`. Zero where nothing is kept, so two patterns that play alike are equal.
     pub keep: [u16; TRACKS],
@@ -91,17 +95,168 @@ impl Pattern {
         had
     }
 
+    /// A cleared pattern: every step off, every probability 100, the lane empty, nothing
+    /// kept, sixteen steps long. The tests' (`clear` and `cleared` are held to it); the core
+    /// builds and checks one with loops instead.
+    #[cfg(test)]
     pub const fn new() -> Self {
         Pattern {
             on: [0; TRACKS],
             prob: [[100; STEPS]; TRACKS],
             length: STEPS as u8,
-            swing: 0,
             fx: [0; STEPS],
-            fx_sounds: 0xFFFF,
             keep: [0; TRACKS],
             kept: [[[0; 2]; STEPS]; TRACKS],
         }
+    }
+
+    /// Made a cleared pattern again, as `new` is. As loops and out of line, so a bank of sixteen
+    /// is not sixteen unrolled copies in the `.wasm`.
+    #[inline(never)]
+    pub fn clear(&mut self) {
+        self.on = [0; TRACKS];
+        self.keep = [0; TRACKS];
+        self.kept = [[[0; 2]; STEPS]; TRACKS];
+        self.fx = [0; STEPS];
+        for row in &mut self.prob {
+            *row = [100; STEPS];
+        }
+        self.length = STEPS as u8;
+    }
+
+    /// §21: equal to a cleared one (`new`), so snapshot version 5 does not write it. As loops
+    /// and out of line, as `Engine::clear` is (Session 42): unrolled, a comparison of 1.3 KB
+    /// grows the `.wasm` for a path that is cold.
+    #[inline(never)]
+    pub fn cleared(&self) -> bool {
+        let mut any = self.length as u16 ^ STEPS as u16;
+        for t in 0..TRACKS {
+            any |= self.on[t] | self.keep[t];
+            for s in 0..STEPS {
+                any |= (self.prob[t][s] ^ 100) as u16 | self.kept[t][s][0] | self.kept[t][s][1];
+            }
+        }
+        for e in &self.fx {
+            any |= *e as u16;
+        }
+        any == 0
+    }
+
+    /// §21's view byte 68: a step on, or a lane entry, in any of its sixteen steps.
+    #[inline(never)]
+    pub fn used(&self) -> bool {
+        let mut any = 0u16;
+        for on in &self.on {
+            any |= *on;
+        }
+        for e in &self.fx {
+            any |= *e as u16;
+        }
+        any != 0
+    }
+}
+
+/// §21: the sixteen patterns, the one playing (`active`), the chain and the next chain. One
+/// source of truth: no working copy (D133 item 1).
+pub struct Bank {
+    pub pats: [Pattern; PATTERNS],
+    pub active: u8,
+    /// The chain, `chain_len` entries (1 to 16), zero past them; `pos` the one playing.
+    pub chain: [u8; PATTERNS],
+    pub chain_len: u8,
+    pub pos: u8,
+    /// The next chain, waiting to land at the end of the bar: `next_len` entries (0 for
+    /// none), zero past them.
+    pub next: [u8; PATTERNS],
+    pub next_len: u8,
+}
+
+impl Bank {
+    /// At `pi_init`: sixteen cleared patterns, the chain pattern 1 alone, no next chain. Zeroed,
+    /// then each cleared in a loop (`Pattern::clear`): a constant bank of sixteen would be 21 KB
+    /// of stores or of data in the `.wasm`.
+    pub fn new() -> Self {
+        const ZERO: Pattern = Pattern { on: [0; TRACKS], prob: [[0; STEPS]; TRACKS], length: 0, fx: [0; STEPS], keep: [0; TRACKS], kept: [[[0; 2]; STEPS]; TRACKS] };
+        let mut b = Bank { pats: [ZERO; PATTERNS], active: 0, chain: [0; PATTERNS], chain_len: 1, pos: 0, next: [0; PATTERNS], next_len: 0 };
+        for pat in &mut b.pats {
+            pat.clear();
+        }
+        b
+    }
+
+    /// The active pattern: what the edits, the keys and the sequencer act on.
+    #[inline]
+    pub fn pat(&self) -> &Pattern {
+        &self.pats[self.active as usize & 15]
+    }
+
+    #[inline]
+    pub fn pat_mut(&mut self) -> &mut Pattern {
+        &mut self.pats[self.active as usize & 15]
+    }
+
+    /// §21: the chain a snapshot saves and the grid shows while pattern is held: the next chain
+    /// if one waits, else the chain. Zero past its length.
+    pub fn shown(&self) -> ([u8; PATTERNS], u8) {
+        if self.next_len > 0 { (self.next, self.next_len) } else { (self.chain, self.chain_len) }
+    }
+
+    /// §21's view byte 68: bit `p`, pattern `p` is used.
+    pub fn used(&self) -> u16 {
+        let mut used = 0u16;
+        for (p, pat) in self.pats.iter().enumerate() {
+            if pat.used() {
+                used |= 1 << p;
+            }
+        }
+        used
+    }
+
+    /// §21's `PATTERN`: a new chain of pattern `n` alone. Stopped, at once, and any next chain
+    /// dropped; playing, it is the next chain. Says whether the chain saved changed.
+    pub fn choose(&mut self, n: u8, playing: bool) -> bool {
+        let before = self.shown();
+        let mut one = [0u8; PATTERNS];
+        one[0] = n & 15;
+        if playing {
+            (self.next, self.next_len) = (one, 1);
+        } else {
+            (self.chain, self.chain_len, self.pos, self.active) = (one, 1, 0, n & 15);
+            (self.next, self.next_len) = ([0; PATTERNS], 0);
+        }
+        self.shown() != before
+    }
+
+    /// §21's `CHAIN`: `n` added to the end of the next chain if one waits, else of the chain;
+    /// nothing when that chain already holds sixteen. Says whether anything was added.
+    pub fn add(&mut self, n: u8) -> bool {
+        let (list, len) = if self.next_len > 0 { (&mut self.next, &mut self.next_len) } else { (&mut self.chain, &mut self.chain_len) };
+        if *len as usize >= PATTERNS {
+            return false; // a seventeenth is ignored ⚠ (R86: "up to 16")
+        }
+        list[*len as usize & 15] = n & 15;
+        *len += 1;
+        true
+    }
+
+    /// §21, at a step boundary where the playhead wraps: a next chain lands, or play (and a
+    /// reset) restarts the chain, or the chain moves on. Says whether the pattern playing
+    /// changed to another, which ends a run. Out of line: once a pattern, not once a tick.
+    #[inline(never)]
+    fn wrap(&mut self, fresh: bool) -> bool {
+        if self.next_len > 0 {
+            (self.chain, self.chain_len) = (self.next, self.next_len);
+            (self.next, self.next_len) = ([0; PATTERNS], 0);
+            self.pos = 0;
+        } else if fresh || self.pos + 1 >= self.chain_len {
+            self.pos = 0; // play restarts the chain (R90); after the last, it starts over (R86)
+        } else {
+            self.pos += 1;
+        }
+        let p = self.chain[self.pos as usize & 15] & 15;
+        let changed = p != self.active;
+        self.active = p;
+        changed
     }
 }
 
@@ -227,9 +382,11 @@ impl Seq {
     }
 
     /// One tick. `write` is what an arriving step takes into the lane (`NO_WRITE` while fx
-    /// is up). Returns whether the lane changed, which moves the generation.
+    /// is up). Returns whether the lane changed, which moves the generation. Since ABI 16
+    /// (§21) it plays the bank's active pattern, and moves the chain on where it wraps; the
+    /// swing and `fx_sounds` are the beat's.
     #[inline]
-    pub fn tick(&mut self, k: u32, pat: &mut Pattern, rng: &mut Rng, out: &mut Out, write: u8) -> bool {
+    pub fn tick(&mut self, k: u32, bank: &mut Bank, swing: u8, fx_sounds: u16, rng: &mut Rng, out: &mut Out, write: u8) -> bool {
         if !self.playing {
             return false;
         }
@@ -252,6 +409,7 @@ impl Seq {
             // repeats what the hand heard. Sound effects keep §17's rule (D66 item 3): the
             // step being played is not recorded.
             let at = (self.cur & 15) as usize;
+            let pat = bank.pat_mut();
             if !self.fresh && repeat_period(write) != 0 && pat.fx[at] != write {
                 pat.fx[at] = write;
                 lane_changed = true;
@@ -259,14 +417,22 @@ impl Seq {
         }
 
         if boundary {
-            if self.fresh {
+            // §21: where the playhead wraps (or play or a reset begins), a next chain lands or
+            // the chain moves on. With a chain of one and none waiting, the same pattern again.
+            if self.fresh || self.cur + 1 >= bank.pat().length {
+                if bank.wrap(self.fresh) {
+                    // A run ends where the playing pattern changes to another, as at play.
+                    self.end_run();
+                    out.active = bank.active;
+                }
                 self.cur = 0;
                 self.fresh = false;
             } else {
-                self.cur = if self.cur + 1 >= pat.length { 0 } else { self.cur + 1 };
+                self.cur += 1;
             }
             out.push(k, EV_STEP, 0, self.cur);
-            self.offset = if g & 1 == 1 { pat.swing } else { 0 };
+            self.offset = if g & 1 == 1 { swing } else { 0 };
+            let pat = bank.pat_mut();
             self.pending = true;
 
             // §16: the step is woven as it arrives, with whether any sound is set on it now.
@@ -305,6 +471,7 @@ impl Seq {
             }
         }
 
+        let pat = bank.pat();
         if self.period == 0 {
             // §5, as it was before ABI 6: an empty lane costs the one comparison above.
             if self.pending && t == self.offset {
@@ -312,7 +479,7 @@ impl Seq {
                 let cur = (self.cur & 15) as usize;
                 if self.eff == SHUFFLE {
                     // §17, designed 2026-11-24: effect 13 takes the plain firing's place.
-                    shuffle(k, cur, pat, rng, out);
+                    shuffle(k, cur, pat, fx_sounds, rng, out);
                     return lane_changed;
                 }
                 for track in 0..TRACKS {
@@ -325,7 +492,7 @@ impl Seq {
                 }
             }
         } else {
-            self.repeat(k, t, pat, rng, out);
+            self.repeat(k, t, pat, fx_sounds, rng, out);
         }
         lane_changed
     }
@@ -333,7 +500,7 @@ impl Seq {
     /// §17's four repeats. A sound in the effects fires from the run's column on the run's
     /// own grid, unswung; one outside plays its own step as §5 says. Rising track order, one
     /// draw a firing at under 100, repeats and plain firings together.
-    fn repeat(&mut self, k: u32, t: u8, pat: &Pattern, rng: &mut Rng, out: &mut Out) {
+    fn repeat(&mut self, k: u32, t: u8, pat: &Pattern, fx_sounds: u16, rng: &mut Rng, out: &mut Out) {
         let hit = k.wrapping_sub(self.run_tick) % self.period as u32 == 0;
         let plain = self.pending && t == self.offset;
         if plain {
@@ -344,7 +511,7 @@ impl Seq {
         }
         let (cur, run) = ((self.cur & 15) as usize, (self.run_step & 15) as usize);
         for track in 0..TRACKS {
-            let column = if pat.fx_sounds >> track & 1 == 1 {
+            let column = if fx_sounds >> track & 1 == 1 {
                 if !hit {
                     continue;
                 }

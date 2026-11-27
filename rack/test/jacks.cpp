@@ -91,7 +91,7 @@ static uint32_t bits(float f) {
 }
 
 struct Engine {
-    alignas(16) uint8_t mem[4096];
+    alignas(16) uint8_t mem[32768]; // every host's room for the engine since ABI 16 (ENGINE.md section 21; 4 KiB until then)
     pi_engine *e;
     explicit Engine(uint32_t rate) : e(pi_init(mem, sizeof mem, rate, 1)) {
         if (!e || pi_size() > sizeof mem) {

@@ -48,8 +48,12 @@
 
 enum Mode { SAFE, TWO_BUFFERS, DIRECT_SAVE, SPLIT_LOAD, DROP_EDIT, TORN, TORN_VIEW };
 
+// Since ABI 16 (ENGINE.md section 21) a snapshot is as long as pi_save says, up to
+// PI_SNAPSHOT_SIZE: the length travels with the bytes, and only that many are compared.
 struct Snap {
     uint8_t b[PI_SNAPSHOT_SIZE];
+    uint32_t len = 0;
+    bool operator==(const Snap &o) const { return len == o.len && std::memcmp(b, o.b, len) == 0; }
 };
 // What the audio thread hands over: the snapshot, and how far through the second thread's
 // messages it had got when it took it. Without the counts the second thread cannot know
@@ -78,6 +82,16 @@ struct Core {
         e = pi_init(mem.data(), uint32_t(mem.size() * 8), rate, seed);
         if (!e) die("pi_init refused good memory");
     }
+    // A second engine in the state this one is in: the model's two readings of a bpm release
+    // (Other::edit). The engine is plain memory the caller owns (ENGINE.md §8) and this one
+    // holds no pointer (no sample, no delay line is lent here), so a copy of the bytes is a
+    // whole engine; pi_init puts it at the start of the memory it is given.
+    Core(const Core &o) : mem(o.mem), e(reinterpret_cast<pi_engine *>(mem.data())) {}
+    Core &operator=(const Core &o) {
+        mem = o.mem;
+        e = reinterpret_cast<pi_engine *>(mem.data());
+        return *this;
+    }
     void changes() { mark = char(mark + 1); }
     void reads() const {
         volatile char seen = mark;
@@ -89,11 +103,12 @@ struct Core {
     }
     int32_t load(const Snap &s) {
         changes();
-        return pi_load(e, s.b, PI_SNAPSHOT_SIZE);
+        return pi_load(e, s.b, s.len);
     }
     void save(Snap &s) const {
         reads();
-        if (pi_save(e, s.b, PI_SNAPSHOT_SIZE) != PI_SNAPSHOT_SIZE) die("pi_save");
+        s.len = pi_save(e, s.b, PI_SNAPSHOT_SIZE);
+        if (s.len < PI_SNAPSHOT_SIZE_MIN) die("pi_save");
     }
     uint32_t generation() const {
         reads();
@@ -212,9 +227,19 @@ static void audio(Shared &s) {
 // The second thread: what a UI and a saver do between them.
 struct Other {
     Shared &s;
-    Core model{48000, 1}, checker{48000, 1};
+    // The model: every state the audio thread's engine may be in, given the messages sent. One,
+    // but for a bpm release: D130 makes it the preset's step when bpm was down under half a
+    // second of the engine's frames and nothing used it, and the frames between two messages
+    // are the audio thread's to count, which runs blocks whether or not a message waits. So at
+    // each bpm release the model keeps both: a press, and a hold of half a second. A round
+    // passes if the snapshot is any model's, and that one goes on. (Until issue 169 there was
+    // one model, a frame a message, which a slow second thread proved wrong: issue 139's
+    // 2 to 10 rounds in 6 400, and after bpm was pressed only as a used hold, one round in
+    // some hundred runs, when the grid key that should have used it was already down.)
+    std::vector<Core> models{Core{48000, 1}};
+    Core checker{48000, 1};
     uint32_t pushedEdits = 0, pushedLoads = 0, x = 2463534242u;
-    uint64_t reads = 0, torn = 0, wrong = 0, rounds = 0, views = 0;
+    uint64_t reads = 0, torn = 0, wrong = 0, rounds = 0, views = 0, holds = 0;
     explicit Other(Shared &shared) : s(shared) {}
 
     uint32_t rnd() {
@@ -277,7 +302,20 @@ struct Other {
         while (!s.msgs.push(Msg{false, c})) read(scratch); // full: the audio thread will catch up
         pushedEdits++;
         pi_event ev[64];
-        model.process(1, &c, 1, ev, 64);
+        if (c.type == PI_CMD_KEY_UP && c.a == PI_KEY_BPM) {
+            // Both readings of the release: as it comes (a press, if nothing used bpm), and after
+            // half a second of frames with nothing sent (a hold).
+            size_t n = models.size();
+            for (size_t i = 0; i < n; i++) {
+                Core held = models[i];
+                for (uint32_t f = 0; f < 48000 / 2; f += 4000) held.process(4000, nullptr, 0, ev, 64);
+                held.process(1, &c, 1, ev, 64);
+                models[i].process(1, &c, 1, ev, 64);
+                models.push_back(held);
+            }
+            if (models.size() > 64) die("the model forked past 64 states");
+        } else
+            for (Core &m : models) m.process(1, &c, 1, ev, 64);
         read(scratch); // a saver may look at any moment
     }
 
@@ -290,7 +328,8 @@ struct Other {
             while (!s.msgs.push(Msg{true, pi_cmd{}})) std::this_thread::yield();
         }
         pushedLoads++;
-        if (model.load(snap) != PI_OK) die("the model refused a snapshot");
+        for (Core &m : models)
+            if (m.load(snap) != PI_OK) die("the model refused a snapshot");
     }
 
     // Wait until the audio thread has taken everything sent, then compare with the model.
@@ -299,16 +338,29 @@ struct Other {
         auto give_up = std::chrono::steady_clock::now() + std::chrono::seconds(20);
         while (!read(got) || got.edits != pushedEdits || got.loads != pushedLoads)
             if (std::chrono::steady_clock::now() > give_up) die("the audio thread never caught up");
-        Snap want;
-        model.save(want);
-        if (std::memcmp(want.b, got.snap.b, PI_SNAPSHOT_SIZE) != 0) wrong++;
+        // Any state the model allows; that one goes on. A model whose snapshot matches but whose
+        // engine differs (frames run, the playhead) differs only in what the next bpm release
+        // reads, and both readings of that are kept again.
+        size_t match = models.size();
+        for (size_t i = 0; i < models.size() && match == models.size(); i++) {
+            Snap want;
+            models[i].save(want);
+            if (want == got.snap) match = i;
+        }
+        if (match == models.size()) {
+            wrong++;
+            match = 0;
+        } else if (match != 0)
+            holds++;
+        Core kept = models[match];
+        models.assign(1, kept);
         rounds++;
         return got;
     }
 
     void churn(int n) {
         Snap kept;
-        model.save(kept);
+        models[0].save(kept);
         for (int r = 0; r < n; r++) {
             if (r % 5 == 4) {
                 // Load, then edit at once: the edit must land on what was loaded.
@@ -321,9 +373,17 @@ struct Other {
                 // Any key but fx (ABI 6): held while playing, it lets the steps that arrive
                 // write the lane (§17), and when they arrive is the audio thread's pace, which
                 // the model, a frame an edit, does not keep. The lane is edited by FX instead.
+                // Nor pattern (ABI 16, section 21), for the same reason: the audio thread plays,
+                // so a choice there waits for the end of the bar, and the model, stopped, takes
+                // it at once. Patterns are reached by COPY instead, which does not wait.
+                // Bpm is pressed as any key: tapped, held alone over other messages, held over a
+                // slider (swing and tempo). Its release, timed in the engine's frames (D130), is
+                // the one press whose result the model cannot know, so it keeps both (above).
+                // (Issue 139's build pressed bpm only as a used hold, which issue 169 undid.)
                 uint8_t key = uint8_t(rnd() % 22);
-                if (key == PI_KEY_FX) key = PI_KEY_WRITE;
-                switch (rnd() % 8) {
+                if (key == PI_KEY_FX || key == PI_KEY_PATTERN) key = PI_KEY_WRITE;
+                uint32_t how = rnd() % 8;
+                switch (how) {
                 case 4: edit(pi_cmd{0, PI_CMD_KEY_DOWN, key, 0, 0, 0}); break;
                 case 5: edit(pi_cmd{0, PI_CMD_KEY_UP, key, 0, 0, 0}); break;
                 case 6:
@@ -339,9 +399,12 @@ struct Other {
                     break;
                 case 2:
                     // Swing, or (ABI 6) one of the effects' two edits.
+                    // Since ABI 16, or the active pattern copied to a slot (section 21), so the
+                    // snapshots handed over grow to several patterns and shrink back.
                     if (rnd() % 2) edit(pi_cmd{0, PI_CMD_SWING, 0, 0, 0, rnd() % 49});
                     else if (rnd() % 2) edit(pi_cmd{0, PI_CMD_FX, a, 0, 0, rnd() % 17});
-                    else edit(pi_cmd{0, PI_CMD_FXSOUND, a, 0, 0, rnd() % 2});
+                    else if (rnd() % 2) edit(pi_cmd{0, PI_CMD_FXSOUND, a, 0, 0, rnd() % 2});
+                    else edit(pi_cmd{0, PI_CMD_COPY, 0, 0, 0, b});
                     break;
                 default: edit(pi_cmd{0, PI_CMD_LENGTH, 0, 0, 0, 1 + rnd() % 16}); break;
                 }
@@ -359,7 +422,34 @@ struct Other {
     // Since version 3 (§17) also the whole lane and every sound's fx switch. Since version 4
     // (§20) what every step keeps: each step goes off first, which forgets, then on as the
     // fixture has it, then the fixture's own keeps.
+    // Since ABI 16 (section 21) every pattern and the chain first: a load of pi_init's, through
+    // the queue like any load, since no edit reaches a pattern but the active one without a
+    // choice, which waits while the core plays. A fixture whose step-0 edits choose, chain or
+    // copy is entered whole that way, as a load of its own snapshot built on a private engine:
+    // the core plays, so entered as edits its choices would wait for the bar.
     Snap enter(const Json &fx) {
+        auto built = [&](bool edits) {
+            Core own(48000, 1);
+            pi_event ev[64];
+            std::vector<pi_cmd> c{pi_cmd{0, PI_CMD_TEMPO, 0, 0, 0, uint32_t(fx.n("mbpm"))}};
+            if (edits)
+                for (const Json &j : fx.at("commands").arr)
+                    if (j.n("at") == 0 && is_edit(j.at("cmd").str)) c.push_back(to_cmd(j));
+            own.process(1, c.data(), uint32_t(c.size()), ev, 64);
+            Snap s;
+            own.save(s);
+            return s;
+        };
+        bool patterns = false;
+        for (const Json &c : fx.at("commands").arr) {
+            const std::string &name = c.at("cmd").str;
+            patterns |= c.n("at") == 0 && (name == "pattern" || name == "chain" || name == "copy");
+        }
+        load(built(false));
+        if (patterns) {
+            load(built(true));
+            return settle().snap;
+        }
         for (uint8_t k = 0; k <= PI_KEY_WRITE; k++) edit(pi_cmd{0, PI_CMD_KEY_UP, k, 0, 0, 0});
         for (uint8_t k : {PI_KEY_BPM, 15u}) edit(pi_cmd{0, PI_CMD_KEY_DOWN, k, 0, 0, 0});
         for (uint8_t k : {15u, PI_KEY_BPM}) edit(pi_cmd{0, PI_CMD_KEY_UP, k, 0, 0, 0});
@@ -432,9 +522,9 @@ int main(int argc, char **argv) {
         if (fx.n("seed") != 1) die("race.cpp starts its engine from seed 1, as every fixture so far does");
         Snap snap = other.enter(fx);
         out += path.stem().string() + " ";
-        for (uint8_t byte : snap.b) {
+        for (uint32_t i = 0; i < snap.len; i++) {
             char two[3];
-            std::snprintf(two, sizeof two, "%02x", byte);
+            std::snprintf(two, sizeof two, "%02x", snap.b[i]);
             out += two;
         }
         out += "\n";
@@ -445,9 +535,10 @@ int main(int argc, char **argv) {
     audio_thread.join();
     std::ofstream(argv[2], std::ios::binary) << out;
     std::printf("race (%s, idle %d): %llu rounds, %u edits and %u loads sent, %llu blocks, %llu publishes, %llu snapshots and %llu views taken; "
-                "%llu torn, %llu rounds where the snapshot was not the model's\n",
+                "%llu torn, %llu rounds where the snapshot was not the model's (%llu where a bpm release was a hold)\n",
                 m.c_str(), shared.idle, (unsigned long long)other.rounds, other.pushedEdits, other.pushedLoads,
                 (unsigned long long)shared.blocks, (unsigned long long)shared.publishes,
-                (unsigned long long)other.reads, (unsigned long long)other.views, (unsigned long long)other.torn, (unsigned long long)other.wrong);
+                (unsigned long long)other.reads, (unsigned long long)other.views, (unsigned long long)other.torn, (unsigned long long)other.wrong,
+                (unsigned long long)other.holds);
     return other.torn == 0 && other.wrong == 0 ? 0 : 1;
 }
