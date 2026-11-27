@@ -3361,6 +3361,112 @@ Not chosen:
   RESET 26.25, PLAY 39.0) is what Kenny chose, moved up as item 3 says. A relayout of the
   whole panel: for the later design session.
 
+### D139 — Larger keys and less empty space: Kenny accepts issue 150's design as the current design, at 27 HP; the wordmark under the display at 5.0 mm
+**2026-11-27 · decided (Kenny, after seeing the boards of issue 150's design pass on the design canvas; his words through the coordinator) · changes D114's and D119 item 1's positions for the keys, the sliders, the function keys and the wordmark; the display, AUDIO, D138's left column, the ten jacks of the row and every port number stand · item 2's size is the designer's recommendation, accepted in advance, marked so · designed, not built: the build follows the PLAY jack's build (issue 147) · hosts only, the core does not change**
+
+How we got here: placing the PLAY jack, Kenny said of the panel "I also feel we have too much
+whitespace around, and it would improve the accessibility / usability if we increase the
+size of our pads / buttons" (issue 150). A design pass measured the built panel from
+`design/make_panel.py`, worked out what fits, and drew it on the design canvas beside today.
+Kenny, on the boards: "Yes 27hp. Wordmark could be larger since we have space? But I'm not a
+designer. Will bow to suggestions. Key distance seems good. Lettering growth looks great to
+me on the pads. Sliders look good. Everything else looks good to me. I think we should
+accept it as the current design, and we will evolve in time if needed (it's useful to keep
+canvas clean and up to date)."
+
+The sums, in mm (`design/make_panel.py`'s own figures):
+
+- **Down the panel.** From the display's frame (y 32.0) to the tops of the group names
+  (y 102.35) is 70.35. Built: 12.0 empty, 48.0 of keys, 10.35 round the wordmark. PLAY in's
+  socket ends at y 42.75 (D138 item 3), so the keys cannot start above 44. With the wordmark
+  moved up into the band PLAY in already needs: 12.0, then 56.0 of keys, then 2.35. Four
+  keys in 56.0 is a pitch of 14.0.
+- **Across.** 137.16 less two margins of 5.0 is 127.16. Built, the keys' band is 111.85 wide
+  and sits 12.77 and 12.54 from the edges. Designed: 0.2, 55.6 of grid, 26.36 of sliders,
+  45.0 of function keys.
+- **The ceiling at 27 HP** is a key of about 13.9, with the keys 1.0 from the group names.
+
+1. **27 HP stays** ("Yes 27hp"). The height binds, not the width: 128.5 mm is fixed, and a
+   wider panel would widen only the function keys. No saved patch's neighbours move.
+2. **The wordmark sits under the display, at 5.0 mm** (3.0 now), centred at (68.58, 38.0),
+   in the band between the display's frame and the keys, where PLAY in is.
+   **⚠ The size is the designer's recommendation, accepted in advance:** the boards Kenny
+   saw drew 3.5 mm; he asked "Wordmark could be larger since we have space?" and said "Will
+   bow to suggestions". The arithmetic: at a size *s* the words are 10.8 *s* wide (eighteen
+   letters at 0.6 *s*) and a capital 0.73 *s* tall. The band is 12.0 tall, so `--check`'s
+   1.0 mm above and below allows up to 13.7; five clear millimetres from PLAY in's socket
+   (x 13.5) allow up to 9.3. Neither is the limit: the limit is that the wordmark must not
+   outrank what the instrument says. At 5.0 it is 54.0 wide, as wide as the grid under it
+   (55.6); its capital is 3.65, which leaves 4.17 above and below, the air it has today
+   (4.08); it is larger than a key's numeral (4.4) and half the tempo (10). It runs from
+   x 41.58 to 95.58: 28.1 from PLAY in's socket.
+3. **A key is 13.6 mm, 14.0 from the next, 0.4 apart** (11.7, 12.0 and 0.3 now; "Key
+   distance seems good"). At Rack's 100% zoom, 2.95 px to the mm (R33), that is 40.1 px
+   (34.5 now), and a gap is 1.2 px (0.9 now: under one pixel). Key *n*, column *c* and row
+   *r* from 0: centre (12.00 + 14*c*, 51 + 14*r*). The faces run from x 5.20 to 60.80 and
+   y 44.20 to 99.80; key 1's face is 1.45 under PLAY in's socket.
+4. **The lettering grows with the keys** ("Lettering growth looks great to me on the pads"):
+   a key's numeral 3.8 to 4.4 mm, a function key's word 2.8 to 3.2 mm. The tempo (10), the
+   jack labels (2.6; AUDIO 2.8) and the A and B (3.0) stand. Nothing shrinks. A key's lights
+   keep their shares of the key: the frame and the twill an eighth each (1.70), the core two
+   fifths (5.44) with its line 0.43, the stitch 1.6, the bar 1.2, the dash 2.1 by 0.6, the
+   ring and the disc 1.75 across.
+5. **The sliders stand 12 mm apart with caps of 8 by 4.5 mm** (10 apart, 5 by 3 now;
+   "Sliders look good"): centre lines at x 68.0 and 80.0, each dragged in a box 8.0 by 51.5
+   (5.0 by 43.0 now), y 44.0 to 95.5, so a cap travels 47.0 (40.0 now). 4.0 between the
+   caps. The dividers at x 62.8 and 85.2. The A and B at y 98.7. The second mark is a
+   millimetre wider than the cap, as now: 9.0 by 0.35.
+6. **The function keys:** the top three 14.6 by 27.7 (12.93 by 23.7 now), the bottom four
+   10.8 by 27.7 (9.55 by 23.7 now), 0.6 apart, from x 87.16 to 132.16 and y 44.0 to 100.0.
+   A key's band 1.9 (1.67 now).
+7. **The phone's edge is 8 px a side** (16 now): table 2, hem 2, padding 4. A key is 92 px
+   square, 2 px apart (88 now); its numeral 30 px (28), a function key's word 20 px (18). A
+   slider's column is 48 px and its cap 48 by 44 px (44, and 44 by 26, now), so the cap
+   travels about 231 px (249 now). The function keys come to 84 and 62 px wide; the display
+   stays 124 px tall. The page already used its width (keys and gaps were 358 of 390 px);
+   this takes 374.
+8. **The rest as drawn** ("Everything else looks good to me"): the display and its 78 cells,
+   AUDIO, D138's column (CLOCK 13.15, RESET 25.95, PLAY in 38.75), the ten jacks of the row
+   with their names and rules, and the `?` mark (4.2 mm; 28 px on the phone) do not move.
+   **No port is removed or reordered** (`docs/RACK-RULES.md`): a patch keeps its cables.
+9. **It is the current design, to evolve in use,** and the canvas is kept to it: the boards
+   are retitled "Ruled", and the board of layout B as first drawn is marked superseded.
+   `design/DESIGN.md`, "Layout B", has the positions as designed beside the built ones.
+
+Keys, function keys and the sliders' boxes cover 35.1% of the panel (25.2% now); the sixteen
+keys alone 16.8% (12.4%).
+
+⚠ Unverified:
+
+- **Every designed size is confirmed only by a scratch copy of `make_panel.py`** (these
+  constants, `wordmark()` moved, the checks named in issue 150 added), outside the
+  repository: it passes `--check`. The repository's script has not run them; the build does.
+- **`wordmark()` changes, not only a constant:** as written it centres the wordmark between
+  the keys and the group names, where 2.35 mm is left, and `--check` fails.
+- **Nothing was seen in Rack at 100% zoom or on a phone.** The boards are drawings in a
+  browser. The sizes `rack/src/Rhythm.cpp` and `web/rhythm.html` draw are checked by no script.
+- **The keys end 2.35 mm over the group names** (a name sits 1.35 over its own rule). If
+  SOUNDS reads as the keys' label in Rack, the fallback is a key of 13.2 at a pitch of 13.6,
+  which leaves 3.95.
+- **44 px as the least size of a touch target** (the phone's cap) is WCAG 2.2's 2.5.5, not
+  yet in `docs/REFERENCES.md`.
+- **The `?` mark** stays 4.2 mm and 28 px: whether that is enough to hit is still open
+  (`design/DESIGN.md`, "The `?` mark").
+
+Not chosen:
+
+- **A wider panel.** The height binds (item 1), so the grid gains nothing, and every saved
+  patch with a module to Rhythm's right would have to make room.
+- **The grid beside the left column, up to the display** (keys of about 14.1 mm): it
+  narrows the bottom function keys from 9.55 to about 8.6 mm, and leaves a strip 10 mm wide
+  empty under PLAY in.
+- **The wordmark left under the keys:** it needs 4.19 mm there (its capital and 1.0 each
+  side), which holds a key to about 13.1.
+- **The wordmark at 3.5 mm,** as first drawn: it fits, and Kenny asked for larger. **Larger
+  than 5.0:** from about 6 mm it is wider than the grid and nears the weight of the tempo.
+- **Moving the row of jacks or the display:** every cable's place and the weave's 78 cells
+  stay as D114 and D119 item 1 left them.
+
 ### D140 — The agent's command: `node beat/beat.mjs`, checking, rendering and packing a beat file over the committed `.wasm`; the beat file itself is what Rack takes
 **2026-11-27 · proposed, for Kenny to rule (O40) · designs issue 6 (D110 item 7, D131 item 2, D134 item 6) · `docs/BEAT.md`, "The agent's command" · no file of the engine changes · nothing built; the build is issue 163**
 
