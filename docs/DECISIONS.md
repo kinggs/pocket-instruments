@@ -2906,6 +2906,29 @@ they follow is Kenny's ⚠.
 
 A tool that turns the hyphen into its own form does so by its own rule (Rust's `pocket_instruments` for a crate named `pocket-instruments`); that is the preferred form read by that tool, not a fourth name. ⚠ A reverse-DNS ID (a Flatpak's, say), if one is ever needed, is chosen then.
 
+### D130 — Letting go of bpm steps the preset only after a press, not a hold: half a second
+**2026-11-27 · decided (Kenny, after playing the terminal host; "500 ms") · changes `ENGINE.md` §13's `KEY_UP` for bpm · every host, through the core · the snapshot, the ABI and every existing trace and view stand**
+
+Kenny: "a BPM hold of a while should be seen as a hold, not a bump to the BPM between 80,
+120 and 140. We should have that already, but it felt like it went wrong in my testing." It
+did not exist: §13 stepped the preset on any release that nothing used, however long the
+hold.
+
+1. **A release of bpm that nothing used steps the preset only if bpm was down for fewer than
+   half a second:** `sample_rate / 2` frames, rounded down. Half a second or more is a hold,
+   and letting it go changes nothing. Kenny chose the time.
+2. **Counted in the engine's own frames,** from the frame of the `KEY_DOWN` to the frame of the
+   `KEY_UP`, across blocks: the same bytes at every block size, as P2 asks. A rate change during
+   the hold counts the frames as they ran; the threshold is the rate at the release.
+3. **Nothing else moves.** A used hold is still no preset step; a clean press still is.
+   `keys-bpm-family`'s presses go down and up in one frame, so none of its lines changes.
+   A new fixture, `keys-bpm-hold`, is worked by hand (`fixtures/README.md`): 250 ms steps,
+   625 ms holds, exactly 500 ms holds, 375 ms steps.
+4. ⚠ Not checked on the PO-12: `WORKFLOW.md` still lists the release rule as not asked.
+
+Not chosen: a time in steps (it would change with the tempo); timing in the hosts (each would
+need it, and the core decides what a key means, D51).
+
 ## Open
 
 | ID | Question | Needs |

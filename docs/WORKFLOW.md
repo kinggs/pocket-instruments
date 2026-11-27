@@ -73,7 +73,7 @@ are silent, it takes these readings (D57), each one line to change:
 | ⚠ | Reading built | The question it guesses at |
 |---|---|---|
 | ☐ | Choosing a sound plays it | not asked above |
-| ☐ | bpm changes the preset when it is let go, and only if nothing else was done while it was held; so changing the volume or the swing never changes the tempo | not asked above |
+| ☐ | bpm changes the preset when it is let go, and only if nothing else was done while it was held; so changing the volume or the swing never changes the tempo. Ours since D130: only after a press of under half a second; a longer hold changes nothing | not asked above |
 | ☐ | A tempo change is at once | 6 |
 | ☐ | Play always starts from step 1 | 7 |
 | ☐ | Write turns on at the press, not the release | will be asked again with live record |

@@ -621,3 +621,23 @@ lends `pi_delay_frames(rate)` floats; 14 uses the first 18.30 ms of them). Its 1
 new, native and `.wasm` the same bytes. Adding it, and effect 13 before it, moved nothing
 else: the report's 330 runs from before the session and all 420 earlier render files are the
 same bytes. The report has 360 runs since `fx-shuffle` moved up.
+
+## `keys-bpm-hold` (designed for D130, 2026-11-27; in `designed/` until the build)
+
+Worked by hand from `ENGINE.md` §13's changed `KEY_UP` before any code: a release of bpm that
+nothing used steps the preset only after fewer than `R / 2` frames. Stopped at 120 bpm, so
+`F(n) = ceil(n × R / 8)`, and a key lands at `F(at) + 1` at both ends, so a hold is
+`F(up) − F(down)` frames:
+
+| bpm down, up | 44 100 | 48 000 | 96 000 | `R / 2` | So | Tempo after |
+|---|---|---|---|---|---|---|
+| 1, 3 (250 ms) | 11 025 | 12 000 | 24 000 | 22 050, 24 000, 48 000 | a press | 120 → 140 |
+| 4, 9 (625 ms) | 27 563 | 30 000 | 60 000 | | a hold | 140 |
+| 10, 14 (500 ms) | 22 050 | 24 000 | 48 000 | equal | a hold (not fewer) | 140 |
+| 15, 18 (375 ms) | 16 537 | 18 000 | 36 000 | | a press | 140 → 80, none above |
+
+The views free of bpm are `keys-bpm-family`'s own lines at that tempo (the same step edits and
+write on at 0). Held, as there at `at` 4: the fields show the volume (`ffff`), A the swing
+(0) and B the tempo, `(bpm − 60) × 65535 / 180` rounded down: 21845 at 120, 29126 at 140.
+Nothing fires, so `expect` is empty. `keys-bpm-family` does not move: each of its clean
+presses goes down and up in one frame.

@@ -885,9 +885,13 @@ all). A new press of bpm starts unused.
 Play and write act whatever else is held. Clear is function, then pattern, in that order:
 pattern first and then function is two keys held (D59).
 
-**`KEY_UP`.** The key is no longer held. If it is bpm and nothing used it while it was down,
+**`KEY_UP`.** The key is no longer held. If it is bpm, nothing used it while it was down,
+and it was down for fewer than `sample_rate / 2` frames (half a second, rounded down; D130),
 the tempo moves to the next preset: the lowest of 80, 120 and 140 bpm above the tempo now,
-or 80 if there is none. At once ⚠.
+or 80 if there is none. At once ⚠. Held that long or longer and not used, letting it go
+changes nothing: it was a hold. The frames are those the engine ran between the two
+commands' own frames, counted across blocks, so a block's size changes nothing; the rate is
+the one at the release.
 
 **`PARAM`** (`a` 0 = slider A, 1 = B; `value` 0 to 65535, clamped):
 
