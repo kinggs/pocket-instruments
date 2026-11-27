@@ -71,6 +71,10 @@ LAYOUTS := $(patsubst harness/render-%.json,%,$(shell grep -l '"layouts"' harnes
 # A scenario that names "loops" (render-loop.json, §19) is also rendered in the loop layouts,
 # 18 and 50 channels, which are read as well as written: each harness gives them the same inputs.
 LOOPS := $(patsubst harness/render-%.json,%,$(shell grep -l '"loops"' harness/render-*.json))
+# `node --test beat/` is the agent's command (docs/BEAT.md, D140; issue 163): check on every
+# .beat, the refusals and the exit codes, the bank rendered from the committed and the built
+# .wasm alike, the worked example against the harness's render and trace, the grids worked by
+# hand, pack giving the bank back. About 4 seconds.
 test: build check-p1 check-beat
 	PI_REPORT=$(REPORT)-rust.txt PI_WEAVE=$(WEAVE)-rust.txt PI_BEAT=$(BEAT)-rust.txt cargo test -p pi-core --locked -q
 	cargo test -p pi-beat --locked -q
@@ -80,6 +84,7 @@ test: build check-p1 check-beat
 	target/harness --beat $(BEAT)-cases.txt $(BEAT)-cpp.txt
 	PI_REQUIRE_WASM=1 PI_REPORT=$(REPORT)-node.txt PI_WEAVE=$(WEAVE)-node.txt PI_RENDER=$(CURDIR)/target/render-node \
 	  PI_BEAT=$(BEAT)-node.txt PI_BEAT_CASES=$(BEAT)-cases.txt node --test harness/
+	node --test beat/
 	$(CXX) -std=c++11 $(RACK_MATH) $(OUR_MATH) $(RACK_ARCH) -Wall -Wextra -Werror -Icore/include rack/test/jacks.cpp $(NATIVE) -o target/jacks
 	target/jacks
 	cmp $(REPORT)-rust.txt $(REPORT)-cpp.txt

@@ -1,0 +1,24 @@
+pocket-instruments beat 1
+name Half Time
+credit Pocket Instruments contributors, 2026; CC0
+tempo 140
+volume 13
+seed 1
+sound 16 a 34132 b 20000
+value a 34132 20000
+value b 42324 20000
+value c 28671 20000
+chain 1 2
+
+pattern 1
+1  kick    x..x......x.....
+2  snare   ........x.......
+3  hat     x.x.x.x.x.x.xxx.
+16 bass    a..a......b.....
+
+pattern 2
+1  kick    x..x......x..x..
+2  snare   ........x.....x.
+3  hat     x.x.x.x.x.x.x.x.
+4  openhat ..............x.
+16 bass    a..a......c..c..

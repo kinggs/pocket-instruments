@@ -56,6 +56,12 @@ The notice file is still named `stmlib-plaits-MIT.txt`. Two things it once cover
 
 Not affiliated with Émilie Gillet or Mutable Instruments.
 
+## Rhythms written out
+
+| Rhythm | Its makers | What is here | Where it was read |
+|---|---|---|---|
+| The Amen break, from "Amen, Brother" (1969) | The Winstons; the drummer Gregory C. Coleman | `beats/amen-break.beat`: its four bars written out step by step on our own voices and the CC0 starter samples, credited in the file. **No recording or sample of the record.** ⚠ Proposed, not ruled (D141 item 2, O40) | `docs/REFERENCES.md` R97 to R100 |
+
 ## Built for, built against, patched into
 
 | Source | Author | Licence | What is here | What we take |

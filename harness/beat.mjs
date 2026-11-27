@@ -25,10 +25,12 @@ export function loadBeat(path = BEAT_WASM) {
 }
 
 // pib_read: { snap, own } or { code, msg }.
+// A text longer than PIB_TEXT_MAX (a file an agent wrote with long comments, say) is put in
+// pages added for it, so the reader, not the room, says whether it reads (issue 163).
 export function beatRead(b, text) {
-  if (text.length > PIB_TEXT_MAX) throw new Error("a text longer than this harness's room");
-  new Uint8Array(b.pib.memory.buffer, b.at.text, text.length).set(text);
-  const n = b.pib.pib_read(b.at.text, text.length, b.at.snap, PIB_SNAPSHOT_MAX, b.at.own, b.at.msg, PIB_MSG_MAX);
+  const at = text.length > PIB_TEXT_MAX ? b.pib.memory.grow(Math.ceil(text.length / PAGE)) * PAGE : b.at.text;
+  new Uint8Array(b.pib.memory.buffer, at, text.length).set(text);
+  const n = b.pib.pib_read(at, text.length, b.at.snap, PIB_SNAPSHOT_MAX, b.at.own, b.at.msg, PIB_MSG_MAX);
   const mem = new Uint8Array(b.pib.memory.buffer);
   if (n < 0) {
     const end = mem.indexOf(0, b.at.msg);
