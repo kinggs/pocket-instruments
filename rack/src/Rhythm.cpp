@@ -577,15 +577,17 @@ struct Rhythm : Module {
         int count = int(bankOrder(dir).size());
         for (int n = 1; n <= count && !testerStop.load(); n++) {
             std::vector<uint8_t> before = settled();
-            // The module's data as the menu's ModuleChange keeps it (its oldModuleJ's "data"). Undo
-            // gives that JSON to the widget's fromJson, which gives its "data" to dataFromJson; the
-            // whole Module::toJson and fromJson need Rack's UI thread (a ParamQuantity reads APP),
-            // so this thread takes the data part, the only part a beat is in.
-            json_t *oldJ = dataToJson();
-            std::string said, why = loadFromBank(dir, n, said);
+            // The module's data as the menu's ModuleChange keeps it (its oldModuleJ's "data", which
+            // loadFromBank takes). Undo gives that JSON to the widget's fromJson, which gives its
+            // "data" to dataFromJson; the whole Module::toJson and fromJson need Rack's UI thread (a
+            // ParamQuantity reads APP), so this thread takes the data part, the only part a beat is in.
+            json_t *oldJ = nullptr;
+            std::string said, why = loadFromBank(dir, n, said, &oldJ);
             (why.empty() && settled() == bankBeat(dir, n).snap ? bankSame : bankNot)++;
-            dataFromJson(oldJ);
-            json_decref(oldJ);
+            if (oldJ) {
+                dataFromJson(oldJ);
+                json_decref(oldJ);
+            }
             (settled() == before ? bankUndone : bankUndoNot)++;
             if (why.empty()) loadFromBank(dir, n, said); // and Redo: the next one replaces it
         }
@@ -1738,13 +1740,20 @@ struct Rhythm : Module {
     }
     // The bank's n-th beat (D141, proposed): its file read now and opened by openBeat, as the
     // menu's Open opens a file. "" if it was asked for, and `said` names it; else why not, and
-    // then nothing changed. The menu puts the change in Rack's undo history (bankMenu).
-    std::string loadFromBank(const std::string &dir, int n, std::string &said) {
+    // then nothing changed. `kept`, if given, gets the module's data as it was before the load:
+    // the beat it replaces, kept once (D141 item 6) in Rack's undo history (bankLoad), so Edit,
+    // Undo gives it back to dataFromJson. A refusal keeps nothing.
+    std::string loadFromBank(const std::string &dir, int n, std::string &said, json_t **kept = nullptr) {
         BankBeat b = bankBeat(dir, n);
         if (!b.why.empty()) return b.why;
+        json_t *before = kept ? dataToJson() : nullptr;
         uint32_t own = 0;
         std::string why = openBeat(b.text, own);
         if (why.empty()) said = b.name.empty() ? b.file : b.name;
+        if (kept) {
+            if (why.empty()) *kept = before;
+            else json_decref(before);
+        }
         return why;
     }
     // Save: the beat as it is now (currentSnapshot, so the last move is in it), as text. "" and
@@ -2618,14 +2627,15 @@ struct RhythmWidget : ModuleWidget {
     // the widget's fromJson, so dataFromJson queues the old snapshot): the self-test's "bank"
     // loop does what undo does; the menu's own Ctrl+Z is for Kenny to try.
     void bankLoad(Rhythm *m, int n) {
-        json_t *oldJ = toJson();
+        json_t *oldJ = toJson(), *kept = nullptr;
         std::string said;
-        std::string why = m->loadFromBank(bankFolder(), n, said);
+        std::string why = m->loadFromBank(bankFolder(), n, said, &kept);
         if (!why.empty()) {
             json_decref(oldJ);
             osdialog_message(OSDIALOG_WARNING, OSDIALOG_OK, ("Not loaded, and nothing changed: " + why).c_str());
             return;
         }
+        json_object_set_new(oldJ, "data", kept); // the beat the load replaced, as the module kept it
         history::ModuleChange *h = new history::ModuleChange;
         h->name = "load " + said;
         h->moduleId = m->id;
