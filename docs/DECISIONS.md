@@ -3160,6 +3160,40 @@ Not chosen: a latched pattern that stays until pressed again, like fx (D78): cho
 common case, would then take three actions, not two. A separate copy gesture for a mouse:
 D22 keeps the hardware's.
 
+### D136 — Kenny accepts the patterns design as recommended (O38), and D132 ⚠
+**2026-11-27 · decided (Kenny, asked through the coordinator of the patterns design session) · answers O38 · D133 to D135 stop being proposals and are decided as written · accepts D132, as read below ⚠ · nothing built**
+
+Asked to rule on O38's eight questions, each put to him with its recommended answer, Kenny:
+"Happy with all your recommendations." So, as recommended:
+
+1. **The sixteen patterns live in the engine;** every host's fixed room for it is 32 KiB
+   (D133 item 1).
+2. **One `no_std` crate, `beat/`, reads and writes the beat file** for every host (D134
+   item 2).
+3. **Snapshot version 5 is variable in length,** empty patterns left out (D133 item 4).
+4. **The view grows to 88 bytes,** ABI 16 (D133 item 5).
+5. **The length is each pattern's** (D133 item 3).
+6. **Shift on a grid key keeps a latched pattern, and Shift latches write** (D135 items 1
+   and 2; item 3, the terminal's tap on `p`, with them).
+7. **A copy puts write mode back** as it was before write went down (D133 item 6).
+8. **The terminal's saved beat becomes the text file** at the same path, reading an old
+   binary one by its magic (D134 item 5).
+
+The two lights R90 did not show keep their written defaults and their ⚠ (`ENGINE.md` §21):
+the chain's patterns stitched while pattern is held during a chain, the playing one
+flickering; an empty chosen pattern flickers. Kenny's PO-12 may still overrule either, one
+line each.
+
+**D132 ⚠.** Earlier the same day Kenny, asked whether merging pull request 136 was his
+ruling on D132, asked what D132 was. He was given its four points, each recommended yes:
+the tag `v2.0.0-alpha.1` with `rack/plugin.json` at 2.0.0; the four plugin files and
+`Showcase.vcv`; no terminal binary in this pass; attestations in this pass. His answer above
+followed. ⚠ The coordinator's reading, recorded as a reading: it accepts D132's four points
+as well as O38's eight. Kenny may say otherwise.
+
+D132 to D135 are not rewritten (this file is append only): where their headers say
+"proposed", this decision is what says they are accepted.
+
 ## Open
 
 | ID | Question | Needs |
@@ -3201,4 +3235,4 @@ D22 keeps the hardware's.
 | O35 | ~~Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way~~ | **Answered 2026-11-26: D119 item 2.** Was: The owner |
 | O36 | ~~The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed?~~ | **Answered 2026-11-26: D119 item 3.** Was: The owner, one by one. ⚠ First check each against what Rack and a browser already do with it |
 | O37 | ~~The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)?~~ **Answered 2026-11-27: D128, `pocket-instruments`.** Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
-| O38 | Patterns as designed (D133 to D135)? Above all: the sixteen in the engine and every host's room at 32 KiB (D133 item 1); the beat file read and written by one crate beside the core (D134 item 2); snapshot version 5 variable in length (D133 item 4); the view at 88 bytes (D133 item 5); the length each pattern's (D133 item 3); Shift keeping a latched pattern and latching write (D135); write mode put back after a copy (D133 item 6); the terminal's saved beat as text (D134 item 5). And the two lights R90 did not show: during a chain, and an empty chosen pattern | Kenny. Recommended: accept as designed; the two lights at their defaults until Kenny's PO-12 shows them |
+| O38 | ~~Patterns as designed (D133 to D135)? Above all: the sixteen in the engine and every host's room at 32 KiB (D133 item 1); the beat file read and written by one crate beside the core (D134 item 2); snapshot version 5 variable in length (D133 item 4); the view at 88 bytes (D133 item 5); the length each pattern's (D133 item 3); Shift keeping a latched pattern and latching write (D135); write mode put back after a copy (D133 item 6); the terminal's saved beat as text (D134 item 5). And the two lights R90 did not show: during a chain, and an empty chosen pattern~~ | **Answered 2026-11-27: D136** (all eight as recommended; the two lights at their defaults, ⚠). Was: Kenny. Recommended: accept as designed; the two lights at their defaults until Kenny's PO-12 shows them |
