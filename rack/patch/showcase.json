@@ -17,7 +17,7 @@
     0
    ],
    "data": {
-    "text": "POCKET INSTRUMENTS: RHYTHM\nSixteen sounds, sixteen steps.\nPress PLAY on Rhythm.\nBeat: the Amen break's first\nbar, on Rhythm's own sounds.\nKick: its SAMPLE, not its code\nvoice (right-click > Sounds).\n\nSound 15 is built below. Its\ntrigger picks a random note in\nA minor for a saw.\nSlider A: filter. B: delay.\nIt comes back on SOUNDS IN.\nAUDIO > Audio 2: choose your\nsound card there.\n\nhttps://github.com/kinggs/\npocket-instruments\nNot affiliated with Teenage\nEngineering."
+    "text": "POCKET INSTRUMENTS: RHYTHM\nTwo Rhythm modules, one clock.\nTO START, in this order:\n1 PLAY on DRUMS\n2 PLAY on MELODY\n3 RESET (button by the LFO)\nRESET again if they drift.\n\nDRUMS: one bar of the Amen\nbreak on our own sounds. Four\nbars come with patterns.\nMELODY: two voices built in\nRack, one row each below.\nDelay = effect 4, Rack's own,\non set steps: hold fx, press 4.\nOUT: VCA Mix > Audio 2.\n\nhttps://github.com/kinggs/\npocket-instruments\nNot affiliated with Teenage\nEngineering."
    }
   },
   {
@@ -27,31 +27,138 @@
    "version": "2.0.0",
    "params": [],
    "pos": [
-    16,
+    28,
     0
    ],
    "data": {
-    "snapshot": "UEtJTgQAAQCoBQAAAQAAAEATAgAQAAAABQyQklVVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEkkAABkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAEAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAP//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAe5una",
-    "return": 16384,
+    "snapshot": "UEtJTgQAAQCoBQAAAQAAAEATAgAQAAAABQyQklVVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAMAEAAAAAAAAAAAAAAAAAAAAAAABAAAAP//AAAFDJCSVVUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAIAAAAAAAIAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgACAAIAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAgAAAAAAAAAAAAIAzMwAAAAAAgDMzAAAAAAAAAAAAgACAAAAAAAAAAAAAgDMzAIDMjAAAAAAAgJlZAAAAAACAzIwAAAAAAICZWQAAAAAAgMyMAAAAAACAmVkAAAAAAIDMjAAAAAAAgJlZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC92KQ7",
+    "return": -1,
     "a": -1,
     "b": -1,
-    "fxRack": 0,
-    "fxInPlace": 0
+    "fxRack": 8,
+    "fxInPlace": 0,
+    "clockBeat": false
    }
   },
   {
    "id": 3,
-   "plugin": "Core",
-   "model": "AudioInterface2",
-   "version": "2.6.6",
-   "params": [],
+   "plugin": "Fundamental",
+   "model": "VCMixer",
+   "version": "2.6.4",
+   "params": [
+    {
+     "id": 0,
+     "value": 1
+    },
+    {
+     "id": 1,
+     "value": 0.9
+    },
+    {
+     "id": 2,
+     "value": 0.75
+    },
+    {
+     "id": 3,
+     "value": 0
+    },
+    {
+     "id": 4,
+     "value": 0
+    }
+   ],
    "pos": [
-    43,
+    69,
     0
    ]
   },
   {
    "id": 4,
+   "plugin": "Core",
+   "model": "AudioInterface2",
+   "version": "2.6.6",
+   "params": [],
+   "pos": [
+    78,
+    0
+   ]
+  },
+  {
+   "id": 5,
+   "plugin": "Fundamental",
+   "model": "LFO",
+   "version": "2.6.4",
+   "params": [
+    {
+     "id": 0,
+     "value": 1
+    },
+    {
+     "id": 2,
+     "value": 3.180572245641821
+    },
+    {
+     "id": 5,
+     "value": 0.5
+    }
+   ],
+   "pos": [
+    16,
+    0
+   ]
+  },
+  {
+   "id": 6,
+   "plugin": "Fundamental",
+   "model": "Push",
+   "version": "2.6.4",
+   "params": [],
+   "pos": [
+    25,
+    0
+   ]
+  },
+  {
+   "id": 7,
+   "plugin": "Fundamental",
+   "model": "Split",
+   "version": "2.6.4",
+   "params": [],
+   "pos": [
+    55,
+    0
+   ]
+  },
+  {
+   "id": 8,
+   "plugin": "Fundamental",
+   "model": "Delay",
+   "version": "2.6.4",
+   "params": [
+    {
+     "id": 0,
+     "value": 0.7940228147639203
+    },
+    {
+     "id": 1,
+     "value": 0.35
+    },
+    {
+     "id": 2,
+     "value": 0.5
+    },
+    {
+     "id": 3,
+     "value": 1
+    }
+   ],
+   "pos": [
+    60,
+    0
+   ]
+  },
+  {
+   "id": 9,
    "plugin": "Core",
    "model": "Notes",
    "version": "2.6.6",
@@ -61,22 +168,128 @@
     1
    ],
    "data": {
-    "text": "VOICE: sound 15\nEvery trigger comes from\nRhythm: SOUNDS TRIG,\nchannel 15 (Split).\n\nRandom: a new voltage on\neach trigger.\n8vert: down to ±1 V, two\noctaves.\nQuantizer: A minor (the\nVCO's tuning is A).\nVCO: the saw."
+    "text": "MELODY: no drums.\nIts sound 15 plays the LEAD,\nits sound 16 the BASS.\nEach step keeps its own\nsliders A and B, sent out\non SLIDER A and B OUT.\nSplit: channels 15 and 16.\nMerge: both voices back on\nSOUNDS IN 15 and 16, so\nRhythm's effects reach them.\nSplit, Delay: effect 4 is\nRack's (menu: beside the\ndry). FX SEND 4 > Delay >\nFX RETURN, on the clock."
    }
   },
   {
-   "id": 5,
+   "id": 10,
+   "plugin": "pocket-instruments",
+   "model": "Rhythm",
+   "version": "2.0.0",
+   "params": [],
+   "pos": [
+    16,
+    1
+   ],
+   "data": {
+    "snapshot": "UEtJTgQAAQCoBQAAAQAAAEATAgAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEkkSWFkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAAAEAAAAAAAAAAABAQAAAAAAAAAAAQEAP//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASSRJYQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzUwzMwAAAAAAAAAAZmYAgAAAAAAAAAAAAIDNTAAAAAAAAAAAAAAAAGamZmYAAAAAAAAAAJnZZuYAAAAAAAAAAAAAzIwAAAAAAAAAAAAAmVkAAAAAAAAAAAAgM3MAAAAAAICZmQAAAAAAAAAAAAAAAAAAAACqSmZmqmoAgAAAAABlw88b",
+    "return": 49152,
+    "a": -1,
+    "b": -1,
+    "fxRack": 8,
+    "fxInPlace": 0,
+    "clockBeat": false
+   }
+  },
+  {
+   "id": 11,
    "plugin": "Fundamental",
    "model": "Split",
    "version": "2.6.4",
    "params": [],
    "pos": [
-    16,
+    43,
     1
    ]
   },
   {
-   "id": 6,
+   "id": 12,
+   "plugin": "Fundamental",
+   "model": "Split",
+   "version": "2.6.4",
+   "params": [],
+   "pos": [
+    48,
+    1
+   ]
+  },
+  {
+   "id": 13,
+   "plugin": "Fundamental",
+   "model": "Split",
+   "version": "2.6.4",
+   "params": [],
+   "pos": [
+    53,
+    1
+   ]
+  },
+  {
+   "id": 14,
+   "plugin": "Fundamental",
+   "model": "Merge",
+   "version": "2.6.4",
+   "params": [],
+   "pos": [
+    58,
+    1
+   ]
+  },
+  {
+   "id": 15,
+   "plugin": "Fundamental",
+   "model": "Split",
+   "version": "2.6.4",
+   "params": [],
+   "pos": [
+    63,
+    1
+   ]
+  },
+  {
+   "id": 16,
+   "plugin": "Fundamental",
+   "model": "Delay",
+   "version": "2.6.4",
+   "params": [
+    {
+     "id": 0,
+     "value": 0.7940228147639203
+    },
+    {
+     "id": 1,
+     "value": 0.45
+    },
+    {
+     "id": 2,
+     "value": 0.5
+    },
+    {
+     "id": 3,
+     "value": 1
+    }
+   ],
+   "pos": [
+    68,
+    1
+   ]
+  },
+  {
+   "id": 20,
+   "plugin": "Core",
+   "model": "Notes",
+   "version": "2.6.6",
+   "params": [],
+   "pos": [
+    0,
+    2
+   ],
+   "data": {
+    "text": "LEAD: sound 15\nRandom: a new note on each\ntrigger, two octaves.\nQuantizer: A C D E G\n(A minor pentatonic).\nVCO: the saw.\nVCF: slider A, per step.\nADSR: slider B, per step:\nhow long each note rings.\nVCA-1: the envelope."
+   }
+  },
+  {
+   "id": 21,
    "plugin": "Fundamental",
    "model": "Random",
    "version": "2.6.4",
@@ -99,12 +312,12 @@
     }
    ],
    "pos": [
-    21,
-    1
+    16,
+    2
    ]
   },
   {
-   "id": 7,
+   "id": 22,
    "plugin": "Fundamental",
    "model": "8vert",
    "version": "2.6.4",
@@ -115,31 +328,31 @@
     }
    ],
    "pos": [
-    30,
-    1
+    25,
+    2
    ]
   },
   {
-   "id": 8,
+   "id": 23,
    "plugin": "Fundamental",
    "model": "Quantizer",
    "version": "2.6.4",
    "params": [],
    "pos": [
-    38,
-    1
+    33,
+    2
    ],
    "data": {
     "enabledNotes": [
      true,
      false,
-     true,
-     true,
      false,
      true,
      false,
      true,
+     false,
      true,
+     false,
      false,
      true,
      false
@@ -147,7 +360,7 @@
    }
   },
   {
-   "id": 9,
+   "id": 24,
    "plugin": "Fundamental",
    "model": "VCO",
    "version": "2.6.4",
@@ -158,37 +371,12 @@
     }
    ],
    "pos": [
-    41,
-    1
+    36,
+    2
    ]
   },
   {
-   "id": 10,
-   "plugin": "Core",
-   "model": "Notes",
-   "version": "2.6.6",
-   "params": [],
-   "pos": [
-    50,
-    1
-   ],
-   "data": {
-    "text": "FILTER, ENVELOPE, DELAY\nSlider A (SLIDER A OUT,\nchannel 15): VCF's cutoff.\nADSR and VCA-1: the pluck,\non the same trigger.\nSlider B (SLIDER B OUT,\nchannel 15): Delay's echo,\nits mix and feedback.\n\nMerge: back into SOUNDS IN\non channel 15. Rhythm plays\nit as sound 15, and its\neffects reach it."
-   }
-  },
-  {
-   "id": 11,
-   "plugin": "Fundamental",
-   "model": "Split",
-   "version": "2.6.4",
-   "params": [],
-   "pos": [
-    66,
-    1
-   ]
-  },
-  {
-   "id": 12,
+   "id": 25,
    "plugin": "Fundamental",
    "model": "VCF",
    "version": "2.6.4",
@@ -211,12 +399,12 @@
     }
    ],
    "pos": [
-    71,
-    1
+    45,
+    2
    ]
   },
   {
-   "id": 13,
+   "id": 26,
    "plugin": "Fundamental",
    "model": "ADSR",
    "version": "2.6.4",
@@ -235,16 +423,20 @@
     },
     {
      "id": 3,
-     "value": 0.55
+     "value": 0.4
+    },
+    {
+     "id": 7,
+     "value": 0.4
     }
    ],
    "pos": [
-    78,
-    1
+    52,
+    2
    ]
   },
   {
-   "id": 14,
+   "id": 27,
    "plugin": "Fundamental",
    "model": "VCA-1",
    "version": "2.6.4",
@@ -259,221 +451,480 @@
     }
    ],
    "pos": [
-    87,
-    1
+    61,
+    2
    ]
   },
   {
-   "id": 15,
-   "plugin": "Fundamental",
-   "model": "Split",
-   "version": "2.6.4",
+   "id": 30,
+   "plugin": "Core",
+   "model": "Notes",
+   "version": "2.6.6",
    "params": [],
    "pos": [
-    90,
-    1
-   ]
+    0,
+    3
+   ],
+   "data": {
+    "text": "BASS: sound 16\nSlider A is the note, set\nper step: A C E G.\n8vert and Quantizer: the\nsame notes as the lead.\nVCO: square, two octaves\ndown (A1).\nVCF: slider B, per step.\nADSR, VCA-1: short."
+   }
   },
   {
-   "id": 16,
+   "id": 31,
    "plugin": "Fundamental",
-   "model": "Delay",
+   "model": "8vert",
    "version": "2.6.4",
    "params": [
     {
      "id": 0,
-     "value": 0.63
-    },
-    {
-     "id": 1,
-     "value": 0.15
-    },
-    {
-     "id": 2,
-     "value": 0.5
-    },
-    {
-     "id": 3,
-     "value": 0.15
-    },
-    {
-     "id": 5,
-     "value": 0.6
-    },
-    {
-     "id": 7,
-     "value": 0.45
+     "value": 0.2
     }
    ],
    "pos": [
-    95,
-    1
+    16,
+    3
    ]
   },
   {
-   "id": 17,
+   "id": 32,
    "plugin": "Fundamental",
-   "model": "Merge",
+   "model": "Quantizer",
    "version": "2.6.4",
    "params": [],
    "pos": [
-    104,
-    1
+    24,
+    3
+   ],
+   "data": {
+    "enabledNotes": [
+     true,
+     false,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     false,
+     true,
+     false
+    ]
+   }
+  },
+  {
+   "id": 33,
+   "plugin": "Fundamental",
+   "model": "VCO",
+   "version": "2.6.4",
+   "params": [
+    {
+     "id": 2,
+     "value": -27
+    }
+   ],
+   "pos": [
+    27,
+    3
+   ]
+  },
+  {
+   "id": 34,
+   "plugin": "Fundamental",
+   "model": "VCF",
+   "version": "2.6.4",
+   "params": [
+    {
+     "id": 0,
+     "value": 0.36
+    },
+    {
+     "id": 2,
+     "value": 0.2
+    },
+    {
+     "id": 3,
+     "value": 0.4
+    },
+    {
+     "id": 4,
+     "value": 0
+    }
+   ],
+   "pos": [
+    36,
+    3
+   ]
+  },
+  {
+   "id": 35,
+   "plugin": "Fundamental",
+   "model": "ADSR",
+   "version": "2.6.4",
+   "params": [
+    {
+     "id": 0,
+     "value": 0
+    },
+    {
+     "id": 1,
+     "value": 0.3
+    },
+    {
+     "id": 2,
+     "value": 0
+    },
+    {
+     "id": 3,
+     "value": 0.5
+    }
+   ],
+   "pos": [
+    43,
+    3
+   ]
+  },
+  {
+   "id": 36,
+   "plugin": "Fundamental",
+   "model": "VCA-1",
+   "version": "2.6.4",
+   "params": [
+    {
+     "id": 0,
+     "value": 0.8
+    },
+    {
+     "id": 1,
+     "value": 1
+    }
+   ],
+   "pos": [
+    52,
+    3
    ]
   }
  ],
  "cables": [
   {
    "id": 1,
-   "outputModuleId": 2,
+   "outputModuleId": 6,
    "outputId": 0,
-   "inputModuleId": 5,
-   "inputId": 0,
-   "color": "#f0654a"
+   "inputModuleId": 2,
+   "inputId": 1,
+   "color": "#ffffff"
   },
   {
    "id": 2,
-   "outputModuleId": 5,
-   "outputId": 14,
-   "inputModuleId": 6,
-   "inputId": 2,
-   "color": "#f0654a"
+   "outputModuleId": 6,
+   "outputId": 0,
+   "inputModuleId": 10,
+   "inputId": 1,
+   "color": "#ffffff"
   },
   {
    "id": 3,
    "outputModuleId": 5,
-   "outputId": 14,
-   "inputModuleId": 13,
-   "inputId": 4,
-   "color": "#f0654a"
+   "outputId": 3,
+   "inputModuleId": 2,
+   "inputId": 0,
+   "color": "#ffffff"
   },
   {
    "id": 4,
-   "outputModuleId": 6,
-   "outputId": 0,
-   "inputModuleId": 7,
+   "outputModuleId": 5,
+   "outputId": 3,
+   "inputModuleId": 10,
    "inputId": 0,
-   "color": "#c9c2dd"
+   "color": "#ffffff"
   },
   {
    "id": 5,
-   "outputModuleId": 7,
-   "outputId": 0,
+   "outputModuleId": 5,
+   "outputId": 3,
    "inputModuleId": 8,
-   "inputId": 0,
-   "color": "#c9c2dd"
+   "inputId": 5,
+   "color": "#ffffff"
   },
   {
    "id": 6,
-   "outputModuleId": 8,
-   "outputId": 0,
-   "inputModuleId": 9,
-   "inputId": 0,
-   "color": "#c9c2dd"
+   "outputModuleId": 5,
+   "outputId": 3,
+   "inputModuleId": 16,
+   "inputId": 5,
+   "color": "#ffffff"
   },
   {
    "id": 7,
-   "outputModuleId": 9,
+   "outputModuleId": 2,
    "outputId": 2,
-   "inputModuleId": 12,
-   "inputId": 3,
-   "color": "#8faaf7"
+   "inputModuleId": 3,
+   "inputId": 1,
+   "color": "#f2e8d0"
   },
   {
    "id": 8,
-   "outputModuleId": 2,
-   "outputId": 5,
-   "inputModuleId": 11,
-   "inputId": 0,
-   "color": "#f0b429"
+   "outputModuleId": 10,
+   "outputId": 2,
+   "inputModuleId": 3,
+   "inputId": 2,
+   "color": "#f2e8d0"
   },
   {
    "id": 9,
-   "outputModuleId": 11,
-   "outputId": 14,
-   "inputModuleId": 12,
+   "outputModuleId": 3,
+   "outputId": 0,
+   "inputModuleId": 4,
    "inputId": 0,
-   "color": "#f0b429"
+   "color": "#f2e8d0"
   },
   {
    "id": 10,
-   "outputModuleId": 12,
+   "outputModuleId": 3,
    "outputId": 0,
-   "inputModuleId": 14,
+   "inputModuleId": 4,
    "inputId": 1,
-   "color": "#8faaf7"
+   "color": "#f2e8d0"
   },
   {
    "id": 11,
-   "outputModuleId": 13,
+   "outputModuleId": 10,
    "outputId": 0,
-   "inputModuleId": 14,
+   "inputModuleId": 11,
    "inputId": 0,
    "color": "#f0654a"
   },
   {
    "id": 12,
-   "outputModuleId": 2,
-   "outputId": 6,
-   "inputModuleId": 15,
+   "outputModuleId": 10,
+   "outputId": 5,
+   "inputModuleId": 12,
    "inputId": 0,
-   "color": "#6fd6a0"
+   "color": "#f0b429"
   },
   {
    "id": 13,
-   "outputModuleId": 15,
-   "outputId": 14,
-   "inputModuleId": 16,
-   "inputId": 3,
+   "outputModuleId": 10,
+   "outputId": 6,
+   "inputModuleId": 13,
+   "inputId": 0,
    "color": "#6fd6a0"
   },
   {
    "id": 14,
-   "outputModuleId": 15,
-   "outputId": 14,
-   "inputModuleId": 16,
-   "inputId": 1,
-   "color": "#6fd6a0"
-  },
-  {
-   "id": 15,
    "outputModuleId": 14,
    "outputId": 0,
-   "inputModuleId": 16,
-   "inputId": 4,
-   "color": "#8faaf7"
-  },
-  {
-   "id": 16,
-   "outputModuleId": 16,
-   "outputId": 0,
-   "inputModuleId": 17,
-   "inputId": 14,
-   "color": "#8faaf7"
-  },
-  {
-   "id": 17,
-   "outputModuleId": 17,
-   "outputId": 0,
-   "inputModuleId": 2,
+   "inputModuleId": 10,
    "inputId": 2,
    "color": "#8faaf7"
   },
   {
-   "id": 18,
+   "id": 15,
    "outputModuleId": 2,
-   "outputId": 2,
-   "inputModuleId": 3,
+   "outputId": 4,
+   "inputModuleId": 7,
    "inputId": 0,
-   "color": "#f2e8d0"
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 16,
+   "outputModuleId": 7,
+   "outputId": 3,
+   "inputModuleId": 8,
+   "inputId": 4,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 17,
+   "outputModuleId": 8,
+   "outputId": 1,
+   "inputModuleId": 2,
+   "inputId": 3,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 18,
+   "outputModuleId": 10,
+   "outputId": 4,
+   "inputModuleId": 15,
+   "inputId": 0,
+   "color": "#c9c2dd"
   },
   {
    "id": 19,
-   "outputModuleId": 2,
+   "outputModuleId": 15,
+   "outputId": 3,
+   "inputModuleId": 16,
+   "inputId": 4,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 20,
+   "outputModuleId": 16,
+   "outputId": 1,
+   "inputModuleId": 10,
+   "inputId": 3,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 21,
+   "outputModuleId": 11,
+   "outputId": 14,
+   "inputModuleId": 21,
+   "inputId": 2,
+   "color": "#f0654a"
+  },
+  {
+   "id": 22,
+   "outputModuleId": 11,
+   "outputId": 14,
+   "inputModuleId": 26,
+   "inputId": 4,
+   "color": "#f0654a"
+  },
+  {
+   "id": 23,
+   "outputModuleId": 21,
+   "outputId": 0,
+   "inputModuleId": 22,
+   "inputId": 0,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 24,
+   "outputModuleId": 22,
+   "outputId": 0,
+   "inputModuleId": 23,
+   "inputId": 0,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 25,
+   "outputModuleId": 23,
+   "outputId": 0,
+   "inputModuleId": 24,
+   "inputId": 0,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 26,
+   "outputModuleId": 24,
    "outputId": 2,
-   "inputModuleId": 3,
+   "inputModuleId": 25,
+   "inputId": 3,
+   "color": "#8faaf7"
+  },
+  {
+   "id": 27,
+   "outputModuleId": 12,
+   "outputId": 14,
+   "inputModuleId": 25,
+   "inputId": 0,
+   "color": "#f0b429"
+  },
+  {
+   "id": 28,
+   "outputModuleId": 25,
+   "outputId": 0,
+   "inputModuleId": 27,
    "inputId": 1,
-   "color": "#f2e8d0"
+   "color": "#8faaf7"
+  },
+  {
+   "id": 29,
+   "outputModuleId": 26,
+   "outputId": 0,
+   "inputModuleId": 27,
+   "inputId": 0,
+   "color": "#f0654a"
+  },
+  {
+   "id": 30,
+   "outputModuleId": 13,
+   "outputId": 14,
+   "inputModuleId": 26,
+   "inputId": 3,
+   "color": "#6fd6a0"
+  },
+  {
+   "id": 31,
+   "outputModuleId": 27,
+   "outputId": 0,
+   "inputModuleId": 14,
+   "inputId": 14,
+   "color": "#8faaf7"
+  },
+  {
+   "id": 32,
+   "outputModuleId": 12,
+   "outputId": 15,
+   "inputModuleId": 31,
+   "inputId": 0,
+   "color": "#f0b429"
+  },
+  {
+   "id": 33,
+   "outputModuleId": 31,
+   "outputId": 0,
+   "inputModuleId": 32,
+   "inputId": 0,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 34,
+   "outputModuleId": 32,
+   "outputId": 0,
+   "inputModuleId": 33,
+   "inputId": 0,
+   "color": "#c9c2dd"
+  },
+  {
+   "id": 35,
+   "outputModuleId": 33,
+   "outputId": 3,
+   "inputModuleId": 34,
+   "inputId": 3,
+   "color": "#8faaf7"
+  },
+  {
+   "id": 36,
+   "outputModuleId": 13,
+   "outputId": 15,
+   "inputModuleId": 34,
+   "inputId": 0,
+   "color": "#6fd6a0"
+  },
+  {
+   "id": 37,
+   "outputModuleId": 11,
+   "outputId": 15,
+   "inputModuleId": 35,
+   "inputId": 4,
+   "color": "#f0654a"
+  },
+  {
+   "id": 38,
+   "outputModuleId": 34,
+   "outputId": 0,
+   "inputModuleId": 36,
+   "inputId": 1,
+   "color": "#8faaf7"
+  },
+  {
+   "id": 39,
+   "outputModuleId": 35,
+   "outputId": 0,
+   "inputModuleId": 36,
+   "inputId": 0,
+   "color": "#f0654a"
+  },
+  {
+   "id": 40,
+   "outputModuleId": 36,
+   "outputId": 0,
+   "inputModuleId": 14,
+   "inputId": 15,
+   "color": "#8faaf7"
   }
  ]
 }
