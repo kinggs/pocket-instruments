@@ -4,6 +4,8 @@ Append only. A decision is never edited away: it is superseded by a later one th
 States: `decided` (the owner chose it) · `proposed` (the reviewer's assumption, not yet put to
 the owner) · `open` · `superseded by Dn`.
 
+**Since D124 (2026-11-26):** "the owner" in an entry written before D124 means Kenny, the maintainer. Those entries are not rewritten.
+
 Evidence lives in `REVIEW.md` (F-numbers) and `REFERENCES.md` (R-numbers).
 
 ## From the brief (v0.1), and where each stands
@@ -2759,6 +2761,42 @@ Not chosen:
   cargo feature.
 - **A screen library:** the screens are fixed grids; a cell buffer sends only what changed.
 - **Waiting for patterns (issue 4):** the other hosts show one pattern today.
+
+### D124 — "Kenny" for what Kenny rules, "the maintainer" in the rules; "the owner" goes
+**2026-11-26 · decided (Kenny, in a design session) · changes the wording of the live documents and code comments · no behaviour, byte, ABI, snapshot or fixture changes**
+
+Kenny: "I kinda hate 'The Owner' as wording. I think we either make it personal, saying
+'Kenny', or we use first-person 'i', or somehow the maintainer team or something." Of those
+three, Kenny chose the first, and the last without "team", each for its own kind of text:
+
+1. **"Kenny" in rulings, quotes and records** of what Kenny decided, heard, measured or
+   judged: "Kenny ruled", "Kenny's ear", "left for Kenny".
+2. **"The maintainer" in rules for contributors:** `AGENTS.md` (its section "The
+   maintainer's alone"), `CONTRIBUTING.md` and the `.github/` files. They must still read
+   right if someone else joins.
+3. **No first person.** Agents write most of these documents, so "I" would be ambiguous.
+   No pronoun for Kenny either: none has been stated, so a sentence is phrased round it.
+4. **The live documents and code comments are reworded now:** `AGENTS.md`,
+   `CONTRIBUTING.md`, `README.md`, `CREDITS.md`, the Pages workflow, `design/`, `docs/README.md`,
+   `ENGINE.md`, `PROOFS.md`, `WORKFLOW.md`, `VOICES.md`, `fixtures/README.md`,
+   `samples/README.md`, and comments in `core/`, `rack/` and `web/`. Each ruling or quote keeps
+   its date, its decision and its words; only the name changes.
+5. **The append-only files are not rewritten.** `DECISIONS.md`, `LEARNINGS.md` and
+   `REFERENCES.md` each get one line under their opening paragraph saying that "the owner" in
+   an entry written before this one means Kenny. Nothing else in them moves, the Open table's
+   old rows included; a new entry or row says "Kenny". The frozen `BRIEF-v0.1.md`, `REVIEW.md`
+   and `docs/history/` are not touched; `docs/README.md`'s glossary says what "the owner"
+   means there.
+6. **The GitHub label `owner` is renamed `maintainer`** (Kenny, the same day). Its issues keep
+   it. `if-the-ear-asks` now reads "Only if Kenny's ear asks for it". An "`owner` issue" in
+   an entry before this one is a `maintainer` issue now.
+
+Not chosen: first person ("I"), for item 3's reason; "the maintainer team", since one person
+maintains the project; rewriting past entries, which this file's first line forbids.
+
+The same preference is Kenny's for other open-source repositories. This repository does not
+carry it there; a writing preference across repositories belongs in Kenny's own user-scope
+instructions, which are Kenny's to change.
 
 ## Open
 

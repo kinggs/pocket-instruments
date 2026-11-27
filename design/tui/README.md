@@ -1,8 +1,8 @@
 # The design session of 2026-11-26: eight boards
 
-**Status:** pictures of intent. The owner and a design session drew these in Claude Design
+**Status:** pictures of intent. Kenny and a design session drew these in Claude Design
 on 2026-11-26. **None was rendered and checked by the session that drew it:** they are
-drawings of what is meant, not measured pictures. What the owner ruled from them is D112,
+drawings of what is meant, not measured pictures. What Kenny ruled from them is D112,
 D113, D114 and D119 in `docs/DECISIONS.md`; the rest is proposed (D115, D116, D117). The design
 text is in `../DESIGN.md`: "A key's lights", "The keys and the helper", "Loom in a
 terminal" and "Layout B". Where a board and that text disagree, the text is the later
@@ -25,7 +25,7 @@ Three of the boards are about every host.
 | `Keyboard.dc.html` | The keyboard map for every host, and how holding and the Shift latch work | 1200 by 760 |
 | `Lights.dc.html` | A key's lights from the outside in, on a Rack or page key, with no colour, and in terminal cells; the source marks | 1592 by 860 |
 | `Helper.dc.html` | The keys helper at phone size | 390 by 844 |
-| `Panel.dc.html` | The Rack panel in layout B at 27 HP, the width the owner ruled (D119), with the `?` in the display's corner, at 5 px a mm. Refreshed from the canvas after the ruling; the 24 HP drawing it replaced is in this file's history and its numbers are in `../DESIGN.md` | 782 by 900 |
+| `Panel.dc.html` | The Rack panel in layout B at 27 HP, the width Kenny ruled (D119), with the `?` in the display's corner, at 5 px a mm. Refreshed from the canvas after the ruling; the 24 HP drawing it replaced is in this file's history and its numbers are in `../DESIGN.md` | 782 by 900 |
 | `canvas.json` | The canvas's own index: each board's title, size and place | |
 
 ## These do not open as pictures
@@ -51,5 +51,5 @@ position. The colours are Loom's tokens, and `#6FD6A0` is `loom/fern`.
 ## Known to be out of step
 
 - `Main` (with write off) shows a firing as a whole white face, and `Pocket` draws the fx
-  key's band ecru. Both were drawn before the owner's rulings and not redrawn.
+  key's band ecru. Both were drawn before Kenny's rulings and not redrawn.
 - `Panel`'s numbers are arithmetic. None has been through `make_panel.py --check`.

@@ -77,7 +77,7 @@ What does not yet:
 
 - **One pattern only.** Sixteen patterns, copy and chains are the next piece of work.
 - Much of the effect tuning is a first value, measured against one PO-12 and not yet judged by
-  ear. The look is a stand-in until the maintainer (called the owner in the documents) rules
+  ear. The look is a stand-in until the maintainer, Kenny, rules
   on it.
 - Not every proof has passed. A proof is a test with a pass bar set in advance. The iPhone and
   other-machine checks are part-run, and the feel (P8) and the look (P9) are open

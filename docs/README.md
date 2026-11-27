@@ -10,7 +10,7 @@ Builds decide nothing. The live backlog is the repository's issues, not a file h
 | `docs/PROOFS.md` | What must be proven, the pass bar, the result | Pass bar written before the experiment; result after |
 | `docs/REFERENCES.md` | Outside facts we rely on, with source and date checked | Re-check before relying on an old entry |
 | `docs/LEARNINGS.md` | Dated notebook: what surprised us, what broke, why | Append only |
-| `docs/WORKFLOW.md` | What each press does, in our words; the owner ticks each row on the hardware | Until P8 |
+| `docs/WORKFLOW.md` | What each press does, in our words; Kenny ticks each row on the hardware | Until P8 |
 | `docs/VOICES.md` | The sixteen sounds: role, recipe, what the sliders do, and what each was built as | Until each voice passes by ear |
 | `docs/RACK-RULES.md` | What any module of ours for VCV Rack is held to: the panel, the voltages, the code | Re-read VCV's manual (R33 to R35) before leaning on an old line |
 | `docs/ARCHITECTURE.md` | How the pieces join today, and where a second instrument's files would go | A map, not a framework. Updated when a second instrument is designed |
@@ -46,7 +46,7 @@ were written when every file sat in one folder. The names still say which file i
 | The lane | The effects recorded on the steps (`ENGINE.md` §17) |
 | The bus | Where the sounds are mixed before the effects (`ENGINE.md` §18) |
 | A return | Sound coming back into the module from Rack (`ENGINE.md` §19) |
-| A take | A recording of the owner's own hardware. Kept outside the repository |
+| A take | A recording of Kenny's own hardware. Kept outside the repository |
 | A proof | A test whose passing mark is written before it runs (`PROOFS.md`) |
 | A pass bar | That passing mark |
 | The ladder | The table of proofs at the top of `PROOFS.md` |
@@ -55,7 +55,8 @@ were written when every file sat in one folder. The names still say which file i
 | The ABI | The numbered version of the C contract in `core/include/pi_engine.h` |
 | A frame | One audio sample period |
 | A session | One working sitting in the old plan (`docs/history/`) |
-| The owner | The maintainer |
+| Kenny | Kenny Inggs, who maintains the project and rules on its sound and look. Entries written before D124 in the append-only files, the frozen brief and review, and `docs/history/` say "the owner" for Kenny |
+| The maintainer | Whoever maintains the project; today Kenny. The word the rules for contributors use (D124) |
 
 The codes:
 

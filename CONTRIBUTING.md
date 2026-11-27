@@ -7,7 +7,7 @@ request that follows the rules below gets merged soonest.
 
 ## The short version
 
-1. Pick an issue, or open one. Issues labelled `owner` need the maintainer's ears, eyes or
+1. Pick an issue, or open one. Issues labelled `maintainer` need the maintainer's ears, eyes or
    ruling: do not take those. `good first issue` marks a small one.
 2. Fork the repository and branch from `main`.
 3. Make small commits with plain English messages.
@@ -36,12 +36,12 @@ two pull requests.
 
 ### A look
 
-The owner accepted this way of working on 2026-11-26 (the canvas's start page):
+Kenny accepted this way of working on 2026-11-26 (the canvas's start page):
 
 1. **Draw it on [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK),** on the instrument's page, or on Loom's
    when every instrument shares it. A board's name starts with *Proposed*, *Ruled* or
    *Built*.
-2. **The owner rules.**
+2. **The maintainer rules.**
 3. **The ruling goes in `docs/DECISIONS.md`; the rules go in `design/DESIGN.md`.** A
    change to what the engine shows also goes in `docs/ENGINE.md`, as for any design.
 4. **One issue analyses and builds it,** the design part first, as above.

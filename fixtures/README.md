@@ -162,7 +162,7 @@ out; every tick, mask and count in it was typed in by hand.
   768 is `step 0`, and the step set by an edit (track 3, step 2) fires at run step 10,
   tick 960, where a tap of the same key adds the same line a frame later.
 - **keys-tap-and-choose, its views worked again for `ENGINE.md` §20 (Session 21, D75).**
-  A view changed by an owner's decision, worked by hand from §20 and committed before any
+  A view changed by a decision of Kenny's, worked by hand from §20 and committed before any
   §20 code; not a trace edited to pass a build. The trace (`expect`) did not change, nor
   did any other fixture's line. Six view lines changed, only in `a=` and `b=`, and the
   `about` sentence that described the old rule. Why: a `PARAM` now sets that slider for
@@ -232,7 +232,7 @@ From a snapshot, the lane and the sounds' switches set at step 0 come from the s
 
 ### `fx-repeat-punch`, worked by hand
 
-**Worked again by hand in Session 30, by decision (D95 item 1; the owner, in the session: "track
+**Worked again by hand in Session 30, by decision (D95 item 1; Kenny, in the session: "track
 as close as possible to the PO"), not by a build.** A run begun by a punch still held now
 repeats the step the key came down on, not the step after it, which the lane takes. Before
 the code changed, the first pass was worked again and committed on its own:
@@ -248,7 +248,7 @@ the code changed, the first pass was worked again and committed on its own:
 - **Counts:** sound 1 2 + 6 a first pass, then 2 a pass: 12. Sound 2: 3. Sound 3: 0, 2, 2: 4.
   43 lines, as before. Views: `fires=2,0,0`, `8,1,0`, `10,2,2`, `12,3,4`; nothing else.
 
-**Worked again by hand a second time in Session 30, by decision (D97; the owner: the replay
+**Worked again by hand a second time in Session 30, by decision (D97; Kenny: the replay
 must match the push).** A repeat punched mid-step now also records the step being played,
 where the key came down. Before the code changed:
 
@@ -273,7 +273,7 @@ typed in. Length 8, so a pass is 768 ticks. A key lands a frame after its step's
   plays its one hit. `heard` is 11 from that frame: the first view says `fx=11` with
   `fxsteps=0000`. No key lights for it: with write off the grid is still sounds, and
   `held=100400` is the only sign on the keys. (The first working had `bar=0400` and
-  `sounds=0`; the owner's PO-12 lights nothing for an effect, and §17 changed before any
+  `sounds=0`; Kenny's PO-12 lights nothing for an effect, and §17 changed before any
   core ran this.) (Session 20: still nothing lights for the effect, but with write off the
   field now shows the chosen sound's steps, so every view here says `field=0011`, sound 1's
   steps 1 and 5. Below, "The views worked again for the write-off row".)
@@ -323,7 +323,7 @@ snapshot" run holds it to snapshot version 3 as well.
 
 ## `fx-repeat-holds`, worked by hand (Session 25: the repeat's new rule, D90 item 1, D91; in `designed/` until Session 26)
 
-**Worked again by hand in Session 30, by decision (D95 item 1), not by a build.** The owner
+**Worked again by hand in Session 30, by decision (D95 item 1), not by a build.** Kenny
 chose the hardware's rule: a run repeats the step it begins on, and an empty step repeats as
 silence. Commands unchanged; the `expect` lines and the three views' `fires=` were worked
 from `ENGINE.md` §17 ("The four repeats", `run_step = cur`) and §5 before the code changed,
@@ -424,7 +424,7 @@ of the working, not where the trace came from.
 
 ## The views worked again for the write-off row (Session 20; D71, D72 item 3, D82)
 
-A view changed by an owner's decision, as Session 21's were: worked by hand from
+A view changed by a decision of Kenny's, as Session 21's were: worked by hand from
 `ENGINE.md` §14's changed table and committed before any code of Session 20; not a trace
 edited to pass a build. The write-off row (write off, and none of bpm, sound or pattern
 held) was `field none, stitch none, bar none, sounds yes`; it is now the chosen sound's
@@ -488,7 +488,7 @@ again.
 
 ## The views worked again for D121 (2026-11-26; issue 101; in `designed/` until the build, which moved them up unchanged)
 
-A view changed by the owner's decision (D121): the bar is the chosen sound's key in the bpm,
+A view changed by Kenny's decision (D121): the bar is the chosen sound's key in the bpm,
 write on and write off rows, as it already was with sound held; pattern held keeps key 1.
 Worked by the same model as D120's (above), extended by the bar column, from the documents and
 not the core. It first reproduced every committed line's bar where the row does not change
@@ -568,7 +568,7 @@ each weave every line and write the cells as text, a digit a cell, and `make tes
 three files (`target/weave-rust.txt`, `-cpp.txt`, `-node.txt`) to the same bytes: natively
 and from the `.wasm`, the same cells.
 
-It holds no expected cells, on purpose. The weave is a first attempt the owner has not
+It holds no expected cells, on purpose. The weave is a first attempt Kenny has not
 accepted (D84), so there is no picture to hold to yet; when there is, three views and their
 cells are committed beside this file (`PLAN.md`, Session 14's fourth box). The rules
 themselves are tested in `core/src/tests/weave.rs`.

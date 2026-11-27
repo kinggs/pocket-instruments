@@ -531,7 +531,7 @@ struct Rhythm : Module {
     // "return", "fx" and "sliders": the minimum beat at 120 bpm on the table clock, sixteen
     // steps a pass, with fx and a grid key pressed on the module's own parameters at step 5
     // and let go at step 9 ("return": effect 2, the distortion, on drums that come back through
-    // RETURN from the module's own VOICES, which is the owner's patch with the module's own
+    // RETURN from the module's own VOICES, which is Kenny's patch with the module's own
     // voices for the drums; "fx": FX SEND's sixteen channels patched into FX RETURN, with
     // effect 4 Ours, or the effect the patch's settings make Rack's, beside or in place of the
     // dry (ABI 11), and FX SEND held to jacks.hpp given the shadow's frame;
@@ -1413,7 +1413,7 @@ struct RhythmSlider : app::SliderKnob {
         // §20: the second mark, what the chosen sound was last hit with: a thin line across the
         // track at that value, where the cap's middle would be. ⚠ design/DESIGN.md does not
         // draw it yet; a thin line is PLAN.md's stand-in (Session 21), madder since 2026-11-24
-        // (it was thread, which the owner could not see).
+        // (it was thread, which Kenny could not see).
         if (face && face->have) {
             float h = u16(face->v, PI_VIEW_HIT_A + 2 * which) / 65535.f, th = mm2px(0.35f);
             float ym = (1.f - h) * (box.size.y - capH) + capH / 2;
@@ -1518,7 +1518,7 @@ struct RhythmDisplay : widget::Widget {
         // The right column: tempo and bpm on top; the write mark and the step number below.
         // Since ABI 15 (ENGINE.md §14, designed 2026-11-25; jacks.hpp, pi::tempoShown): on edges
         // "ext" in bpm's place, size and colour, and the edges' tempo, or "--" with none (D100
-        // item 5: a stand-in for the owner's eye).
+        // item 5: a stand-in for Kenny's eye).
         char s[32];
         const char *label = "bpm";
         if (have) label = pi::tempoShown(v, s, sizeof s);

@@ -17,7 +17,7 @@ engineering gate the brief asks for (its D2). Nothing visual is built before P3 
 | P2 | Same trace everywhere | passed 2026-11-19 |
 | P3 | It runs in Rack | passed 2026-11-19 |
 | P4 | It runs in a phone browser | running: both desktop browsers, Android Chrome and the ten minutes passed 2026-11-19; iOS Safari and the tap latency are left |
-| P5 | It ships to other people's machines | running: CI builds and checks all four plugins (2026-11-19, Session 6); none loaded in Rack off this laptop yet; VCV answered 2026-11-23 (R46: binaries from a verified author, not built by the Library); macOS 10.9 not met (the owner accepts 10.12, D46) |
+| P5 | It ships to other people's machines | running: CI builds and checks all four plugins (2026-11-19, Session 6); none loaded in Rack off this laptop yet; VCV answered 2026-11-23 (R46: binaries from a verified author, not built by the Library); macOS 10.9 not met (Kenny accepts 10.12, D46) |
 | P6 | Editing while playing is safe | running: ThreadSanitizer half and the save in Rack passed 2026-11-19, with a finding (D43); the browser's saved pattern passed 2026-11-23 (Session 12); left: listening for a dropout on a phone while editing |
 | P7 | Shared sound is worth sharing | passed 2026-11-19 |
 | P8 | It feels like the real thing | open |
@@ -37,7 +37,7 @@ for `x86_64-unknown-linux-gnu` (`staticlib`) and `wasm32-unknown-unknown`.
 - one command builds both from a clean checkout;
 - the core crate does not link `alloc` at all (strongest form of "no allocation in the callback");
 - `panic = "abort"`; no unwinding can reach C;
-- the `.wasm` is under 50 KB. **Moved by the owner, 2026-11-25 (D104 item 3): under 64 KB.**
+- the `.wasm` is under 50 KB. **Moved by Kenny, 2026-11-25 (D104 item 3): under 64 KB.**
   It was set when the file was 5 KB; at 48 150 bytes the next feature would have passed it.
   The result below was read against 50 KB and stands.
 
@@ -144,7 +144,7 @@ WASM with Emscripten, re-implemented against the P2 fixtures.
 
 **Result: passed, 2026-11-19 (Session 3).** D13's kill criterion is not met: Rust links
 into a Rack plugin and runs there. The machine's half ran first and is the table below as
-first written; the owner's half ran the same afternoon and is the table after it.
+first written; Kenny's half ran the same afternoon and is the table after it.
 
 What was built: `rack/`, a plugin with one module, the Probe. It plays a P2 fixture round
 and round on the core, one `pi_process` call a sample, and checks every pass against that
@@ -157,10 +157,10 @@ as seen.
 | `make install` builds Rust then C++ in one step | Yes. From `make clean` and with the Rust target folder removed: exit 0 in 1.9 s, one `cargo rustc` and three `g++` commands, and `PocketInstruments-2.0.0-lin-x64.vcvplugin` in Rack's plugin folder. `RACK_DIR` defaults to `~/.local/opt/Rack-SDK-2.6.6` |
 | Loads in Rack 2.6.6 | Yes: Rack Free 2.6.6 itself, headless (`rack/selftest.sh`), "Loaded plugin PocketInstruments 2.0.0" |
 | Two instances side by side | Four, in one patch, a fixture each: three clocked by a Fundamental LFO's square at 256 Hz, one on its own clock. In 12 s at each of 44.1, 48 and 96 kHz: 63, 190, 95 and 2 passes matched; 0 mismatched; 0 events dropped. No global state: each engine is in its module's own memory |
-| The gate pattern matches the P2 fixture | By count, yes: every pass above is the fixture's trace, event for event. ⚠ By eye on the scope: **left for the owner** |
-| Ten minutes with no audio dropout | **Left for the owner.** No audio device in a headless run |
-| Survives a sample-rate change | Half. It runs clean when started at each of the three rates. ⚠ A change while playing is **left for the owner**: on edges the pass in hand must still match; on the table clock the probe starts its pass again and counts it as cut short |
-| CPU meter under 1 % | **Left for the owner.** Headless Rack has no meter |
+| The gate pattern matches the P2 fixture | By count, yes: every pass above is the fixture's trace, event for event. ⚠ By eye on the scope: **left for Kenny** |
+| Ten minutes with no audio dropout | **Left for Kenny.** No audio device in a headless run |
+| Survives a sample-rate change | Half. It runs clean when started at each of the three rates. ⚠ A change while playing is **left for Kenny**: on edges the pass in hand must still match; on the table clock the probe starts its pass again and counts it as cut short |
+| CPU meter under 1 % | **Left for Kenny.** Headless Rack has no meter |
 
 The link: `plugin.so` is 1 016 912 bytes before stripping. It holds `pi_process` and asks
 for no Rust runtime symbol (`check-link`, every build). The Rust library is built with
@@ -170,18 +170,18 @@ The checks can fail: swing made to follow the pattern step in the core gave "0 p
 matched, 42 did not" on the swing fixture and a failed self-test; a planted reference to
 `rust_eh_personality` failed `check-link`.
 
-**The owner's half, the same afternoon.** Rack Free 2.6.6 with its window and a sound card
+**Kenny's half, the same afternoon.** Rack Free 2.6.6 with its window and a sound card
 (a Scarlett), on `rack/build/P3.vcv`: two probes, a Scope, and a quiet sine to the output
 so that a dropout would be heard. It ran about fifteen minutes. The counts were read from
 Rack's log and its autosave while it was still playing.
 
 | Bar left above | Measured |
 |---|---|
-| Ten minutes with no audio dropout | The owner listened for ten minutes and heard no click. The log runs to 897 s with no warning in it |
+| Ten minutes with no audio dropout | Kenny listened for ten minutes and heard no click. The log runs to 897 s with no warning in it |
 | Survives a sample-rate change | Changed from 96 kHz to 48 kHz while playing, at about 650 s. The probe on the LFO's clock was mid-pass and that pass still matched: 0 cut short, 0 mismatched. The probe on its own clock started its pass again, as built: 1 cut short. Both went on matching at 48 kHz |
 | Two instances side by side | Clocked probe (swing-length-change): 39 passes matched. Own-clock probe (straight-sixteenths): 232 matched. 0 mismatched and 0 events dropped in either |
-| CPU meter under 1 % | 0.1 % for each probe, on Rack's meter (the owner's screenshot) |
-| The gate pattern on the scope matches the P2 fixture | By count: every one of the 271 passes above is its fixture's trace, event for event. By eye: the owner saw both gates firing with the clock, 0 to 10 V on both Scope inputs, both lights green. ⚠ Nobody measured the swing on the Scope's screen; the count is the evidence that it is right |
+| CPU meter under 1 % | 0.1 % for each probe, on Rack's meter (Kenny's screenshot) |
+| The gate pattern on the scope matches the P2 fixture | By count: every one of the 271 passes above is its fixture's trace, event for event. By eye: Kenny saw both gates firing with the clock, 0 to 10 V on both Scope inputs, both lights green. ⚠ Nobody measured the swing on the Scope's screen; the count is the evidence that it is right |
 
 Rack was also closed and started again at 96 kHz before this run: each probe loaded the
 snapshot Rack had saved for it ("1 loaded, 0 refused").
@@ -232,23 +232,23 @@ step, and posts back what its worklet captured.
 |---|---|
 | Trace identical to P2 on desktop Chrome | Chromium 155 (headless): 24 of 24 runs are byte for byte the section of the Node harness's report with the same label. 1 662 events in 46 682 blocks of 128; none dropped; each context ran at the rate asked for |
 | … on desktop Firefox | Firefox 158 (headless): the same 24 of 24, the same counts |
-| … on Android Chrome and iOS Safari | **Left for the owner** |
-| Ten minutes with no dropout on a mid-range Android phone | **Left for the owner.** The page's Play button runs the engine's own click on every step and shows how far audio has fallen behind the clock ⚠ an untested stand-in for hearing a dropout |
-| Tap-to-sound latency per device | **Left for the owner.** The page's Tap pad fires the click through the new `FIRE` command (D45) on `pointerdown` |
+| … on Android Chrome and iOS Safari | **Left for Kenny** |
+| Ten minutes with no dropout on a mid-range Android phone | **Left for Kenny.** The page's Play button runs the engine's own click on every step and shows how far audio has fallen behind the clock ⚠ an untested stand-in for hearing a dropout |
+| Tap-to-sound latency per device | **Left for Kenny.** The page's Tap pad fires the click through the new `FIRE` command (D45) on `pointerdown` |
 
 ⚠ Chromium here is the Arch build, not Google Chrome, and both browsers ran headless.
 
-**The owner's phone, the same day: a Samsung Galaxy S25 FE.** As the owner reported it;
+**Kenny's phone, the same day: a Samsung Galaxy S25 FE.** As Kenny reported it;
 no screenshot was kept, so the page's own figures are not here.
 
 | Bar | Reported |
 |---|---|
 | Trace identical to P2 on Android Chrome | Run the proof said PASSED, on the first page and again on the changed one: 24 of 24 runs gave their fixture's trace, by the page's own comparison with each fixture's `expect` |
 | … on iOS Safari | **Left.** No iPhone has run it |
-| Ten minutes with no dropout | **Met: 700 s.** A first run was stopped at 400 s (18 ms behind at 163 s and at 400 s). The owner then let one run on: 18 ms at 520 s, 19 ms at 600 s, 20 ms at 700 s, at 44.1 kHz, and reported no failure. That is 2 ms in nine minutes, about four parts in a million: the phone's two clocks running at slightly different speeds, not a stall, which would jump by a block or more at a time. ⚠ The phone locked or went idle now and then during the run and the figure did not jump. ⚠ Which browser was not established (the owner read out "Mozilla 5.0", which every browser says) |
+| Ten minutes with no dropout | **Met: 700 s.** A first run was stopped at 400 s (18 ms behind at 163 s and at 400 s). Kenny then let one run on: 18 ms at 520 s, 19 ms at 600 s, 20 ms at 700 s, at 44.1 kHz, and reported no failure. That is 2 ms in nine minutes, about four parts in a million: the phone's two clocks running at slightly different speeds, not a stall, which would jump by a block or more at a time. ⚠ The phone locked or went idle now and then during the run and the figure did not jump. ⚠ Which browser was not established (Kenny read out "Mozilla 5.0", which every browser says) |
 | Tap-to-sound latency | **Left**, with one figure to start from: during that run the page showed base latency 0.0 ms and **output latency 268.1 ms**, as the browser reports it. ⚠ If that is true of the wired speaker it is too slow to feel played; it may be Bluetooth, which was connected for some of the day's runs. Tap "behaves as expected" to the finger. Not measured with a second device |
 
-Also run by the owner, with the page's result text pasted back:
+Also run by Kenny, with the page's result text pasted back:
 
 - **Firefox 160 for Android, the same phone:** PASSED, 24 of 24, each context at the rate
   asked for (44.1, 48 and 96 kHz). The bar does not name this browser; it is a fourth.
@@ -259,12 +259,12 @@ Also run by the owner, with the page's result text pasted back:
 Block counts were the same on the phone and the desktop, run for run (1 379 blocks for
 straight-sixteenths at 44.1 kHz on both): the worklet saw 128-frame blocks everywhere.
 
-**A first run on the owner's phone** (2026-11-19, before the page was changed) crackled
+**A first run on Kenny's phone** (2026-11-19, before the page was changed) crackled
 during Run the proof, "like vinyl", with and without Bluetooth, while Play and Tap were
 clean. ⚠ Not yet explained for certain. The likely cause was the page's own doing: all
 eight runs ticked at once, at four tempos. Now only one run ticks, so anything else heard
-is a fault. That run passed, the owner said afterwards. On the changed page the crackle was
-gone (the owner, the same day), so it was the eight tick trains and not a dropout.
+is a fault. That run passed, Kenny said afterwards. On the changed page the crackle was
+gone (Kenny, the same day), so it was the eight tick trains and not a dropout.
 
 The check can fail: a worklet made to skip the swing command gave 12 of 24 and a failed
 run; a stale `web/pi_core.wasm` fails `make test`.
@@ -308,7 +308,7 @@ not stamp an object below 10.12. ⚠ Unverified, but likely harmless: the core c
 memory routines that every macOS has, so nothing in it can need 10.12. A real macOS linker
 will probably warn and link. Nobody has seen it do so.
 
-**The owner's ruling (D46):** the plugin needs macOS 10.12 on Intel Macs. The bar above is
+**Kenny's ruling (D46):** the plugin needs macOS 10.12 on Intel Macs. The bar above is
 not changed and is not met on this line; the ruling is why that does not stop the work.
 
 The Linux plugin built on this laptop is not an artefact for other people: it asks for
@@ -326,16 +326,15 @@ library offered as the Windows one failed on its format; 128-bit arithmetic fail
 2. ~~On the macOS link: what the linker says about the 10.12 stamp.~~ It warns and links
    (below).
 3. Each of the four artefacts loaded once in Rack on its platform. The Probe's light going
-   green is the test: it is in the plugin already. ⚠ The owner has no Windows machine or
+   green is the test: it is in the plugin already. ⚠ Kenny has no Windows machine or
    Mac to do this on yet (D46).
 4. A written answer from VCV on the Library: will its build server take a plugin with a
-   Rust part, or a prebuilt static library, or neither (O2). **Asked 2026-11-19** by the
-   owner, by email to support@vcvrack.com, the one address VCV's support page gives for
+   Rust part, or a prebuilt static library, or neither (O2). **Asked 2026-11-19** by Kenny, by email to support@vcvrack.com, the one address VCV's support page gives for
    Library questions. ~~No reply yet. The forum's Development category is the fallback.~~
    **Answered 2026-11-23 (R46):** neither is built by the Library. Its toolchain has no Rust,
    so the plugin goes in as binary packages (CI's four artefacts are that), sent by email by
    an author VCV has identity-verified. macOS 10.12 is fine. What the submission needs is
-   not known until the owner asks VCV for the details.
+   not known until Kenny asks VCV for the details.
 
 **Session 6, 2026-11-19: four artefacts from CI.** Item 1 above is done; item 2 is
 answered. Still not passed: none of the four has been loaded in Rack on its platform, and
@@ -454,7 +453,7 @@ sound's own values, as keys save it; `fixtures/README.md`), and the page's bytes
 label in the Node report. `make play` passed in Chromium and Firefox with it.
 
 **To finish it:** listen on a phone while editing: play a beat, enter steps, move sliders,
-for a few minutes, and hear no dropout. The owner's, with P8's first sitting. (To repeat the Rack row:
+for a few minutes, and hear no dropout. Kenny's, with P8's first sitting. (To repeat the Rack row:
 `node rack/check-patch.mjs ~/.local/share/Rack2/autosave/patch.json target/report-node.txt`
 while Rack plays.)
 
@@ -471,7 +470,7 @@ many voices a mid-range phone runs before dropping out.
 **If it fails:** share sequencing only; write sound per host.
 
 **Result: passed, 2026-11-19.** The render half in Session 3; the phone's voice count the
-same day, by the owner. The account below is as first written, with the count at its end.
+same day, by Kenny. The account below is as first written, with the count at its end.
 
 One voice in the core: the click (key 10, track 9), a sine with an exponential decay, the
 simplest recipe in `VOICES.md` that still has both things two platforms could disagree
@@ -507,7 +506,7 @@ On this laptop, headless, as a check that the measure moves (a finding, not the 
 Chromium 155 and Firefox 158 both held all 1 024 copies at 48 kHz, spending 27 % of real
 time; the cost rose in step with the count (512 copies: 15 %).
 
-**On the phone** (the owner's report): 1 024 copies held in Chrome for Android and in
+**On the phone** (Kenny's report): 1 024 copies held in Chrome for Android and in
 Firefox for Android on a Samsung Galaxy S25 FE. The bar is 16, so it is met sixty-four
 times over, and since cost rises in step with the count, sixteen copies are about one
 sixtieth of whatever 1 024 cost.
@@ -561,7 +560,7 @@ rates on both clocks, every one the same bytes natively and from the `.wasm`. An
 
 **Claim:** the workflow is recognisably the hardware's.
 
-**Experiment:** the owner plays the PO-12 and the prototype side by side and lists every
+**Experiment:** Kenny plays the PO-12 and the prototype side by side and lists every
 difference in what a press does.
 
 **Pass bar:** a written list of differences, each marked deliberate or to fix. Someone who

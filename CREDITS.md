@@ -19,7 +19,7 @@ each fact was checked.
   guide text beyond short quoted phrases in `docs/REFERENCES.md`.
 - What we take: the idea of a pocket-sized sixteen-step instrument, and its workflow (the key
   names, the combinations, the order of doing things), described in our own words in
-  `docs/WORKFLOW.md`. The effects are tuned by measuring the owner's own PO-12; the recordings
+  `docs/WORKFLOW.md`. The effects are tuned by measuring Kenny's own PO-12; the recordings
   and their reports are kept outside the repository.
 - Pocket Instruments is not affiliated with or endorsed by Teenage Engineering. Their names
   are used only to describe. Buy the real ones.

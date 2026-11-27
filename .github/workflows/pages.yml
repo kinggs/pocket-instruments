@@ -11,7 +11,7 @@
 #
 # Nothing here is built: the page runs the committed web/pi_core.wasm, as on main.
 #
-# One setting goes with it (the owner's, once): Settings, Pages, "Deploy from a branch",
+# One setting goes with it (the maintainer's, once): Settings, Pages, "Deploy from a branch",
 # `gh-pages`, `/ (root)`. Until then Pages still serves main, and previews wait.
 name: Pages
 
