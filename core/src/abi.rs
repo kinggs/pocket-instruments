@@ -8,7 +8,7 @@ use crate::voice::{LOOP, LOOP_SLIDERS};
 use crate::snapshot;
 use crate::weave;
 
-pub const ABI_VERSION: u32 = 15;
+pub const ABI_VERSION: u32 = 16;
 
 pub const CMD_CLOCK: u8 = 1;
 pub const CMD_RESET: u8 = 2;
@@ -26,6 +26,11 @@ pub const CMD_FX: u8 = 23;
 pub const CMD_FXSOUND: u8 = 24;
 pub const CMD_ROUTE: u8 = 25;
 pub const CMD_KEEP: u8 = 26;
+/// §21 (ABI 16): a new chain of one pattern; a pattern added to the chain; the active pattern
+/// copied to a slot. `value` 0 to 15.
+pub const CMD_PATTERN: u8 = 27;
+pub const CMD_CHAIN: u8 = 28;
+pub const CMD_COPY: u8 = 29;
 pub const CMD_KEY_DOWN: u8 = 32;
 pub const CMD_KEY_UP: u8 = 33;
 pub const CMD_PARAM: u8 = 34;
@@ -84,16 +89,22 @@ pub struct Out<'a> {
     /// §20: bit `t`, track `t`'s latest firing came from the sequencer (a step or a repeat),
     /// from column `col[t]`, so it plays what that step keeps; clear, a tap or `FIRE`, which
     /// plays the sound's own. Read only for the tracks in `fired`, so never cleared.
+    /// Since ABI 16 (§21) the high four bits of `col[t]` are the pattern the step was played
+    /// from, so a step fired just before a change, on the same frame as it, plays what its own
+    /// pattern keeps.
     pub stepped: u16,
     pub col: [u8; TRACKS],
     /// §16: bit `t`, track `t` has fired since the last step arrived, by the sequencer or a
     /// tap. The engine's, carried through the block like `fires`. The view's byte 54 counts it.
     pub on_step: u16,
+    /// §21: the pattern playing, 0 to 15, as the engine has it: told at the block's start, after
+    /// each command and where the sequencer changes it.
+    pub active: u8,
 }
 
 impl<'a> Out<'a> {
-    pub fn new(buf: &'a mut [Event], fires: [u8; TRACKS], on_step: u16) -> Self {
-        Out { buf, n: 0, frame: 0, dropped: 0, fired: 0, fires, ticks: 0, stepped: 0, col: [0; TRACKS], on_step }
+    pub fn new(buf: &'a mut [Event], fires: [u8; TRACKS], on_step: u16, active: u8) -> Self {
+        Out { buf, n: 0, frame: 0, dropped: 0, fired: 0, fires, ticks: 0, stepped: 0, col: [0; TRACKS], on_step, active }
     }
 
     #[inline]
@@ -122,7 +133,7 @@ impl<'a> Out<'a> {
         let t = track as usize & 15;
         if from_seq {
             self.stepped |= 1 << t;
-            self.col[t] = column;
+            self.col[t] = column & 15 | self.active << 4;
         } else {
             self.stepped &= !(1 << t);
         }
@@ -244,13 +255,13 @@ pub unsafe extern "C" fn pi_save(engine: *const Engine, buf: *mut u8, cap: u32) 
     let Some(e) = (unsafe { engine.as_ref() }) else {
         return 0;
     };
-    if buf.is_null() || (cap as usize) < snapshot::SIZE {
+    if buf.is_null() {
         return 0;
     }
-    // SAFETY: non-null and at least SIZE bytes, checked above; u8 has no alignment.
-    let out = unsafe { &mut *buf.cast::<[u8; snapshot::SIZE]>() };
-    snapshot::save(e, out);
-    snapshot::SIZE as u32
+    // SAFETY: non-null and `cap` writable bytes by the contract; u8 has no alignment.
+    let out = unsafe { core::slice::from_raw_parts_mut(buf, cap as usize) };
+    // §21: version 5, 276 to 22 100 bytes; 0, and nothing written, when `cap` is under them.
+    snapshot::save(e, out) as u32
 }
 
 /// # Safety
@@ -269,8 +280,8 @@ pub unsafe extern "C" fn pi_load(engine: *mut Engine, buf: *const u8, len: u32) 
     snapshot::load(e, bytes)
 }
 
-/// §14: everything a host draws, as one block. Returns `VIEW_SIZE` (64), or 0 if `cap` is
-/// too small. Moves nothing: not the generation, not a counter.
+/// §14: everything a host draws, as one block. Returns `VIEW_SIZE` (88 since ABI 16, §21), or
+/// 0 if `cap` is too small. Moves nothing: not the generation, not a counter.
 ///
 /// # Safety
 /// `engine` as `pi_set_sample_rate`. `buf` is null or points to `cap` writable bytes.
@@ -348,20 +359,21 @@ pub unsafe extern "C" fn pi_set_delay(engine: *mut Engine, line: *mut f32, frame
 
 /// §16: the display's weave, as cells. A pure function of a view block: no engine, so §8's
 /// one-thread rule does not reach it and any thread may call it. `view` is `len` bytes of a
-/// view (at least `VIEW_SIZE`); `flags` bit 0 is reduced motion. Writes `WEAVE_W × WEAVE_H`
-/// palette numbers to `out`, row by row from the top left, and returns that count; 0, and
-/// nothing written, if a pointer is null, `len` is short or `cap` is too small.
+/// view (at least `WEAVE_VIEW_MIN`, 64: §21, it reads only bytes 0 to 63); `flags` bit 0 is
+/// reduced motion. Writes `WEAVE_W × WEAVE_H` palette numbers to `out`, row by row from the
+/// top left, and returns that count; 0, and nothing written, if a pointer is null, `len` is
+/// short or `cap` is too small.
 ///
 /// # Safety
 /// `view` is null or points to `len` readable bytes; `out` is null or points to `cap`
 /// writable bytes; they do not overlap.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn pi_weave(view: *const u8, len: u32, flags: u32, out: *mut u8, cap: u32) -> u32 {
-    if view.is_null() || out.is_null() || (len as usize) < keys::VIEW_SIZE || (cap as usize) < weave::CELLS {
+    if view.is_null() || out.is_null() || (len as usize) < weave::VIEW_MIN || (cap as usize) < weave::CELLS {
         return 0;
     }
-    // SAFETY: non-null and at least VIEW_SIZE readable bytes, checked above.
-    let view = unsafe { &*view.cast::<[u8; keys::VIEW_SIZE]>() };
+    // SAFETY: non-null and at least VIEW_MIN readable bytes, checked above.
+    let view = unsafe { &*view.cast::<[u8; weave::VIEW_MIN]>() };
     // SAFETY: non-null and at least CELLS writable bytes, checked above; u8 has no alignment.
     let out = unsafe { &mut *out.cast::<[u8; weave::CELLS]>() };
     weave::weave(view, flags, out);

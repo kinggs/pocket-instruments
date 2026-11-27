@@ -55,7 +55,16 @@
 //                  fern, the stitch, the bar and pressed from the view in every row, write on or
 //                  off; and each case of the source marks' table, from held, the host's fx
 //                  latch, sampled and the ROUTE masks.
-//   play           (D138, issue 147) PLAY in, by pi::PlayIn: a gate starts a stopped module on
+//   pattern-lights (ABI 16; ENGINE.md §21, D133 item 5) while pattern is held, or latched by
+//                  the host: no frame, twill or core; the used patterns steady, the active one
+//                  lit and dark in turn a quarter of a second each, empty or not; the stitch, bar
+//                  and pressed as the view says. And the display's words: "pattern 3", "2/4"
+//                  while a chain of more than one runs, "→ 5" while a next chain waits.
+//   saves          (§21, "Saving while playing"; D133 item 9) pi::SaveGate at three rates: a move
+//                  every frame saves once at once and then once a quarter second; a drag's last
+//                  move is saved within a quarter second; nothing is saved with nothing moved; a
+//                  save the saving thread asks for is made on that frame, and the gap restarts.
+//   play          (D138, issue 147) PLAY in, by pi::PlayIn: a gate starts a stopped module on
 //                  its rise and stops it on its fall; a trigger (under 10 ms) toggles, acted on
 //                  at its fall when it stops; a rise while playing and a fall while stopped press
 //                  nothing; 0.1 V and 2 V; a finger on play wins; unpatched presses nothing and a
@@ -91,7 +100,7 @@ static uint32_t bits(float f) {
 }
 
 struct Engine {
-    alignas(16) uint8_t mem[4096];
+    alignas(16) uint8_t mem[32768]; // every host's room for the engine since ABI 16 (ENGINE.md section 21; 4 KiB until then)
     pi_engine *e;
     explicit Engine(uint32_t rate) : e(pi_init(mem, sizeof mem, rate, 1)) {
         if (!e || pi_size() > sizeof mem) {
@@ -830,6 +839,130 @@ static void lights() {
     check(why.empty(), "lights", why);
 }
 
+// ABI 16 (ENGINE.md §21, "The view"; D133 item 5): the lights while pattern is held or latched,
+// and the display's patterns. Worked by hand from §21 before the code: a view playing on step 4
+// (key 3) with effect 4 heard (key 3's twill) and key 3 sounding, pattern held, the patterns used
+// 1 and 3 (field), the chain 3 and 6 (stitch), the active pattern 3 (bar, byte 64 = 2).
+static void patternLights() {
+    using pi::keyLights;
+    const pi::Routes none{};
+    std::string why;
+    auto expect = [&](bool ok, const char *what) { if (!ok) why += std::string(what) + "; "; };
+    V v;
+    v.b[PI_VIEW_FLAGS] = PI_VIEW_FLAG_PLAYING | PI_VIEW_FLAG_STEP;
+    v.b[PI_VIEW_STEP] = 3;
+    v.b[PI_VIEW_HEARD] = 4;
+    v.b[PI_VIEW_PATTERN] = 2;
+    v.u16(PI_VIEW_FIELD, 1 << 0 | 1 << 2).u16(PI_VIEW_STITCH, 1 << 2 | 1 << 5).u16(PI_VIEW_BAR, 1 << 2).u16(PI_VIEW_FX_SOUNDS, 0xffff);
+    // Not held: the playing views, as before.
+    pi::Lights l = keyLights(v.b, 3, true, false, none);
+    expect(l.frame && l.twill && l.core && l.fern, "pattern not held: frame, twill and core on key 3");
+    expect(keyLights(v.b, 2, false, false, none, false, false).field, "pattern not held: no flicker, the field is the view's");
+    for (int how = 0; how < 2; how++) { // held (bit 17), or latched by the host with the bit not yet in the view
+        v.held(how ? 0 : 1u << PI_KEY_PATTERN | 1u << 9);
+        bool latched = how == 1;
+        l = keyLights(v.b, 3, true, false, none, latched, true);
+        expect(!l.frame && !l.twill && !l.core && !l.fern, "pattern held: no frame, twill or core");
+        expect(keyLights(v.b, 0, false, false, none, latched, false).field && keyLights(v.b, 0, false, false, none, latched, true).field,
+               "pattern held: a used pattern glows steadily");
+        expect(!keyLights(v.b, 1, false, false, none, latched, true).field, "pattern held: an unused pattern is dark");
+        expect(keyLights(v.b, 2, false, false, none, latched, true).field && !keyLights(v.b, 2, false, false, none, latched, false).field,
+               "pattern held: the active pattern flickers, lit then dark");
+        expect(keyLights(v.b, 2, false, false, none, latched, false).stitch && keyLights(v.b, 5, false, false, none, latched, false).stitch &&
+                   keyLights(v.b, 2, false, false, none, latched, false).bar && !keyLights(v.b, 0, false, false, none, latched, false).bar,
+               "pattern held: the stitch and the bar are the view's");
+        if (!latched) expect(keyLights(v.b, 9, false, false, none).pressed, "pattern held: a key pressed is still drawn");
+    }
+    // An empty chosen pattern flickers too (§21's ⚠ open (empty flicker), its default).
+    v.held(1u << PI_KEY_PATTERN);
+    v.b[PI_VIEW_PATTERN] = 7;
+    expect(keyLights(v.b, 7, false, false, none, false, true).field && !keyLights(v.b, 7, false, false, none, false, false).field,
+           "pattern held: an empty chosen pattern flickers");
+    // The turn: a quarter of a second lit, a quarter dark.
+    expect(pi::patternFlicker(0.0) && pi::patternFlicker(0.24) && !pi::patternFlicker(0.25) && !pi::patternFlicker(0.49) && pi::patternFlicker(0.5) &&
+               pi::patternFlicker(1.1) && !pi::patternFlicker(1.3),
+           "the flicker: lit for a quarter second, dark for the next");
+    // The display's text (§21, "The display"), the terminal's words.
+    V d;
+    d.b[PI_VIEW_PATTERN] = 2;
+    d.b[PI_VIEW_CHAIN_LEN] = 1;
+    pi::PatternText t = pi::patternText(d.b);
+    expect(!std::strcmp(t.pattern, "pattern 3") && !t.place[0] && !t.next[0], "display: pattern 3 alone");
+    d.b[PI_VIEW_CHAIN_LEN] = 4;
+    d.b[PI_VIEW_POS] = 1;
+    t = pi::patternText(d.b);
+    expect(!std::strcmp(t.place, "2/4") && !t.next[0], "display: a chain of four at its second place, 2/4");
+    d.b[PI_VIEW_NEXT_LEN] = 2;
+    d.b[PI_VIEW_NEXT] = 0x34; // the next chain 5 then 4
+    t = pi::patternText(d.b);
+    expect(!std::strcmp(t.next, "\xe2\x86\x92 5"), "display: a next chain waiting that begins with pattern 5");
+    d.b[PI_VIEW_PATTERN] = 15;
+    d.b[PI_VIEW_CHAIN_LEN] = 16;
+    d.b[PI_VIEW_POS] = 15;
+    t = pi::patternText(d.b);
+    expect(!std::strcmp(t.pattern, "pattern 16") && !std::strcmp(t.place, "16/16"), "display: pattern 16, 16/16");
+    check(why.empty(), "pattern-lights", why);
+}
+
+// Saving while playing (ENGINE.md §21; D133 item 9), by pi::SaveGate as Rhythm.cpp runs it, at
+// three rates. The engine is modelled as a count of moves; a save holds the count it was made at.
+static void saves() {
+    std::string why;
+    auto expect = [&](bool ok, const char *what) { if (!ok && why.empty()) why = what; };
+    for (uint32_t rate : {44100u, 48000u, 96000u}) {
+        const uint32_t gap = rate / 4;
+        {   // A move on every frame for ten seconds: the first save at once, then one each quarter second.
+            pi::SaveGate g;
+            uint32_t saves = 0, last = 0, closest = 0xffffffffu;
+            for (uint32_t f = 0; f < 10 * rate; f++)
+                if (g.frame(true, 0, gap)) {
+                    if (saves) closest = std::min(closest, f - last);
+                    last = f;
+                    saves++;
+                }
+            expect(saves == 40 && closest == gap, "a move every frame: not one save at once and then one every quarter second (40 in ten seconds)");
+        }
+        {   // A drag: a move every 16th frame for 1.3 s, then still. The last move is saved, within a
+            // quarter second, and nothing is saved with nothing to save.
+            pi::SaveGate g;
+            uint32_t moves = 0, savedAt = 0, saves = 0, lastMove = 0, lastSave = 0;
+            bool idleSave = false;
+            const uint32_t dragEnd = rate * 13 / 10;
+            for (uint32_t f = 0; f < dragEnd + rate; f++) {
+                if (f < dragEnd && f % 16 == 0) {
+                    moves++;
+                    lastMove = f;
+                }
+                bool moved = moves != savedAt;
+                if (g.frame(moved, 0, gap)) {
+                    if (!moved) idleSave = true;
+                    savedAt = moves;
+                    lastSave = f;
+                    saves++;
+                }
+            }
+            expect(savedAt == moves, "a drag: the last move was never saved");
+            expect(lastSave >= lastMove && lastSave <= lastMove + gap, "a drag: the last move was not saved within a quarter second");
+            expect(!idleSave, "a drag: a save with nothing moved");
+            expect(saves <= 1 + dragEnd / gap + 1, "a drag: more than four saves a second");
+        }
+        {   // The saving thread asks (Rhythm::dataToJson): saved on that frame whatever the gap, and
+            // the gap starts again from it; asked with nothing to save, nothing is saved.
+            pi::SaveGate g;
+            expect(g.frame(true, 0, gap), "asked: the first move is not saved at once");
+            expect(!g.frame(true, 0, gap), "asked: a move a frame after a save is saved at once without being asked");
+            expect(g.frame(true, 1, gap) && g.answered == 1, "asked: a move is not saved on the frame it is asked for");
+            expect(!g.frame(true, 1, gap), "asked: the same ask saved twice");
+            expect(!g.frame(false, 2, gap) && g.answered == 2, "asked: a save with nothing to save, or the ask not answered");
+            uint32_t f = 2; // frames since the asked save, so far
+            do f++;
+            while (!g.frame(true, 2, gap));
+            expect(f == gap, "asked: the gap did not start again from the asked save");
+        }
+    }
+    check(why.empty(), "saves", why);
+}
+
 // D138: PLAY in. A module is modelled as its playing flag, flipped by a press on the frame it
 // is sent (as the core does with play: ENGINE.md §13).
 static void play() {
@@ -921,6 +1054,8 @@ int main() {
     triggers();
     voices();
     lights();
+    patternLights();
+    saves();
     play();
     if (failures) {
         std::printf("rack/test/jacks: %d checks FAILED\n", failures);
@@ -931,7 +1066,8 @@ int main() {
                 "TRIGGERS as they were. Every sound returned and effect 2 punched: the core's own punched render within %.1e (largest "
                 "%.1e), and heard. FX SEND's sixteen ramps at three rates; the three settings through FX SEND and FX RETURN; A OUT into "
                 "A IN; masks; the keys and sliders read every 16th frame (every frame in a fixture self-test); the clock's source, the display's "
-                "tempo and the white's hold (ABI 15); not-finite; TRIGGERS' 1 ms pulses at three rates, patched and not, and VOICES; a key's lights and the source marks (D120); PLAY in (D138).\n",
+                "tempo and the white's hold (ABI 15); not-finite; TRIGGERS' 1 ms pulses at three rates, patched and not, and VOICES; a key's lights and the source marks (D120); "
+                "the lights while pattern is held and the display's patterns (ABI 16); saves at most four a second, the last move always (§21); PLAY in (D138).\n",
                 double(OWN_RETURN_BOUND), double(worstOwnReturn), double(PUNCH_BOUND), double(worstPunch));
     return 0;
 }

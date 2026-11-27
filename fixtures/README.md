@@ -745,6 +745,16 @@ snapshot from the ABI 15 core, committed first, never regenerated.
 
 ### `beat-four-and-a-fill`
 
+**Built (issue 140, 2026-11-27):** moved up from `designed/` unchanged, in a commit of its own,
+and passed at its first run in Rust, C++, Node and the terminal host (the beat read by each
+host's beat reader: the crate, `libpi_beat.a`, `pi_beat.wasm`). Each harness's engine starts
+from another seed (the fixture's plus 12 345), so the beat's own seed is what plays; no tempo is
+sent. The report holds the beat's bytes once (`# beat-four-and-a-fill beat <hex>`), then its 18
+runs. ~~The Rhythm module's self-test leaves it out (`rack/rhythm.jq`): it reads no beat file.~~
+Since issue 142 the Rhythm module's self-test plays it too, on both clocks: a second thread opens
+the beat file through the module's own path (`Rhythm::openBeat`, as the menu's Open does), the
+engine made from the fixture's seed plus 12 345 loads it, and the trace and views must match.
+
 `docs/BEAT.md`'s worked example. The beat is loaded before frame 0, then the play edit at 0:
 tick 0 is pattern 1's step 0, the chain at its first pattern.
 
@@ -761,3 +771,21 @@ tick 0 is pattern 1's step 0, the chain at its first pattern.
   `sampled=0100`, `fxsounds=feff`; `a=30000 b=36000`, the hand's; `ea=32768`, the kick's
   kept pair `a`. At 63, pattern 2: field `0511`, stitch `f044`, the lane `3000`, `pos=3`;
   fires 16, 4, 14 and 6. At 79, pattern 1 again, `pos=0`: fires 20, 4, 18 and 8.
+
+## Two views worked again for D133 (2026-11-27; issue 139, the build) ⚠
+
+`ENGINE.md` §21 says "Formats 1 to 4 are unchanged: every existing fixture's views stay the
+same bytes". Two existing views do not: each has pattern held, and §21's "pattern held" row
+(D133 item 5, accepted by Kenny on 2026-11-27, recorded in D136) changes what that row shows.
+The design's own `patterns-choose-and-play` (its view at 5: a chain of one, `stitch=0001`)
+confirms the row as written, so the row stands and these two lines were worked again by hand
+from it, before the core that gives them was committed. ⚠ For Kenny: §21's sentence is the one
+that is wrong; nothing else on either line, no `expect` and no trace moves.
+
+| Fixture | View `at` | Row | Was | Now | Why |
+|---|---|---|---|---|---|
+| `keys-bpm-family` | 10 | pattern held (function too) | `stitch=0000` | `stitch=0001` | the chain is pattern 1 alone; clear has just emptied pattern 1, so no pattern is used (`field=0000`) and the bar is on the active one, pattern 1, as before |
+| `keys-tap-and-choose` | 13 | pattern held | `field=0000 stitch=0000` | `field=0001 stitch=0040` | pattern 1 is used (track 3's step 2, counted from 0: the step-0 edit); pattern + key 7 while playing is now a choice (§21's keys), so pattern 7 is the next chain and is stitched while it waits; the bar is on pattern 1, as before. It would land where pattern 1 wraps, tick 2304, after the run's last step (tick 1440): the trace does not move |
+
+Each fixture's `about` says the same in a sentence. A view of format 1 to 4 has no bytes 64 to
+87, so nothing else of either shows.

@@ -3,5 +3,12 @@
 version = 4
 
 [[package]]
+name = "pi-beat"
+version = "0.1.0"
+
+[[package]]
 name = "pi-core"
 version = "0.1.0"
+dependencies = [
+ "pi-beat",
+]

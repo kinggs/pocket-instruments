@@ -1,5 +1,5 @@
 // What both C++ harnesses share: just enough JSON for the fixture formats, a fixture's
-// commands as pi_cmd records, and a view block as text (formats 2 to 4). harness.cpp runs the fixtures (P2); race.cpp is P6.
+// commands as pi_cmd records, and a view block as text (formats 2 to 5). harness.cpp runs the fixtures (P2); race.cpp is P6.
 //
 // SPDX-License-Identifier: MIT
 #pragma once
@@ -113,7 +113,7 @@ static pi_cmd cmd(uint8_t type, uint8_t a = 0, uint8_t b = 0, uint32_t value = 0
 
 static bool is_edit(const std::string &name) {
     return name == "step" || name == "prob" || name == "swing" || name == "length" || name == "fx" || name == "fxsound" ||
-           name == "keep";
+           name == "keep" || name == "pattern" || name == "chain" || name == "copy"; // the last three format 5's
 }
 
 static pi_cmd to_cmd(const Json &c) {
@@ -129,6 +129,9 @@ static pi_cmd to_cmd(const Json &c) {
     if (name == "fx") return cmd(PI_CMD_FX, step, 0, value);         // format 3
     if (name == "fxsound") return cmd(PI_CMD_FXSOUND, track, 0, value); // format 3
     if (name == "keep") return cmd(PI_CMD_KEEP, track, step, uint32_t(c.n("a")) << 16 | uint32_t(c.n("b"))); // format 4
+    if (name == "pattern") return cmd(PI_CMD_PATTERN, 0, 0, value); // format 5 (section 21)
+    if (name == "chain") return cmd(PI_CMD_CHAIN, 0, 0, value);
+    if (name == "copy") return cmd(PI_CMD_COPY, 0, 0, value);
     if (name == "key_down") return cmd(PI_CMD_KEY_DOWN, uint8_t(c.n("key")));
     if (name == "key_up") return cmd(PI_CMD_KEY_UP, uint8_t(c.n("key")));
     if (name == "param") return cmd(PI_CMD_PARAM, uint8_t(c.n("slider")), 0, value);
@@ -146,8 +149,11 @@ static Json read_fixture(const std::string &path) {
     Parser p{s};
     Json fx = p.value();
     uint64_t format = fx.n("format");
-    if (format < 1 || format > 4 || fx.n("ticks_per_step") != PI_TICKS_PER_STEP) die(path + ": not a format this harness runs");
-    if (format == 1 && fx.find("views")) die(path + ": views are format 2's to 4's");
+    if (format < 1 || format > 5 || fx.n("ticks_per_step") != PI_TICKS_PER_STEP) die(path + ": not a format this harness runs");
+    if (format == 1 && fx.find("views")) die(path + ": views are format 2's to 5's");
+    // A fixture's "beat" (issue 140) is read by harness.cpp with the beat reader; race.cpp leaves
+    // such a fixture out.
+    if (fx.find("beat") && fx.at("beat").kind != Json::Str) die(path + ": beat names a file");
     return fx;
 }
 
@@ -176,6 +182,19 @@ static Json read_fixture(const std::string &path) {
         char keep[32];
         std::snprintf(keep, sizeof keep, " ea=%u eb=%u", u16(PI_VIEW_HIT_A), u16(PI_VIEW_HIT_B));
         out += keep;
+    }
+    if (format >= 5) {
+        // Section 21: the patterns, the chain and the next chain a hex digit an entry.
+        auto nibbles = [&](unsigned at, unsigned len) {
+            std::string s;
+            for (unsigned i = 0; i < len; i++) s += "0123456789abcdef"[b[at + i / 2] >> (4 * (i & 1)) & 15];
+            return s;
+        };
+        std::string next = b[PI_VIEW_NEXT_LEN] ? nibbles(PI_VIEW_NEXT, b[PI_VIEW_NEXT_LEN]) : "-";
+        char used[8];
+        std::snprintf(used, sizeof used, "%04x", u16(PI_VIEW_USED));
+        out += " pat=" + std::to_string(b[PI_VIEW_PATTERN]) + " pos=" + std::to_string(b[PI_VIEW_POS]) + " chain=" +
+               nibbles(PI_VIEW_CHAIN, b[PI_VIEW_CHAIN_LEN]) + " next=" + next + " used=" + used;
     }
     return out;
 }
