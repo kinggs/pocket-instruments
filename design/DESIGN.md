@@ -97,8 +97,8 @@ each other, and one heavy weight survives small sizes.
 | Token | Size on the Rack panel | Used for |
 |---|---|---|
 | `type/readout` | 10 mm | The tempo |
-| `type/numeral` | 3.8 mm | Key numbers |
-| `type/label` | 2.8 mm | Function key words, lower case |
+| `type/numeral` | 3.8 mm (4.4 mm ruled, D139; not built) | Key numbers |
+| `type/label` | 2.8 mm (3.2 mm ruled, D139; not built) | Function key words, lower case |
 | `type/jack` | 2.6 mm (AUDIO 2.8), tracked 0.04 em, capitals | CLOCK, RESET, TRIGGERS, VOICES, AUDIO |
 
 On the phone nothing is under 16 px.
@@ -408,6 +408,12 @@ Positions in mm from the top-left corner (`uv run design/make_panel.py --positio
 | FX: SEND (FX SEND, out, 16) | 115.66 | 116.30 | | |
 | FX: RETURN (FX RETURN, in, 16) | 126.96 | 116.30 | | |
 
+**These are the built positions.** The keys, the sliders, the function keys and the wordmark
+are designed to move (D139, ruled 2026-11-27, not built): "Larger keys and less empty space"
+under "Layout B" below has that table. Until its build lands, this one is what
+`make_panel.py --positions` prints. ⚠ It does not yet show D138's column either (CLOCK 13.15,
+RESET 25.95, PLAY in 38.75): that is issue 147's build.
+
 The 24 HP positions this replaced (D76, D80; two rows at y 97.5 and 116.3) are in this file's
 history and in `make_panel.py`'s comments. Port numbers did not change: a patch keeps its
 cables (Rack ties a cable to a port's number), and `make -C rack selftest` cables every jack
@@ -484,6 +490,76 @@ each jack's socket and the next one's label, 1.40 mm over key 1. `make_panel.py 
 passes; `play-jack-ruled.png` shows it. Kenny chose option 2 of `play-jack-options.png` and
 asked for the shift; nothing else moves, because the whole look (bigger keys, less empty space)
 is for a later design session. Not chosen: option 3's PLAY out under AUDIO (D138, "Not chosen").
+
+#### Larger keys and less empty space (D139; ruled 2026-11-27, issue 150; designed, not built)
+
+Kenny accepted issue 150's design as the current design: "we will evolve in time if needed".
+It stays 27 HP. The keys run from the left margin and down to the group names; the function
+keys run to the right margin; the wordmark moves up under the display, into the band PLAY in
+already needs. **The picture of it** is on [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK),
+page "Rhythm": ["Ruled: larger keys at 27 HP, today beside it"](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK#artboard-P150Rack),
+with ["lit and playing"](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK#artboard-P150Lit) and
+[every size](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK#artboard-P150Sizes) beside it.
+`tui/Panel.dc.html`, and the canvas board it came from, show layout B as first drawn: the
+jack row and the side jacks still stand, the rest is superseded as a picture.
+
+```
+CLOCK  |                                   |
+RESET  |            the display            |  AUDIO
+PLAY   |                                   |
+                 Pocket Instruments
+ keys             sliders      function keys
+ (from the margin)             (to the margin)
+
+ SOUNDS            SLIDER A     SLIDER B     FX
+ TRIG  OUT  IN     OUT  IN      OUT  IN      GATES  SEND  RETURN
+```
+
+Positions in mm from the top-left corner, as designed beside as built. ⚠ None has been
+through the repository's `make_panel.py --check`; a scratch copy with these constants passes.
+
+| Widget | Built: centre x, y; width by height | Designed (D139): centre x, y; width by height |
+|---|---|---|
+| display (inside the frame) | 68.58, 19.50; 103.16 by 24.30 | the same |
+| key *n*, column *c* and row *r* from 0 | 18.62 + 12*c*, 50 + 12*r*; 11.70 square | 12.00 + 14*c*, 51 + 14*r*; 13.60 square |
+| slider A (its box) | 67.62, 65.50; 5.00 by 43.00 | 68.00, 69.75; 8.00 by 51.50 |
+| slider B (its box) | 77.62, 65.50; 5.00 by 43.00 | 80.00, 69.75; 8.00 by 51.50 |
+| a slider's cap | 5.0 by 3.0 | 8.0 by 4.5 |
+| the dividers, x | 62.87, 82.37 | 62.80, 85.20 |
+| the A and B, y | 90.2 | 98.7 |
+| sound | 91.09, 55.85; 12.93 by 23.70 | 94.46, 57.85; 14.60 by 27.70 |
+| pattern | 104.62, 55.85; 12.93 by 23.70 | 109.66, 57.85; 14.60 by 27.70 |
+| bpm | 118.15, 55.85; 12.93 by 23.70 | 124.86, 57.85; 14.60 by 27.70 |
+| function | 89.40, 80.15; 9.55 by 23.70 | 92.56, 86.15; 10.80 by 27.70 |
+| fx | 99.55, 80.15; 9.55 by 23.70 | 103.96, 86.15; 10.80 by 27.70 |
+| play | 109.70, 80.15; 9.55 by 23.70 | 115.36, 86.15; 10.80 by 27.70 |
+| write | 119.85, 80.15; 9.55 by 23.70 | 126.76, 86.15; 10.80 by 27.70 |
+| the wordmark | 3.0 mm at 68.58, 97.18, under the keys | 5.0 mm at 68.58, 38.00, under the display |
+| CLOCK, RESET, PLAY in | D138's: 9.50, 13.15; 9.50, 25.95; 9.50, 38.75 | the same |
+| AUDIO and the ten jacks of the row | as in the table above | the same: no jack moves |
+
+- **A key is 13.6 mm, 14.0 from the next:** 40.1 px at Rack's 100% (34.5 built), 0.4 mm
+  apart (0.3 built, which is under one pixel at 100%). Key 1's face is 1.45 mm under PLAY
+  in's socket; the keys end 2.35 mm over the tops of the group names.
+- **The margins:** 5.2 mm left and 5.0 right (12.77 and 12.54 built).
+- **Lettering:** a key's numeral 4.4 mm (3.8 built), a function key's word 3.2 mm (2.8), a
+  function key's band 1.9 mm (1.67). The tempo, the jack labels and the A and B stand.
+- **A key's lights keep their shares:** frame and twill 1.70 mm each, the core 5.44 with a
+  line of 0.43, the stitch 1.6, the bar 1.2, the dash 2.1 by 0.6, the ring and disc 1.75.
+- **The sliders** stand 12 mm apart (10 built), 4.0 mm between the caps; a cap travels 47.0
+  mm (40.0). The second mark is 9.0 by 0.35 mm.
+- **The wordmark at 5.0 mm** is 54.0 mm wide, as wide as the grid under it, with 4.17 mm
+  above and below. ⚠ The size is the designer's recommendation, which Kenny accepted in
+  advance ("Will bow to suggestions"); the boards he saw drew 3.5 mm (D139 item 2).
+- **For the build:** in `make_panel.py`, `MID_Y, MID_H = 44.0, 56.0`; `GRID_X, PITCH, KEY =
+  5.0, 14.0, 13.6`; `DIVIDERS = (62.8, 85.2)`; `SLIDERS = {"A": 68.0, "B": 80.0}`;
+  `SLIDER_TOP, SLIDER_BOTTOM = 44.0, 95.5`; `LETTER_Y = 98.7`; `FN_X, FN_W, FN_GAP = 87.16,
+  45.0, 0.6`; `WORDMARK_SIZE = 5.0`; in `wordmark()` the band becomes the display's frame
+  to the keys (`top = DISPLAY_BOX[1] + DISPLAY_BOX[3]`, `bottom = MID_Y`); in `positions()`
+  a slider's box is 8.0 wide. `DX` and `DY` are no longer used by these. The build follows
+  the PLAY jack's (issue 147).
+- ⚠ Not seen in Rack at 100% zoom. If SOUNDS reads as the keys' label at 2.35 mm, the
+  fallback is a key of 13.2 mm at a pitch of 13.6, which leaves 3.95 mm (D139).
 
 **As built (issue 101, `make_panel.py --check` passing).** Where the build parted from the
 arithmetic below, measured by `--check` and put to Kenny:
@@ -584,12 +660,12 @@ The rules themselves are in `../RACK-RULES.md`. This is Loom against them.
 
 | The manual asks | Here |
 |---|---|
-| mm units; 128.5 mm tall; a multiple of 5.08 mm wide | Yes: 24 HP |
+| mm units; 128.5 mm tall; a multiple of 5.08 mm wide | Yes: ~~24 HP~~ 27 HP since issue 101 (D119 item 1; kept by D139) |
 | All text as paths | Yes: `make_panel.py` outlines it |
 | No complex gradients, no CSS | Yes: flat fills only |
 | Component graphics off the panel, on a hidden `components` layer | Partly: the panel is static only, but it has no `components` layer. The positions table above stands in; the builder adds the layer if Rack's helper script is used |
 | An inverted background for output ports | Yes: each output on its own plate (Session 18; one plate under all three before) |
-| Room for thumbs between knobs and ports | Sockets are 11.67 mm apart or more (12, 13 and 13.67 in the lower row); the two rows are 18.8 mm apart; keys are at 12 mm; the sliders are 10 mm apart (they were 7; Kenny widened them, and the dividers closed in to make the room) |
+| Room for thumbs between knobs and ports | ~~Sockets are 11.67 mm apart or more (12, 13 and 13.67 in the lower row); the two rows are 18.8 mm apart~~ Since layout B (issue 101) there is one row: sockets 11.2 or 11.3 mm apart inside a group and 16.25 mm from one group to the next; 12.8 mm in the left column (D138). Designed, not built (D139): keys at 14 mm, the sliders 12 mm apart, the keys' faces 12.5 mm over the row's sockets. Built: keys are at 12 mm; the sliders are 10 mm apart (they were 7; Kenny widened them, and the dividers closed in to make the room) |
 | Text readable at 100% on an ordinary monitor | ⚠ Jack labels were raised to 2.6 mm for this, about 5.6 px of capital height at 100%. Read at that size in Rack's own screenshot in Session 18 (`rack-face-unlit-100.png`): every label reads; TRIGGERS and VOICES, 1.5 mm apart, are the closest. Kenny's eye has not judged it |
 | Roughly the density and text sizes of VCV's own modules | ⚠ Not compared against one |
 | Do not use others' intellectual property | D20's avoid list; O7 at P9 |
@@ -609,6 +685,16 @@ the function keys side by side.
 - Both sliders sit on the left, 44 px wide over the full height of the bottom block. The
   function keys sit on the right: the top three 81 px wide, the bottom four 60 px, all
   151 px tall.
+- **Ruled 2026-11-27 (D139 item 7; designed, not built):** the edge thins from 16 px a side
+  to 8 (table 2, hem 2, padding 4), so a grid key is 92 px square, still 2 px apart; its
+  numeral 30 px (28 built) and a function key's word 20 px (18). A slider's column is 48 px
+  and its cap 48 by 44 px (44 by 26 built: the smallest thing a thumb had to find); the cap
+  travels about 231 px (249). The function keys are 84 and 62 px wide, still 151 tall; the
+  display stays 124 px. The page already used its width: keys and gaps were 358 of 390 px.
+  The picture: ["Ruled: larger keys on the phone"](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK#artboard-P150Phone)
+  on the design canvas. For the build, in `web/rhythm.html`: the table's padding 6 to 2 px
+  and the body's 8 to 4; in the key's height, 38 px becomes 22 and 390 px becomes 374; the
+  sliders' block 96 to 104 px. ⚠ Arithmetic from the page's styles; not tried on a phone.
 
 ## The keys and the helper (D113 and D119 decided; D116's terminal keys proposed; 2026-11-26; built on the page and in Rack (issue 101))
 
