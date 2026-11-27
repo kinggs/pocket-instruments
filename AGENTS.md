@@ -18,6 +18,7 @@ Not affiliated with Teenage Engineering; their names are used only to describe.
 | `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies. Tests in `core/src/tests/`. The C contract is `core/include/pi_engine.h` |
 | `rack/` | One VCV Rack plugin, slug `PocketInstruments`. A module an instrument: `src/Rhythm.cpp`. `src/Probe.cpp` is a test module, not an instrument |
 | `web/` | One site, a page an instrument: `rhythm.html`. `worklet.js` runs the engine; `pi_core.wasm` is committed so GitHub Pages can serve it |
+| `term/` | The terminal host (`docs/TERMINAL.md`): its own crate and Cargo workspace, `pi-rhythm`, on the core's static library through the C ABI. Tests in `term/tests/` |
 | `harness/` | The same fixtures through the `.wasm` in Node and through C++ on the static library; the bench, the fuzz, the race harness |
 | `fixtures/` | Test vectors and the traces they must produce. Formats: `fixtures/README.md` |
 | `samples/` | The starter drum pack: sixteen CC0 files and their origins |
@@ -122,6 +123,7 @@ and pass `--manifest-path` and `CARGO_TARGET_DIR`.
 | `make targets` | The library for all four Rack targets (first run downloads three) |
 | `make play`, `make p4`, `make listen` | The pages in headless Chromium and Firefox (`chromium` and `firefox` on the PATH). Run `make test` first |
 | `make hear` | Serves the repository on `127.0.0.1:8417`. It prints the address of the listening page (`web/listen.html`); the instrument is at `/web/rhythm.html`. Ctrl+C stops it |
+| `make term` | The terminal host, `term/target/release/pi-rhythm`. Needs ALSA's headers (`alsa-lib`, `libasound2-dev`). `make test` runs its tests (`make term-test`) |
 | `make -C rack install` | Builds the plugin and installs it in Rack's user folder. Needs the Rack SDK (`RACK_DIR=<path>`) and `jq` |
 | `make -C rack selftest` | Rack headless, in a throwaway user folder, at three sample rates. Needs Rack (`RACK_APP=<path>`) |
 | `make -C rack dist` | The `.vcvplugin` |
