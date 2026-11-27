@@ -2715,6 +2715,51 @@ rule, and D51 has the core decide what is lit.
 Not chosen: a larger tempo step with Shift (issue 111's suggestion for later); it waits for
 playing to ask for it.
 
+### D123 — The terminal host designed: its own crate on the core's library, the keys read from the terminal, hold where key-up is real and tap where it is not, sound by cpal
+**2026-11-26 · designed (issue 8's design pass, for Kenny) · designs D111 item 3 as ruled by D118 item 3, D117 and D115 items 3 to 5 for the terminal · carries out D113, D119 items 3 and 5, D120 and D122 item 2 there · the engine does not change: ABI 15, the snapshot, the fixtures stand · nothing built**
+
+`docs/TERMINAL.md` is the design; this records what it chose and why.
+
+1. **What the issue did not know, tested on Kenny's machine** (R78 to R81): foot 1.28
+   reports key-up through the kitty keyboard protocol; tmux 3.8 passes no key-up in any
+   setting and does not answer the protocol's query; herdr 0.9.5 answers the query but sends
+   each release at once after its press, so its key-up is not real; cpal plays through
+   PipeWire with no xrun in five minutes, on its ALSA host and on its PipeWire host.
+2. **Its own crate, `term/`, in its own workspace,** linking the core's static library
+   through the C ABI: the same library, the same bits, the same contract as the C++ harness
+   and Rack. Two dependencies, crossterm (terminal) and cpal (sound), each chosen because it
+   also runs on Windows and macOS. The core keeps none.
+3. **The host reads the keys itself on Unix,** from the protocol's sequences or plain bytes:
+   crossterm's reader drops Shift where the protocol sends the shifted character, and Shift
+   is the latch. A key is its place (the base layout key), as the page reads `e.code`.
+4. **Hold where key-up is real, tap where it is not,** decided at start by the protocol's
+   query, with herdr named as not real; `--keys` forces either. Hold is the page's latch
+   logic. Tap is D119 item 5 for fx and a latch for the other function keys (D117 item 4).
+5. **The proposed `:` (save, open, quit) and Ctrl+Q are built as written in D116 item 2,**
+   ⚠ for Kenny to rule; "export" is left out.
+6. **Every light on both screens,** the pocket size included: issue 8 asks it, where `Pocket`
+   drew one light a key. In the pocket size the bar is an underline ⚠.
+7. **The beat is the snapshot, in one file** under the user's data folder, read at start and
+   written as it changes. One pattern; issue 4 is not waited for.
+8. **P2 runs through this host's own key path:** the fixtures go in as the bytes a terminal
+   sends, and the report must equal the other three.
+9. **The binary is `pi-rhythm`,** a working name ⚠ until the family's name is cleared (O3).
+   Nothing is packaged or published.
+
+Not chosen:
+
+- **A Rust dependency on the core as a crate.** `pi-core` builds no `rlib`, and its panic
+  handler would clash with the standard library's; making it one changes the core for one
+  host's convenience. The static library already exports only the `pi_*` symbols.
+- **crossterm's key events on Linux:** they lose Shift on the shifted character (R78).
+- **Holds trusted wherever the query is answered:** herdr would then lose every hold
+  silently (R80).
+- **cpal's PipeWire host as the default:** it needs `libpipewire` and `clang` to build, and
+  ALSA reaches PipeWire, PulseAudio and plain ALSA alike; both were clean (R81). Kept as a
+  cargo feature.
+- **A screen library:** the screens are fixed grids; a cell buffer sends only what changed.
+- **Waiting for patterns (issue 4):** the other hosts show one pattern today.
+
 ## Open
 
 | ID | Question | Needs |
