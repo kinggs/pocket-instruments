@@ -157,13 +157,17 @@ const MELODIC = {
 
 const u16 = (x) => Math.round(Math.min(1, Math.max(0, x)) * 65535);
 
-// One beat as the core writes it, and read back: the tempo (byte 16), the sampled mask (376),
-// the lane (384 + s), and for each step the keep bit (404 + 2 t) and its A and B
-// (436 + 4 (16 t + s)): §8, §15, §17, §20.
+// One beat as the core writes it, and read back. Since ABI 16 the core writes snapshot version 5
+// (ENGINE.md §21): the tempo (byte 16), the sampled mask (88), the patterns written (92: these
+// beats write pattern 1 alone), then pattern 1's block from byte 272: its lane (272 + 288 + s),
+// and for each step the keep bit (272 + 304 + 2 t) and its A and B (272 + 336 + 4 (16 t + s)).
+// Until ABI 16 the core wrote version 4 (§8, §15, §17, §20: 376, 384, 404, 436), and the
+// commands, events and snapshot sat at base + 8192 to 16384: inside today's engine of about
+// 24 KB, so they start past its 32 KiB room now, and the snapshot may be PI_SNAPSHOT_SIZE.
 const DELAY = 4; // effect 4, the delay (Rhythm.cpp's FX_NAMES)
 function snapshot({ sampled, lane, tracks }) {
   const { exports: pi } = new WebAssembly.Instance(new WebAssembly.Module(readFileSync(`${root}web/pi_core.wasm`)), {});
-  const base = pi.memory.grow(2) * PAGE, CMDS = base + 8192, EV = base + 12288, SNAP = base + 16384;
+  const base = pi.memory.grow(2) * PAGE, CMDS = base + 32768, EV = base + 36864, SNAP = base + 40960;
   const e = pi.pi_init(base, pi.pi_size(), 48000, 1);
   const v = new DataView(pi.memory.buffer);
   const cmds = [[4, 0, 0, TEMPO]];                                         // TEMPO
@@ -177,19 +181,22 @@ function snapshot({ sampled, lane, tracks }) {
     v.setUint32(p, 0, true); v.setUint8(p + 4, type); v.setUint8(p + 5, a); v.setUint8(p + 6, b); v.setUint8(p + 7, 0); v.setUint32(p + 8, value, true);
   });
   pi.pi_process(e, 1, CMDS, cmds.length, EV, 64, 0, 0);
-  const n = pi.pi_save(e, SNAP, 4096);
+  const n = pi.pi_save(e, SNAP, 22100);
   if (!n) throw new Error("pi_save wrote nothing");
   const bytes = Buffer.from(new Uint8Array(pi.memory.buffer, SNAP, n));
   const fail = (what) => { throw new Error(`the snapshot's ${what}`); };
+  if (bytes.readUInt16LE(4) !== 5) fail(`version is ${bytes.readUInt16LE(4)}, not 5`);
+  if (bytes.readUInt16LE(92) !== 1 || n !== 1640) fail(`patterns written are ${bytes.readUInt16LE(92)} in ${n} bytes, not pattern 1 alone in 1640`);
   if (bytes.readUInt32LE(16) !== TEMPO) fail(`tempo is ${bytes.readUInt32LE(16)}`);
   const mask = sampled.reduce((m, t) => m | (1 << t), 0);
-  if (bytes.readUInt16LE(376) !== mask) fail(`sampled mask is ${bytes.readUInt16LE(376)}, not ${mask}`);
-  for (let s = 0; s < 16; s++) if (bytes[384 + s] !== (lane.includes(s) ? DELAY : 0)) fail(`lane at step ${s} is ${bytes[384 + s]}`);
+  if (bytes.readUInt16LE(88) !== mask) fail(`sampled mask is ${bytes.readUInt16LE(88)}, not ${mask}`);
+  const P = 272; // pattern 1's block
+  for (let s = 0; s < 16; s++) if (bytes[P + 288 + s] !== (lane.includes(s) ? DELAY : 0)) fail(`lane at step ${s} is ${bytes[P + 288 + s]}`);
   for (const [t, steps] of tracks) {
     const want = steps.reduce((m, [s]) => m | (1 << s), 0);
-    if (bytes.readUInt16LE(404 + 2 * t) !== want) fail(`keeps for track ${t} are ${bytes.readUInt16LE(404 + 2 * t)}, not ${want}`);
+    if (bytes.readUInt16LE(P + 304 + 2 * t) !== want) fail(`keeps for track ${t} are ${bytes.readUInt16LE(P + 304 + 2 * t)}, not ${want}`);
     for (const [s, a, b] of steps) {
-      const at = 436 + 4 * (16 * t + s);
+      const at = P + 336 + 4 * (16 * t + s);
       if (bytes.readUInt16LE(at) !== u16(a) || bytes.readUInt16LE(at + 2) !== u16(b)) fail(`track ${t} step ${s} keeps the wrong A or B`);
     }
   }
