@@ -261,6 +261,30 @@ So the patch and the bank cannot drift: the same file, with one lane added and s
 Notes line. ⚠ Two throws in four bars, not four, is ours for Kenny's ear. The MELODY module
 keeps its one bar: four drum bars under a one-bar melody loop four times.
 
+**Built (issue 165, 2026-11-27),** on D142 item 6 as proposed, not yet ruled by Kenny (O40).
+`amen()` in `rack/patch/make-showcase.mjs` reads the file with `pib_read` (`web/pi_beat.wasm`),
+loads the snapshot into `web/pi_core.wasm`, adds the throw by the core's own edits (PATTERN and
+FX for patterns 1 and 2, then PATTERN and CHAIN to put the chain back) and saves. It reads the
+result back in a fresh core and stops unless: the chain is 1 2 3 4; each of the four patterns is
+written and has steps on; each lane is effect 4 on step 13 of patterns 1 and 2 and nothing
+elsewhere; the tempo is the patch clock's; and every byte but those two lane bytes and the CRC
+is `pib_read`'s. No step of the beat is written in the generator. Written back as a beat file
+(`pib_write`), DRUMS's snapshot differs from `beats/amen-break.beat` by two lines, `fx 13=4`
+under patterns 1 and 2.
+
+- ⚠ **The tempo** (the documents are silent): the patch's clock is its own LFO at 136 bpm, so
+  the snapshot's tempo is not what Rack plays to. The generator keeps the LFO at 136 and stops if
+  the bank's file says another tempo, rather than following it, so a change to the bank's tempo
+  is seen and ruled, not carried silently into the patch.
+- **Tried in a headless Rack** (a throwaway user folder; the patch as built, plus a Split, four
+  VCV Recorders started by the patch's own Push, and a slow LFO holding Push down in place of a
+  finger): 225 clock edges, about 25 s. Both Rhythm modules logged 1 start, 225 steps and the same
+  sum of every step's engine frame and number, so every step on the same frame. Read back from
+  the recordings, bar by bar: the kick, snare and cymbal are patterns 1, 2, 3 and 4 of the file,
+  then pattern 1 again (bars 5, 9 and 13); the throw's bus is open on step 13 of bars 1, 2, 5, 6,
+  9, 10, 13 and 14 alone; MELODY's lead fires on steps 1, 4, 7, 11 and 14 of every bar, 2 frames
+  after the same clock edges as the drums. Not heard: there was no ear in the session.
+
 ## Built (issue 164, 2026-11-27): the bank and the default on the three hosts
 
 Built on D141 and D142 **as proposed, not yet ruled by Kenny** (O40). Which beat is the default
