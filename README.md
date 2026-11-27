@@ -3,8 +3,8 @@
 [![test](https://github.com/kinggs/pocket-instruments/actions/workflows/test.yml/badge.svg)](https://github.com/kinggs/pocket-instruments/actions/workflows/test.yml)
 [![rack](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml/badge.svg)](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml)
 
-Small calculator-format musical instruments, free and open source, that play in a browser and
-as VCV Rack modules from one shared engine.
+Small calculator-format musical instruments, free and open source, that play in a browser, as
+VCV Rack modules and in a Linux terminal, from one shared engine.
 
 <p align="center">
   <img src="design/page-lights-playing.png" alt="Rhythm on a phone: sixteen keys lit as the beat plays, the display weaving, an effect heard" height="420">
@@ -12,8 +12,12 @@ as VCV Rack modules from one shared engine.
   <img src="design/rack-showcase.png" alt="Rhythm in VCV Rack, patched into Fundamental's ADSR, VCO, VCF, LFO, Delay and Scope" height="420">
 </p>
 
-<p align="center"><em>On a phone, and in VCV Rack with the reference patch (<code>rack/patch/showcase.json</code>).
-A terminal host is next (<a href="https://github.com/kinggs/pocket-instruments/issues/8">#8</a>).</em></p>
+<p align="center">
+  <img src="design/term-playing.png" alt="Rhythm in a terminal: the weave across the top, the sixteen keys and two sliders below, the beat playing" width="640">
+</p>
+
+<p align="center"><em>On a phone, in VCV Rack with the reference patch (<code>rack/patch/showcase.json</code>),
+and in a terminal (<code>pi-rhythm</code> in foot).</em></p>
 
 **Play it now:** <https://kinggs.github.io/pocket-instruments/web/rhythm.html> (made for a phone;
 a desktop browser works too).
@@ -23,6 +27,11 @@ it for Linux, Windows and both Macs when the core or the plugin changes. To try 
 [rack workflow](https://github.com/kinggs/pocket-instruments/actions/workflows/rack.yml), sign in
 to GitHub, and download the artifact for your platform. These are unsigned test builds for
 loading by hand. Or build it yourself (below).
+
+**In a Linux terminal:** ⚠ there is no release yet; build it from a clone with `make term`
+(below) and run `term/target/release/pi-rhythm`. In a terminal that reports key-up (foot,
+kitty, Ghostty, WezTerm) keys are held as on the hardware; elsewhere, tmux included, they tap.
+`pi-rhythm --help` lists every key. [docs/TERMINAL.md](docs/TERMINAL.md) has the detail.
 
 ## Why this exists
 
@@ -38,7 +47,7 @@ At the same time, I love the freedom of modular synths. So I wanted both. Then s
   your favourite oscillator, put a Rack filter where an effect was, drive the sliders from an
   LFO. Extend it and change it until it is yours.
 - **And not only in Rack.** One Rust engine plays the same bits everywhere, so you can also
-  have fun with it on a phone, in a browser, and soon in a Linux terminal / TUI.
+  have fun with it on a phone, in a browser, and in a Linux terminal / TUI.
 - **A place to learn and practise.** The workflow stays close to the hardware: the same keys,
   the same combinations, the same order of doing things. What you learn here carries straight
   over to the real thing.
@@ -53,7 +62,7 @@ here.
 
 One instrument so far: **Rhythm**, a sixteen-step drum machine. It is an early build.
 
-What plays today, on the page and in the Rack module:
+What plays today, on the page, in the Rack module and in the terminal:
 
 - **Sixteen sounds**, one a key. Each is synthesised in code, or played from a public-domain
   sample if you choose that for a key.
@@ -148,7 +157,7 @@ flowchart LR
   end
   core -- "static library, C ABI (pi_engine.h)" --> rack["VCV Rack module<br/>rack/ (C++)"]
   core -- "WebAssembly (pi_core.wasm)" --> web["phone and browser<br/>web/ (AudioWorklet)"]
-  core -. "next: issue 8" .-> tui["Linux terminal"]
+  core -- "static library, C ABI" --> tui["Linux terminal<br/>term/ (Rust, pi-rhythm)"]
   rack <-- "jacks: triggers, voices,<br/>sliders, FX send and return" --> patch["the rest of your rack"]
   harness["harness/ and fixtures/:<br/>Rust, C++ and Node must agree byte for byte"] --- core
 ```
@@ -166,6 +175,7 @@ second instrument needs it.
 | `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies |
 | `rack/` | One VCV Rack plugin (slug `PocketInstruments`), a module an instrument: Rhythm, plus Probe, a test module |
 | `web/` | One site, a page an instrument: `rhythm.html` |
+| `term/` | The terminal host, `pi-rhythm`: its own Rust crate on the engine's static library |
 | `harness/` | The same fixtures run through Rust, C++ and the `.wasm`, and compared |
 | `fixtures/` | Test inputs and the exact output (the trace) each must produce |
 | `samples/` | The starter drum pack and its origins |
@@ -180,6 +190,7 @@ The root `index.html` is a small landing page. GitHub Pages serves the `main` br
 | For | You need |
 |---|---|
 | `make build`, `make test` | [mise](https://mise.jdx.dev/) (it installs the pinned Rust), make, a C++ compiler, binutils and a recent Node (⚠ the lowest version that works is not tested; v26 works). clang++ adds the ThreadSanitizer run |
+| `make term` | ALSA's headers (`alsa-lib` on Arch, `libasound2-dev` on Debian and Ubuntu) and `pkg-config` |
 | `make play`, `make p4`, `make listen` | `chromium` and `firefox` on the PATH |
 | The Rack plugin | The Rack SDK 2.6.6 from <https://vcvrack.com/downloads>, kept outside the repository, and `jq` |
 
@@ -188,6 +199,7 @@ mise install     # once: the Rust this repository pins
 make build       # the core, as a static library and as a .wasm
 make test        # the fixtures through all three harnesses, compared byte for byte
 make web         # after the core changes: copy the new .wasm into web/
+make term        # the terminal host: term/target/release/pi-rhythm
 ```
 
 `make test` takes about 40 seconds on the maintainer's laptop. It passed if it exited 0.
