@@ -3194,6 +3194,32 @@ as well as O38's eight. Kenny may say otherwise.
 D132 to D135 are not rewritten (this file is append only): where their headers say
 "proposed", this decision is what says they are accepted.
 
+### D137 — None of a unit's built-in patterns ever ships; the note to Teenage Engineering says three things openly
+**2026-11-27 · decided (Kenny, answering issue 75's six questions as put to him: "Happy with all the above") · follows R91 · adds to the rule "No Teenage Engineering material" in `CONTRIBUTING.md` and `AGENTS.md` · nothing built**
+
+Teenage Engineering's page on IP rights in its products was read (R91). It names
+"accompaniment patterns" and "phrase data" among the material in its products, and says
+"don't sell or distribute our material in its raw form." Issue 75 put six questions to Kenny
+from it. No legal conclusion is drawn here.
+
+1. **None of the patterns a unit ships with enters the repository or the instrument,** in
+   the bank of beats (issue 134) or anywhere. It joins the samples, firmware, photographs,
+   traced artwork, logos and recordings in the rule. The bank is beats of our own, so nothing
+   planned changes. ⚠ Pocket Operations' patterns are another author's and are O29's
+   question, not this one.
+2. **The note to Teenage Engineering raises the name first,** with an offer to change it.
+   POCKET OPERATOR is registered in the EU and the UK (R85); the page lists no marks.
+3. **The note says openly how the effects were modelled:** nothing was disassembled or
+   decompiled; Kenny's own PO-12 was recorded and measured, and no recording is in the
+   repository.
+4. **The note is the only way to learn their view of the look and the workflow.** The page is
+   silent on product design, on clones and "inspired by" projects, and on any route for
+   asking permission. D20's avoid list stands unchanged.
+5. **"Not affiliated" stays as worded,** and the samples stay as they are: the starter pack
+   is CC0 and nothing of theirs is in the repository.
+
+Not chosen: waiting for their answer before writing the patterns rule down.
+
 ## Open
 
 | ID | Question | Needs |
