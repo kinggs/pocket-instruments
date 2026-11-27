@@ -169,8 +169,9 @@ fn every_corrupted_byte_of_a_version_1_snapshot_is_refused_and_changes_nothing()
 }
 
 #[test]
-fn a_version_4_is_refused_short_and_a_version_5_or_0_is_refused_however_good() {
-    // (Until Session 16 this held version 2 and refused 3; until Session 21, version 3 and 4.)
+fn a_version_4_is_refused_short_and_a_version_6_or_0_is_refused_however_good() {
+    // (Until Session 16 this held version 2 and refused 3; until Session 21, version 3 and 4;
+    // until ABI 16, 4 and 5.)
     let s = dressed(1).save();
     let mut h = Host::new(SR, 1);
     let before = h.save();
@@ -181,12 +182,14 @@ fn a_version_4_is_refused_short_and_a_version_5_or_0_is_refused_however_good() {
     assert_eq!(h.load(&s[..SNAP - 1]), ERR_SIZE);
     // A version 4 that says it is version 1, 2 or 3 is read as that version, and its payload
     // size is wrong for it.
-    for older in [1u8, 2, 3] {
+    // Since ABI 16 (§21) the same for one that says 5: its payload size is not version 5's for
+    // the patterns its byte 92 names.
+    for older in [1u8, 2, 3, 5] {
         let mut lied = s;
         lied[4] = older;
         assert_eq!(h.load(&lied), ERR_SIZE, "the payload size is version 4's, not {older}'s");
     }
-    for version in [0u16, 5, 0xffff] {
+    for version in [0u16, 6, 0xffff] {
         let mut t = s;
         t[4..6].copy_from_slice(&version.to_le_bytes());
         recrc(&mut t);

@@ -48,8 +48,12 @@
 
 enum Mode { SAFE, TWO_BUFFERS, DIRECT_SAVE, SPLIT_LOAD, DROP_EDIT, TORN, TORN_VIEW };
 
+// Since ABI 16 (ENGINE.md section 21) a snapshot is as long as pi_save says, up to
+// PI_SNAPSHOT_SIZE: the length travels with the bytes, and only that many are compared.
 struct Snap {
     uint8_t b[PI_SNAPSHOT_SIZE];
+    uint32_t len = 0;
+    bool operator==(const Snap &o) const { return len == o.len && std::memcmp(b, o.b, len) == 0; }
 };
 // What the audio thread hands over: the snapshot, and how far through the second thread's
 // messages it had got when it took it. Without the counts the second thread cannot know
@@ -89,11 +93,12 @@ struct Core {
     }
     int32_t load(const Snap &s) {
         changes();
-        return pi_load(e, s.b, PI_SNAPSHOT_SIZE);
+        return pi_load(e, s.b, s.len);
     }
     void save(Snap &s) const {
         reads();
-        if (pi_save(e, s.b, PI_SNAPSHOT_SIZE) != PI_SNAPSHOT_SIZE) die("pi_save");
+        s.len = pi_save(e, s.b, PI_SNAPSHOT_SIZE);
+        if (s.len < PI_SNAPSHOT_SIZE_MIN) die("pi_save");
     }
     uint32_t generation() const {
         reads();
@@ -301,7 +306,7 @@ struct Other {
             if (std::chrono::steady_clock::now() > give_up) die("the audio thread never caught up");
         Snap want;
         model.save(want);
-        if (std::memcmp(want.b, got.snap.b, PI_SNAPSHOT_SIZE) != 0) wrong++;
+        if (!(want == got.snap)) wrong++;
         rounds++;
         return got;
     }
@@ -321,9 +326,25 @@ struct Other {
                 // Any key but fx (ABI 6): held while playing, it lets the steps that arrive
                 // write the lane (§17), and when they arrive is the audio thread's pace, which
                 // the model, a frame an edit, does not keep. The lane is edited by FX instead.
+                // Nor pattern (ABI 16, section 21), for the same reason: the audio thread plays,
+                // so a choice there waits for the end of the bar, and the model, stopped, takes
+                // it at once. Patterns are reached by COPY instead, which does not wait.
+                // And bpm only used (D130): a release under half a second of frames steps the
+                // preset, and the model's frames (one an edit) are not the audio thread's. With
+                // 22 KB snapshots (ABI 16) the second thread is slower, the audio thread runs
+                // more blocks between two messages, and a bpm held alone across them read as a
+                // hold there and a press in the model (found in issue 139's build). Held over a
+                // grid key it sets the volume, and its release is never a press on either.
                 uint8_t key = uint8_t(rnd() % 22);
-                if (key == PI_KEY_FX) key = PI_KEY_WRITE;
-                switch (rnd() % 8) {
+                if (key == PI_KEY_FX || key == PI_KEY_PATTERN) key = PI_KEY_WRITE;
+                uint32_t how = rnd() % 8;
+                if (key == PI_KEY_BPM && how >= 4 && how <= 6) {
+                    for (pi_cmd c : {pi_cmd{0, PI_CMD_KEY_DOWN, PI_KEY_BPM, 0, 0, 0}, pi_cmd{0, PI_CMD_KEY_DOWN, a, 0, 0, 0},
+                                     pi_cmd{0, PI_CMD_KEY_UP, a, 0, 0, 0}, pi_cmd{0, PI_CMD_KEY_UP, PI_KEY_BPM, 0, 0, 0}})
+                        edit(c);
+                    continue;
+                }
+                switch (how) {
                 case 4: edit(pi_cmd{0, PI_CMD_KEY_DOWN, key, 0, 0, 0}); break;
                 case 5: edit(pi_cmd{0, PI_CMD_KEY_UP, key, 0, 0, 0}); break;
                 case 6:
@@ -339,9 +360,12 @@ struct Other {
                     break;
                 case 2:
                     // Swing, or (ABI 6) one of the effects' two edits.
+                    // Since ABI 16, or the active pattern copied to a slot (section 21), so the
+                    // snapshots handed over grow to several patterns and shrink back.
                     if (rnd() % 2) edit(pi_cmd{0, PI_CMD_SWING, 0, 0, 0, rnd() % 49});
                     else if (rnd() % 2) edit(pi_cmd{0, PI_CMD_FX, a, 0, 0, rnd() % 17});
-                    else edit(pi_cmd{0, PI_CMD_FXSOUND, a, 0, 0, rnd() % 2});
+                    else if (rnd() % 2) edit(pi_cmd{0, PI_CMD_FXSOUND, a, 0, 0, rnd() % 2});
+                    else edit(pi_cmd{0, PI_CMD_COPY, 0, 0, 0, b});
                     break;
                 default: edit(pi_cmd{0, PI_CMD_LENGTH, 0, 0, 0, 1 + rnd() % 16}); break;
                 }
@@ -359,7 +383,34 @@ struct Other {
     // Since version 3 (§17) also the whole lane and every sound's fx switch. Since version 4
     // (§20) what every step keeps: each step goes off first, which forgets, then on as the
     // fixture has it, then the fixture's own keeps.
+    // Since ABI 16 (section 21) every pattern and the chain first: a load of pi_init's, through
+    // the queue like any load, since no edit reaches a pattern but the active one without a
+    // choice, which waits while the core plays. A fixture whose step-0 edits choose, chain or
+    // copy is entered whole that way, as a load of its own snapshot built on a private engine:
+    // the core plays, so entered as edits its choices would wait for the bar.
     Snap enter(const Json &fx) {
+        auto built = [&](bool edits) {
+            Core own(48000, 1);
+            pi_event ev[64];
+            std::vector<pi_cmd> c{pi_cmd{0, PI_CMD_TEMPO, 0, 0, 0, uint32_t(fx.n("mbpm"))}};
+            if (edits)
+                for (const Json &j : fx.at("commands").arr)
+                    if (j.n("at") == 0 && is_edit(j.at("cmd").str)) c.push_back(to_cmd(j));
+            own.process(1, c.data(), uint32_t(c.size()), ev, 64);
+            Snap s;
+            own.save(s);
+            return s;
+        };
+        bool patterns = false;
+        for (const Json &c : fx.at("commands").arr) {
+            const std::string &name = c.at("cmd").str;
+            patterns |= c.n("at") == 0 && (name == "pattern" || name == "chain" || name == "copy");
+        }
+        load(built(false));
+        if (patterns) {
+            load(built(true));
+            return settle().snap;
+        }
         for (uint8_t k = 0; k <= PI_KEY_WRITE; k++) edit(pi_cmd{0, PI_CMD_KEY_UP, k, 0, 0, 0});
         for (uint8_t k : {PI_KEY_BPM, 15u}) edit(pi_cmd{0, PI_CMD_KEY_DOWN, k, 0, 0, 0});
         for (uint8_t k : {15u, PI_KEY_BPM}) edit(pi_cmd{0, PI_CMD_KEY_UP, k, 0, 0, 0});
@@ -429,12 +480,15 @@ int main(int argc, char **argv) {
     std::string out;
     for (auto &path : files) {
         Json fx = read_fixture(path.string());
+        // A fixture with a beat file (issue 140) starts from the beat, not from edits a host
+        // enters: nothing here to race, and no snapshot run in the Node report to match.
+        if (fx.find("beat")) continue;
         if (fx.n("seed") != 1) die("race.cpp starts its engine from seed 1, as every fixture so far does");
         Snap snap = other.enter(fx);
         out += path.stem().string() + " ";
-        for (uint8_t byte : snap.b) {
+        for (uint32_t i = 0; i < snap.len; i++) {
             char two[3];
-            std::snprintf(two, sizeof two, "%02x", byte);
+            std::snprintf(two, sizeof two, "%02x", snap.b[i]);
             out += two;
         }
         out += "\n";

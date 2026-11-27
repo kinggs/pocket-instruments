@@ -1,4 +1,4 @@
-/* Pocket Instruments: the engine's C ABI, version 15 (1 plus sound: D44; 3 adds samples: D50;
+/* Pocket Instruments: the engine's C ABI, version 16 (1 plus sound: D44; 3 adds samples: D50;
  * 4 adds keys and the view: D51; 5 adds snapshot version 2 and PI_AUDIO_BOTH: D55, D57;
  * 6 adds the lane, the fx key, the four repeats and snapshot version 3: D66, D67;
  * 7 adds the bus and seven sound effects on the mix, with no new call or command: D67;
@@ -17,7 +17,10 @@
  * 46 875 Hz and asked on a grid a quarter of it, a line between, on the track channels too,
  * with no new call or command: D98;
  * 15 adds one edge a beat, PI_SOURCE_BEATS, and the tempo the edges play in the view's bytes 30
- * and 31, PI_VIEW_EXT: D64, D65, D100).
+ * and 31, PI_VIEW_EXT: D64, D65, D100;
+ * 16 adds sixteen patterns, the chain, copy and a clear of the active pattern alone:
+ * PI_CMD_PATTERN, PI_CMD_CHAIN, PI_CMD_COPY, the view at 88 bytes and snapshot version 5,
+ * variable in length, with pi_save returning the length written: D133, ENGINE.md section 21).
  *
  * The contract both hosts link. ENGINE.md beside the crate is the specification; this file is
  * the same thing in C. Where they disagree, ENGINE.md is right.
@@ -41,7 +44,7 @@
 extern "C" {
 #endif
 
-#define PI_ABI_VERSION 15u
+#define PI_ABI_VERSION 16u
 
 #define PI_TICKS_PER_STEP 96u /* a step is a sixteenth note */
 #define PI_TRACKS 16u         /* one per grid key: key n plays track n (D30) */
@@ -51,13 +54,18 @@ extern "C" {
 #define PI_MBPM_MIN 30000u    /* tempo is in thousandths of a bpm */
 #define PI_MBPM_MAX 300000u
 #define PI_EVENTS_MIN 64u     /* the least room a host gives pi_process for events */
-#define PI_SNAPSHOT_VERSION 4u   /* what pi_save writes; pi_load also takes versions 1 to 3 */
-#define PI_SNAPSHOT_SIZE 1464u   /* bytes, for PI_SNAPSHOT_VERSION */
+#define PI_PATTERNS 16u          /* ABI 16: patterns in the engine, 0..15 */
+#define PI_SNAPSHOT_VERSION 5u   /* what pi_save writes; pi_load also takes versions 1 to 4 */
+#define PI_SNAPSHOT_SIZE 22100u  /* the most version 5 can be: every pattern written. A host's
+                                    buffer for pi_save; keep the length pi_save returns */
+#define PI_SNAPSHOT_SIZE_MIN 276u    /* version 5 with no pattern written */
+#define PI_SNAPSHOT_PATTERN 1364u    /* version 5 grows by this for each pattern written */
+#define PI_SNAPSHOT_SIZE_V4 1464u /* version 4 */
 #define PI_SNAPSHOT_SIZE_V3 408u /* version 3 */
 #define PI_SNAPSHOT_SIZE_V2 388u /* version 2 */
 #define PI_SNAPSHOT_SIZE_V1 316u /* version 1: the least a host should keep and pass to pi_load */
 #define PI_FX_MAX 16u            /* a lane entry: 0 none, or the effect on key 1..16 */
-#define PI_VIEW_SIZE 64u      /* bytes pi_view writes */
+#define PI_VIEW_SIZE 88u      /* bytes pi_view writes (64 until ABI 16) */
 #define PI_VOLUME_MAX 16u     /* master volume, 1..16; the mix is times (volume / 16) squared */
 
 /* What pi_process writes to `audio`, by its `channels` argument. Any other value: no sound. */
@@ -140,6 +148,16 @@ extern "C" {
 /* A step's own sliders (ABI 8; ENGINE.md section 20). An edit; in snapshot version 4. */
 #define PI_CMD_KEEP 26u     /* a: track, b: step, value: A in the high 16 bits, B in the low. That
                                step plays with these from now on. PI_CMD_STEP 0 forgets them */
+/* Patterns (ABI 16; ENGINE.md section 21). Edits; in snapshot version 5. PI_CMD_STEP, PROB,
+ * LENGTH, FX and KEEP act on the active pattern: the one playing, or, stopped, the one that will
+ * play. SWING, TEMPO, SOUND, VOICE and FXSOUND are the beat's. */
+#define PI_CMD_PATTERN 27u  /* value: 0..15, a new chain of that one pattern. Stopped, at once (and
+                               any next chain dropped); playing, it is the next chain and lands
+                               where the playing pattern wraps. A value past 15 is ignored */
+#define PI_CMD_CHAIN 28u    /* value: 0..15, added to the end of the next chain if one waits, else
+                               of the chain. Ignored past 15, or when that chain holds sixteen */
+#define PI_CMD_COPY 29u     /* value: 0..15, the active pattern copied to that slot, whole, its lane
+                               too; the active pattern stays active. Ignored past 15 */
 /* What a finger did (ABI 4; ENGINE.md section 13). The core runs the workflow and turns each
  * into the edits above; a host sends these and draws pi_view. */
 #define PI_CMD_KEY_DOWN 32u /* a: PI_KEY_*. A key already down, or a number past 22: ignored */
@@ -190,6 +208,15 @@ extern "C" {
 #define PI_VIEW_HIT_A 60u     /* u16: the A the chosen sound was last hit with, its own until then
                                  (ABI 8, section 20): a slider's second mark */
 #define PI_VIEW_HIT_B 62u     /* u16: the same for B */
+/* 64 to 87: the patterns' (ABI 16, section 21). */
+#define PI_VIEW_PATTERN 64u   /* u8: the active pattern, 0..15 */
+#define PI_VIEW_POS 65u       /* u8: the chain's position, 0..15 */
+#define PI_VIEW_CHAIN_LEN 66u /* u8: the chain's length, 1..16 */
+#define PI_VIEW_NEXT_LEN 67u  /* u8: the next chain's length; 0 while none waits */
+#define PI_VIEW_USED 68u      /* u16: bit p, pattern p has a step on or a lane entry. 70, 71: zero */
+#define PI_VIEW_CHAIN 72u     /* 8 bytes: entry 2i in the low four bits of byte 72 + i, 2i + 1 in the
+                                 high four; zero past the chain's length */
+#define PI_VIEW_NEXT 80u      /* 8 bytes: the next chain, the same way; all zero while none waits */
 
 #define PI_VIEW_FLAG_PLAYING 1u
 #define PI_VIEW_FLAG_WRITE 2u
@@ -237,8 +264,8 @@ uint32_t pi_abi_version(void);
 uint32_t pi_size(void);
 uint32_t pi_align(void);
 
-/* Build an engine in the caller's memory: stopped, on the table clock at 120 bpm, pattern
- * empty. Returns 0 if mem is null, too small or misaligned, or sample_rate is 0.
+/* Build an engine in the caller's memory: stopped, on the table clock at 120 bpm, every pattern
+ * empty, the chain pattern 1 alone. Returns 0 if mem is null, too small or misaligned, or sample_rate is 0.
  * A seed of 0 is replaced by a fixed non-zero value. */
 pi_engine *pi_init(void *mem, uint32_t size, uint32_t sample_rate, uint32_t seed);
 
@@ -269,6 +296,8 @@ uint32_t pi_view(const pi_engine *engine, uint8_t *buf, uint32_t cap);
 #define PI_WEAVE_W 78u
 #define PI_WEAVE_H 15u
 #define PI_WEAVE_CELLS (PI_WEAVE_W * PI_WEAVE_H)
+#define PI_WEAVE_VIEW_MIN 64u /* ABI 16: pi_weave reads a view's bytes 0 to 63 and takes any len of
+                                 at least this */
 #define PI_WEAVE_REDUCED 1u /* pi_weave's flags: reduced motion. The shuttle jumps; nothing flashes */
 /* The palette: design/DESIGN.md's tokens. A host paints nothing for 0. */
 #define PI_WEAVE_DISPLAY 0u
@@ -282,7 +311,7 @@ uint32_t pi_view(const pi_engine *engine, uint8_t *buf, uint32_t cap);
 
 /* The weave for a view: PI_WEAVE_CELLS palette numbers to `out`. A pure function of the view's
  * bytes: it takes no engine, so any thread may call it (a drawing thread; the page, in its own
- * instance of the .wasm). `len` is the view's length, at least PI_VIEW_SIZE. Returns
+ * instance of the .wasm). `len` is the view's length, at least PI_WEAVE_VIEW_MIN. Returns
  * PI_WEAVE_CELLS, or 0 with nothing written if a pointer is null, `len` is short or `cap` is
  * too small. */
 uint32_t pi_weave(const uint8_t *view, uint32_t len, uint32_t flags, uint8_t *out, uint32_t cap);
@@ -316,13 +345,18 @@ uint32_t pi_dropped(const pi_engine *engine);
  * arriving with fx held changes the lane. */
 uint32_t pi_generation(const pi_engine *engine);
 
-/* Write a snapshot. Returns PI_SNAPSHOT_SIZE, or 0 if cap is too small. */
+/* Write a snapshot, version 5. Returns the bytes written, PI_SNAPSHOT_SIZE_MIN plus
+ * PI_SNAPSHOT_PATTERN for each pattern that is not a cleared one (276 to PI_SNAPSHOT_SIZE), or
+ * 0, with nothing written, if cap is under that. A host keeps the length returned: since ABI 16
+ * it is rarely PI_SNAPSHOT_SIZE. */
 uint32_t pi_save(const pi_engine *engine, uint8_t *buf, uint32_t cap);
 
 /* Read a snapshot of this or any older version. On any error nothing changes. Replaces the
- * pattern and settings and reseeds the random generator; leaves the playhead and clock.
- * An older version sets what it does not hold to pi_init's values. Bytes past that
- * version's size are not read: pass the length read, not a fixed size. Moves pi_generation. */
+ * patterns, the chain and the settings and reseeds the random generator; leaves the playhead
+ * and clock. A version 1 to 4 loads into pattern 1, the other fifteen cleared and the chain
+ * pattern 1 alone; an older version sets what it does not hold to pi_init's values. Bytes past
+ * the snapshot's size are not read: pass the length read, not a fixed size. Moves
+ * pi_generation. */
 int32_t pi_load(pi_engine *engine, const uint8_t *buf, uint32_t len);
 
 #ifdef __cplusplus

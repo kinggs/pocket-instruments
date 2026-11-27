@@ -8,6 +8,13 @@ publish = false
 
 # No dependencies, on purpose: nothing can bring an allocator in (P1).
 
+# Tests only: the fixtures that carry a beat file read it with the beat reader (docs/BEAT.md),
+# and the core is the referee of its round trips (core/src/tests/beat.rs). Not in the library:
+# `make check-p1` reads the normal edges alone. Without its panic handler, which a test binary
+# with the standard library must not have twice.
+[dev-dependencies]
+pi-beat = { path = "../beat", default-features = false }
+
 [lib]
 name = "pi_core"
 # staticlib for Rack and the C++ harness, cdylib for WebAssembly. The Makefile asks for one
