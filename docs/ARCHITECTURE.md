@@ -30,9 +30,11 @@ the two sliders.
   of the sliders, the settings. Every older version still loads.
 - **In Rack** sound also comes in: a returned sound takes its own voice's place before the
   effects (`ENGINE.md` §19).
-- **A third host, the terminal** (`TERMINAL.md`, D123; designed 2026-11-26, not built): its
-  own crate, `term/`, linking the same static library as Rack through the same C ABI. It is
-  Rhythm's host, not a framework: a second instrument would add its own screens there.
+- **A third host, the terminal** (`TERMINAL.md`, D123; built 2026-11-26): its own crate,
+  `term/`, linking the same static library as Rack through the same C ABI. One command,
+  `pocket-instruments`, opens on a menu of instruments (D125, designed 2026-11-27): the one
+  place a list of instruments exists before a second one. The menu is names and a function
+  each, not a framework: a second instrument would add its own screens there and a line to it.
 
 ## What is shared in fact
 
@@ -85,6 +87,7 @@ gives the shape: one core crate, one Rack plugin, one site.
 | `rack/src/` | `Rhythm.cpp`, `Probe.cpp`, `plugin.cpp` | `<Name>.cpp`, a second `addModel` in `plugin.cpp`, a second entry in `rack/plugin.json` |
 | `rack/res/` | `panel.svg`, copied from `design/` at build time | Its own panel file. ⚠ `panel.svg` has no instrument in its name yet; it would gain one then, not before |
 | `web/` | `rhythm.html` | `<name>.html`, on the same worklet if it can be |
+| `term/` | `pocket-instruments`, Rhythm's screens and keys, a menu of one (D125) | Its own screens and keys, and a line in the menu |
 | `fixtures/` | Rhythm's fixtures, flat | Its own fixtures. ⚠ A prefix or a folder: not decided |
 | `design/` | Rhythm's look at the top of the folder | Its own look. ⚠ A folder an instrument is the likely shape; not decided |
 | `docs/` | `WORKFLOW.md`, `VOICES.md` describe Rhythm | Its own workflow and voices documents |
