@@ -1,0 +1,20 @@
+pocket-instruments beat 1
+name Backbeat and Fill
+credit Pocket Instruments contributors, 2026; CC0
+tempo 100
+volume 13
+seed 1
+value a 40000 32768
+chain 1 1 1 2
+
+pattern 1
+1  kick   x.......x.x.....
+2  snare  ....x.......x...
+3  hat    x.x.x.x.x.x.x.x.
+
+pattern 2
+1  kick   x.....x.........
+2  snare  ....x...xx......
+3  hat    x.x.x.x.........
+11 lowtom ............xaxa
+12 hitom  ..........xx....

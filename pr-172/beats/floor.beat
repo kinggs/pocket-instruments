@@ -1,0 +1,13 @@
+pocket-instruments beat 1
+name Floor
+credit Pocket Instruments contributors, 2026; CC0
+tempo 124
+swing 8
+volume 12
+seed 7
+
+pattern 1
+1  kick    x...x...x...x...
+3  hat     xx.xxx.xxx.xxx.x prob 2=60 6=60 10=60 14=60
+4  openhat ..x...x...x...x.
+9  clap    ....x.......x...

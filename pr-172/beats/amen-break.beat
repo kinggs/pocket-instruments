@@ -1,0 +1,33 @@
+pocket-instruments beat 1
+name Amen Break
+credit Written out by Pocket Instruments contributors, 2026, after the break in Amen, Brother (The Winstons, 1969; drums G. C. Coleman)
+tempo 136
+seed 1
+sound 1 sample
+sound 2 sample
+value a 32768 13107
+value b 32768 36044
+value c 32768 22937
+value d 32768 52000
+chain 1 2 3 4
+
+pattern 1
+1  kick   x.x.......xx....
+2  snare  ....x..a.a..x..a
+3  hat    b.c.b.c.b.c.b.c.
+
+pattern 2
+1  kick   x.x.......xx....
+2  snare  ....x..a.a..x..a
+3  hat    b.c.b.c.b.c.b.c.
+
+pattern 3
+1  kick   x.x.......x.....
+2  snare  ....x..a.a....x.
+3  hat    b.c.b.c.b.c.b.c.
+
+pattern 4
+1  kick   ..xx......x.....
+2  snare  .a..x..a.a....x.
+3  hat    b.c.b.c.b...b.c.
+7  cymbal ..........d.....
