@@ -16,11 +16,13 @@ Not affiliated with Teenage Engineering; their names are used only to describe.
 | Path | What it holds |
 |---|---|
 | `core/` | The engine: one Rust crate, `no_std`, no allocator, no dependencies. Tests in `core/src/tests/`. The C contract is `core/include/pi_engine.h` |
+| `beat/` | The beat file's reader and writer (`docs/BEAT.md`): its own `no_std` crate beside the core, no dependency between them; the snapshot's offsets from `core/src/snapshot_layout.rs` by `include!`. The C contract is `beat/include/pi_beat.h`; `web/pi_beat.wasm` is committed |
 | `rack/` | One VCV Rack plugin, slug `pocket-instruments`. A module an instrument: `src/Rhythm.cpp`. `src/Probe.cpp` is a test module, not an instrument |
 | `web/` | One site, a page an instrument: `rhythm.html`. `worklet.js` runs the engine; `pi_core.wasm` is committed so GitHub Pages can serve it |
 | `term/` | The terminal host (`docs/TERMINAL.md`): its own crate and Cargo workspace, one command, `pocket-instruments`, with a menu of instruments (D125), on the core's static library through the C ABI. Tests in `term/tests/` |
 | `harness/` | The same fixtures through the `.wasm` in Node and through C++ on the static library; the bench, the fuzz, the race harness |
 | `fixtures/` | Test vectors and the traces they must produce. Formats: `fixtures/README.md` |
+| `beats/` | The bank of beats (`docs/BANK.md`; D141, proposed): seven `.beat` files of our own, the Amen Break first, and `bank.txt`, the menu's order. `make test` reads every file; no host offers them yet |
 | `samples/` | The starter drum pack: sixteen CC0 files and their origins |
 | `design/` | The look: `DESIGN.md`, the panel and the script that draws it. The drawings are on [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK); the tokens and rules in [Loom, the design system](https://claude.ai/artifact/EzTa2cGzc2duUV25f9Huo1) |
 | `docs/` | The design documents (below) |
@@ -32,6 +34,7 @@ The live backlog is GitHub issues. There is no plan file.
 |---|---|---|
 | `docs/ENGINE.md` | The engine's specification | By a decision; the header and fixtures change with it |
 | `docs/BEAT.md` | The beat file: a beat as text, one to one with the snapshot (D134; designed, not built) | By a decision, with its own version number |
+| `docs/BANK.md` | The bank of beats, and the beat a new player opens on (D141, D142; proposed, not built) | By a decision |
 | `docs/DECISIONS.md` | Every decision and why. The Open table is at its end | Append only. A decision is superseded, not rewritten |
 | `docs/PROOFS.md` | What must be proven, the pass bar, the result | Bar before the run, result after |
 | `docs/REFERENCES.md` | Outside facts, with source and date | Re-check an old entry before leaning on it |
@@ -115,9 +118,9 @@ and pass `--manifest-path` and `CARGO_TARGET_DIR`.
 | Command | What it does |
 |---|---|
 | `mise install` | Once: the pinned Rust (`rust-toolchain.toml`, `mise.toml`) |
-| `make build` | The static library and the `.wasm` |
+| `make build` | The static library and the `.wasm`, the core's and the beat file's (`libpi_beat.a`, `pi_beat.wasm`) |
 | `make test` | The gate, about 40 seconds. Runs every fixture through Rust, C++ and Node and compares the three reports byte for byte; then checks the display cells, the Rack jack maths and the rendered audio the same way; then a ThreadSanitizer run if `clang++` is there. Needs a C++ compiler, binutils and Node |
-| `make web` | Copies the new `.wasm` to `web/pi_core.wasm`. `make test` fails if the committed copy is stale |
+| `make web` | Copies the new `.wasm` files to `web/pi_core.wasm` and `web/pi_beat.wasm`. `make test` fails if a committed copy is stale |
 | `make bench` | Nanoseconds a frame of `pi_process`. Pinned to one CPU: `BENCH_CPU=<n>` |
 | `make pairs OLD=<a bench>` | This build beside another, ten interleaved rounds |
 | `make fuzz OLD=<an older libpi_core.a>` | Differential fuzz: a change that must move no byte runs this |
@@ -172,7 +175,9 @@ line tool, and one pattern only.
 
 Both come with the patterns work (D110). ⚠ The issues for it were still being opened when
 this was written: search the issues for "patterns" and for "agent can play". The beat file's
-form is designed (`docs/BEAT.md`, D134), not built: nothing reads it yet.
+form is designed (`docs/BEAT.md`, D134), not built: nothing reads it yet. The agent's command
+is designed, not built (D140; `docs/BEAT.md`, "The agent's command", which also drafts what
+this section will say once it is).
 
 Until then a beat lives in two places only:
 

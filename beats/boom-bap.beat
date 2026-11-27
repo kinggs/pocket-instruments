@@ -1,0 +1,15 @@
+pocket-instruments beat 1
+name Boom Bap
+credit Pocket Instruments contributors, 2026; CC0
+tempo 90
+swing 18
+volume 14
+seed 1
+sound 1 a 26000 b 40000
+value a 30000 20000
+
+pattern 1
+1  kick   x......x..x.....
+2  snare  ....x.......x...
+3  hat    x.x.x.x.x.x.x.xx
+6  sticks ...........a....

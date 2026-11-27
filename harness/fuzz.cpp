@@ -410,7 +410,7 @@ struct Session {
             H.u32(n); H.add(s.data(), s.size());
             rec(7, s.data(), uint32_t(s.size()));
             logf("save=%u ", n);
-            if (n == PI_SNAPSHOT_SIZE) { s.resize(n); snaps.push_back(s); }
+            if (n >= PI_SNAPSHOT_SIZE_MIN) { s.resize(n); snaps.push_back(s); }   // ABI 16: as long as pi_save says
             break;
         }
         case A_LOAD: {
@@ -421,7 +421,7 @@ struct Session {
             else if (k == 1) len = R.u(len);
             else if (k == 2) s[R.u(len)] ^= uint8_t(1u << R.u(8));
             int32_t r = pi_load(e, s.data(), len);
-            if (r == PI_OK && len >= 402) s_fx = uint16_t(s[400] | s[401] << 8);   // the snapshot's fx sounds (§17)
+            if (r == PI_OK && len >= 92) s_fx = uint16_t(s[90] | s[91] << 8);   // the snapshot's fx sounds (§17; version 5's place, §21)
             s_last_sound = frames_total;
             H.u32(uint32_t(r));
             rec(8, &r, 4);
