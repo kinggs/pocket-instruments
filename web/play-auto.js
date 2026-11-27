@@ -571,6 +571,8 @@ async function phaseKeep() {
   // had them, pattern 1's from its block if it is written (a cleared pattern otherwise).
   // Until then version 4's first 408 bytes were taken as they were.
   const v3 = new Uint8Array(408), d = new DataView(v3.buffer), n5 = new DataView(now.buffer);
+  K.version = n5.getUint16(4, true);
+  K.written = n5.getUint16(92, true);
   v3.set(now.subarray(0, 20));                                   // magic, kind, seed, tempo
   const p1 = n5.getUint16(92, true) & 1 ? now.subarray(272, 272 + 1364) : null;
   v3[20] = p1 ? p1[1360] : 16;                                   // length
