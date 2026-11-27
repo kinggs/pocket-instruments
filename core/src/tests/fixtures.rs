@@ -2,7 +2,8 @@
 //! sizes, compared byte for byte. `fixtures/README.md` says how a harness runs one; the Node
 //! and C++ harnesses in `harness/` do the same and write the same report.
 //! Format 2 adds keys, sliders and views (Session 10); format 3 the effects (Session 16);
-//! format 4 a step's own sliders (Session 21).
+//! format 4 a step's own sliders (Session 21); format 5 the patterns (ABI 16, §21). A fixture
+//! with a `beat` (issue 140, `docs/BEAT.md`) starts from its beat file, read by the beat reader.
 
 use super::json::{Json, parse};
 use super::*;
@@ -12,7 +13,7 @@ pub const RATES: [u32; 3] = [44_100, 48_000, 96_000];
 pub const BLOCKS: [u32; 3] = [1, 128, 512];
 const SOURCES: [(&str, u32); 2] = [("table", 0), ("edges", 1)];
 
-fn fixtures() -> Vec<(String, Json)> {
+pub(super) fn fixtures() -> Vec<(String, Json)> {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../fixtures");
     let mut names: Vec<String> = std::fs::read_dir(dir)
         .unwrap()
@@ -25,8 +26,12 @@ fn fixtures() -> Vec<(String, Json)> {
         .into_iter()
         .map(|n| {
             let j = parse(&std::fs::read_to_string(format!("{dir}/{n}")).unwrap());
-            assert!(matches!(j.num("format"), 1..=4), "{n}");
-            assert!(j.num("format") >= 2 || j.get("views").is_none(), "{n}: views are format 2's to 4's");
+            assert!(matches!(j.num("format"), 1..=5), "{n}");
+            assert!(j.num("format") >= 2 || j.get("views").is_none(), "{n}: views are format 2's to 5's");
+            if let Some(b) = j.get("beat") {
+                let Json::Str(file) = b else { panic!("{n}: beat names a file") };
+                assert!(std::path::Path::new(&format!("{dir}/{file}")).is_file(), "{n}: no beat file {file}");
+            }
             assert_eq!(j.num("ticks_per_step"), 96, "{n}");
             (n.trim_end_matches(".json").to_string(), j)
         })
@@ -34,7 +39,8 @@ fn fixtures() -> Vec<(String, Json)> {
 }
 
 fn is_edit(name: &str) -> bool {
-    matches!(name, "step" | "prob" | "swing" | "length" | "fx" | "fxsound" | "keep")
+    // Format 5: §21's three edits, which at step 0 come from a snapshot like the rest.
+    matches!(name, "step" | "prob" | "swing" | "length" | "fx" | "fxsound" | "keep" | "pattern" | "chain" | "copy")
 }
 
 /// Format 2: what a finger did. These land a frame after their step's boundary.
@@ -55,6 +61,9 @@ fn to_cmd(c: &Json) -> Cmd {
         "fx" => cmd(CMD_FX, t("step"), 0, v),
         "fxsound" => cmd(CMD_FXSOUND, t("track"), 0, v),
         "keep" => cmd(CMD_KEEP, t("track"), t("step"), (c.num("a") as u32) << 16 | c.num("b") as u32),
+        "pattern" => cmd(CMD_PATTERN, 0, 0, v),
+        "chain" => cmd(CMD_CHAIN, 0, 0, v),
+        "copy" => cmd(CMD_COPY, 0, 0, v),
         "key_down" => cmd(CMD_KEY_DOWN, t("key"), 0, 0),
         "key_up" => cmd(CMD_KEY_UP, t("key"), 0, 0),
         "param" => cmd(CMD_PARAM, t("slider"), 0, v),
@@ -134,7 +143,8 @@ fn play(h: &mut Host, plan: &Plan, block: u32, label: &str) -> (Vec<(u64, Event)
     for (frame, want) in &plan.views {
         events.extend(h.run(frame - h.now, block, &plan.cmds));
         let got = match plan.format {
-            4.. => view_text_keep(&h.view()),
+            5.. => view_text_pat(&h.view()),
+            4 => view_text_keep(&h.view()),
             3 => view_text_fx(&h.view()),
             _ => view_text(&h.view()),
         };
@@ -147,7 +157,7 @@ fn play(h: &mut Host, plan: &Plan, block: u32, label: &str) -> (Vec<(u64, Event)
     (events, text)
 }
 
-fn expect(fx: &Json) -> String {
+pub(super) fn expect(fx: &Json) -> String {
     fx.arr("expect")
         .iter()
         .map(|l| match l {
@@ -157,40 +167,53 @@ fn expect(fx: &Json) -> String {
         .collect()
 }
 
-/// A snapshot of the fixture's pattern, taken from an engine that was given the tempo and
-/// the step-0 edits and nothing else.
-fn snapshot_of(fx: &Json, rate: u32) -> [u8; SNAP] {
+/// A snapshot of the fixture's patterns, taken from an engine that was given the tempo and
+/// the step-0 edits and nothing else: version 5, at the length `pi_save` returns.
+pub(super) fn snapshot_of(fx: &Json, rate: u32) -> Vec<u8> {
     let mut a = Host::new(rate, fx.num("seed") as u32);
     let mut cmds = vec![cmd(CMD_TEMPO, 0, 0, fx.num("mbpm") as u32)];
     cmds.extend(
         fx.arr("commands").iter().filter(|c| c.num("at") == 0 && is_edit(c.str("cmd"))).map(to_cmd),
     );
     a.block(1, &cmds);
-    a.save()
+    a.snap()
 }
 
-/// §20: the same pattern as a player's keys would leave it: every step that is on keeps its
+/// §20: the same patterns as a player's keys would leave them: every step that is on keeps its
 /// sound's own A and B, as a write-mode key keeps them and as an older snapshot loads. (An
 /// edit's `STEP` keeps nothing.) So the report holds the bytes a page or a module saves after
 /// a beat was entered by keys, and each harness plays the fixture from them (P6).
-fn kept_snapshot_of(fx: &Json, rate: u32) -> [u8; SNAP] {
-    let mut a = Host::new(rate, fx.num("seed") as u32);
-    a.load(&snapshot_of(fx, rate));
-    let s = a.save();
-    let mut keeps = Vec::new();
-    for t in 0..16usize {
-        let on = u16::from_le_bytes([s[24 + 2 * t], s[25 + 2 * t]]);
-        let kept = u16::from_le_bytes([s[404 + 2 * t], s[405 + 2 * t]]);
-        let ab = u32::from_le_bytes([s[314 + 4 * t], s[315 + 4 * t], s[312 + 4 * t], s[313 + 4 * t]]);
-        for st in (0..16u8).filter(|st| on >> st & 1 == 1 && kept >> st & 1 == 0) {
-            keeps.push(cmd(CMD_KEEP, t as u8, st, ab));
+/// Since ABI 16 (§21) written into version 5's bytes, in every pattern written, as a `KEEP` in
+/// each would write them (until then by `KEEP` edits, into the one pattern); then loaded and
+/// saved again, so the bytes are the core's.
+pub(super) fn kept_snapshot_of(fx: &Json, rate: u32) -> Vec<u8> {
+    let mut s = snapshot_of(fx, rate);
+    let u16_at = |s: &[u8], i: usize| u16::from_le_bytes([s[i], s[i + 1]]);
+    let written = u16_at(&s, 92);
+    let mut at = SNAP5_MIN - 4;
+    for _ in 0..written.count_ones() {
+        for t in 0..16usize {
+            let on = u16_at(&s, at + 2 * t);
+            let kept = u16_at(&s, at + 304 + 2 * t);
+            for st in (0..16usize).filter(|st| on >> st & 1 == 1 && kept >> st & 1 == 0) {
+                let v = at + 336 + 4 * (16 * t + st);
+                let ab: [u8; 4] = s[24 + 4 * t..28 + 4 * t].try_into().unwrap(); // the sound's own A, B
+                s[v..v + 4].copy_from_slice(&ab);
+            }
+            s[at + 304 + 2 * t..at + 306 + 2 * t].copy_from_slice(&(kept | on).to_le_bytes());
         }
+        at += SNAP5_BLOCK;
     }
-    a.block(1, &keeps);
-    a.save()
+    let n = s.len() - 4;
+    let crc = crate::crc::crc32(&s[..n]);
+    s[n..].copy_from_slice(&crc.to_le_bytes());
+    let mut a = Host::new(rate, fx.num("seed") as u32);
+    assert_eq!(a.load(&s), OK);
+    assert_eq!(a.snap(), s, "the core saves the same bytes");
+    s
 }
 
-fn hex(b: &[u8]) -> String {
+pub(super) fn hex(b: &[u8]) -> String {
     b.iter().map(|x| format!("{x:02x}")).collect()
 }
 
@@ -200,8 +223,34 @@ fn every_fixture_everywhere() {
     let mut runs = 0;
     let all = fixtures();
     let count = all.len();
+    let beats = all.iter().filter(|(_, fx)| fx.get("beat").is_some()).count();
     for (name, fx) in all {
         let want = expect(&fx);
+        // A fixture with a beat file (fixtures/README.md, format 5): the file read by the beat
+        // reader and loaded before frame 0, then its commands; no step-0 edits and no tempo of
+        // the harness's, since the beat carries them, and no run from a snapshot, since the beat
+        // is one. The bytes go in the report once, so the hosts' readers are held to each other.
+        if let Some(Json::Str(file)) = fx.get("beat") {
+            let beat = super::beat::read_fixture_beat(file);
+            writeln!(report, "# {name} beat {}", hex(&beat)).unwrap();
+            for (source_name, source) in SOURCES {
+                for rate in RATES {
+                    for block in BLOCKS {
+                        let label = format!("{name} {source_name} {rate} {block}");
+                        let plan = schedule(&fx, rate, source, true);
+                        let mut h = Host::new(rate, fx.num("seed") as u32 + 12_345);
+                        assert_eq!(h.load(&beat), OK, "{label}");
+                        let (events, text) = play(&mut h, &plan, block, &label);
+                        assert_eq!(trace(&events), want, "{label}");
+                        assert_eq!(h.dropped(), 0, "{label}");
+                        writeln!(report, "# {label}").unwrap();
+                        report.push_str(&text);
+                        runs += 1;
+                    }
+                }
+            }
+            continue;
+        }
         for (source_name, source) in SOURCES {
             for rate in RATES {
                 for block in BLOCKS {
@@ -255,7 +304,7 @@ fn every_fixture_everywhere() {
             }
         }
     }
-    assert_eq!(runs, count * 2 * 3 * 5);
+    assert_eq!(runs, (count - beats) * 2 * 3 * 5 + beats * 2 * 3 * 3);
     // The Makefile compares this file with the ones the Node and C++ harnesses write.
     if let Ok(path) = std::env::var("PI_REPORT") {
         std::fs::write(path, report).unwrap();
@@ -300,7 +349,7 @@ fn every_format_1_fixture_with_its_commands_at_frame_0_gives_the_table_s_trace_o
 
 /// `fixtures/snapshots-v1.txt`, `-v2.txt` and `-v3.txt`: each fixture's snapshot, as the core
 /// of the day wrote it before the next version existed (Sessions 11, 16 and 21).
-fn old_snapshots(file: &str) -> Vec<(String, Vec<u8>)> {
+pub(super) fn old_snapshots(file: &str) -> Vec<(String, Vec<u8>)> {
     let path = format!("{}/../fixtures/{file}", env!("CARGO_MANIFEST_DIR"));
     std::fs::read_to_string(path)
         .unwrap()
@@ -320,7 +369,7 @@ fn old_snapshots(file: &str) -> Vec<(String, Vec<u8>)> {
 fn old_snapshots_still_load(file: &str, version: u8, size: usize) {
     let all = fixtures();
     let old = old_snapshots(file);
-    assert_eq!(old.len(), if version < 3 { 7 } else { 9 }, "one a fixture of its day");
+    assert_eq!(old.len(), [0, 7, 7, 9, 13][version as usize], "one a fixture of its day");
     let mut d = Host::new(48_000, 3);
     let mut dress: Vec<Cmd> = (0..16u8).flat_map(|t| [cmd(CMD_SOUND, t, 0, 100 + t as u32), cmd(CMD_SOUND, t, 1, 9000), cmd(CMD_VOICE, t, 0, 1)]).collect();
     let (down, up) = (|k| cmd(CMD_KEY_DOWN, k, 0, 0), |k| cmd(CMD_KEY_UP, k, 0, 0));
@@ -331,10 +380,24 @@ fn old_snapshots_still_load(file: &str, version: u8, size: usize) {
     // §20: every step of every sound keeps values, the step off or on.
     dress.extend((0..16u8).flat_map(|t| (0..16u8).map(move |s| cmd(CMD_KEEP, t, s, 0x1234_5678))));
     d.block(1, &dress);
-    let dressed = d.save();
-    assert_eq!((dressed[378], dressed[379]), (4, 9), "volume 4, key 10 chosen");
-    assert_eq!((dressed[399], dressed[400], dressed[401]), (16, 0xfe, 0x7f), "a full lane, two sounds out");
-    assert!(dressed[404..436].iter().all(|b| *b == 0xff), "every step keeps");
+    let v4 = d.save();
+    assert_eq!((v4[378], v4[379]), (4, 9), "volume 4, key 10 chosen");
+    assert_eq!((v4[399], v4[400], v4[401]), (16, 0xfe, 0x7f), "a full lane, two sounds out");
+    assert!(v4[404..436].iter().all(|b| *b == 0xff), "every step keeps");
+    // §21 (ABI 16): and what version 5 adds: pattern 1 copied to every other slot, pattern 3
+    // the one playing in a chain of three, a name and a credit. An old snapshot loads into
+    // pattern 1 and clears the rest; `Host::save` (`as_v4`) refuses anything else.
+    let mut more: Vec<Cmd> = (1..16u32).map(|p| cmd(CMD_COPY, 0, 0, p)).collect();
+    more.extend([cmd(CMD_PATTERN, 0, 0, 2), cmd(CMD_CHAIN, 0, 0, 7), cmd(CMD_CHAIN, 0, 0, 2)]);
+    d.block(1, &more);
+    let mut dressed = d.snap();
+    assert_eq!((dressed.len(), dressed[94]), (SNAP5_MAX, 3), "sixteen patterns written, a chain of three");
+    for (i, b) in dressed[112..272].iter_mut().enumerate() {
+        *b = b'a' + (i % 26) as u8;
+    }
+    let n = dressed.len() - 4;
+    let crc = crate::crc::crc32(&dressed[..n]);
+    dressed[n..].copy_from_slice(&crc.to_le_bytes());
 
     for (name, bytes) in &old {
         assert_eq!(bytes.len(), size, "{name}");
@@ -346,8 +409,22 @@ fn old_snapshots_still_load(file: &str, version: u8, size: usize) {
                 let label = format!("{name} {source_name} {rate} from its version {version} snapshot");
                 let mut h = Host::new(rate, fx.num("seed") as u32 + 777);
                 assert_eq!(h.load(&dressed), OK);
+                assert_eq!(h.view()[64..68], [2, 0, 3, 0], "{label}: dressed, pattern 3 in a chain of three");
                 assert_eq!(h.load(bytes), OK, "{label}");
+                let v = h.view();
+                assert_eq!((v[64], v[65], v[66], v[67], &v[72..88]), (0, 0, 1, 0, &[0u8; 16][..]), "{label}: pattern 1, a chain of one");
+                let lane = version >= 3 && bytes[384..400].iter().any(|b| (1..=16).contains(b));
+                let used = bytes[24..56].iter().any(|b| *b != 0) || lane;
+                assert_eq!(v[68..70], [used as u8, 0], "{label}: pattern 1 used if it has a step or a lane entry");
                 let s = h.save();
+                if version == 4 {
+                    // Version 4 holds everything a one-pattern beat holds: the same bytes back.
+                    assert_eq!(s[..], bytes[..], "{label}: version 4 in, version 5 out, version 4's bytes");
+                    let plan = schedule(fx, rate, source, true);
+                    let (events, _) = play(&mut h, &plan, 128, &label);
+                    assert_eq!(trace(&events), want, "{label}");
+                    continue;
+                }
                 assert!(s[312..376].chunks(2).all(|v| v == [0x00, 0x80]), "{label}: sliders at their middles");
                 assert_eq!(s[376..384], [0, 0, 16, 0, 0, 0, 0, 0], "{label}: all code, volume 16, key 1");
                 if version < 3 {
@@ -357,7 +434,7 @@ fn old_snapshots_still_load(file: &str, version: u8, size: usize) {
                 // byte 404 the same bytes. The fixture's step-0 edits are `STEP`s, which keep
                 // nothing (§20); the old load keeps, for every step that is on, its sound's own
                 // A and B (D75 item 6), and nothing for the rest.
-                let today = snapshot_of(fx, rate);
+                let today = as_v4(&snapshot_of(fx, rate));
                 assert_eq!(s[..404], today[..404], "{label}");
                 assert!(today[404..SNAP - 4].iter().all(|b| *b == 0), "{label}: an edit keeps nothing");
                 let mut kept = [0u8; SNAP - 4 - 404];
@@ -393,4 +470,10 @@ fn every_version_2_snapshot_ever_written_still_loads_and_gives_its_fixture_s_tra
 #[test]
 fn every_version_3_snapshot_ever_written_still_loads_and_gives_its_fixture_s_trace() {
     old_snapshots_still_load("snapshots-v3.txt", 3, SNAP_V3);
+}
+
+/// `fixtures/snapshots-v4.txt`, written by the ABI 15 core before version 5 (issue 139).
+#[test]
+fn every_version_4_snapshot_ever_written_still_loads_and_gives_its_fixture_s_trace() {
+    old_snapshots_still_load("snapshots-v4.txt", 4, SNAP);
 }

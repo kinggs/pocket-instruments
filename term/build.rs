@@ -1,5 +1,5 @@
 // Links the core's static library (D123 item 2): the one `make build` writes and the C++ harness
-// and Rack link. PI_CORE_LIB names it (the Makefile passes the library `make test` just checked);
+// and Rack link; and since issue 140 the beat file's, beside it. PI_CORE_LIB names it (the Makefile passes the library `make test` just checked);
 // without it, this builds one from ../core with the command `make build` uses.
 //
 // SPDX-License-Identifier: MIT
@@ -35,6 +35,57 @@ fn main() {
     println!("cargo:rerun-if-changed={}", lib.display());
     println!("cargo:rustc-link-search=native={}", lib.parent().unwrap().display());
     println!("cargo:rustc-link-lib=static=pi_core");
+    // The beat file's reader and writer (docs/BEAT.md, beat/include/pi_beat.h; issue 140): its own
+    // static library beside the core's. PI_BEAT_LIB names it; without it, built as `make build` does.
+    println!("cargo:rerun-if-env-changed=PI_BEAT_LIB");
+    let beat = match std::env::var("PI_BEAT_LIB") {
+        Ok(p) if !p.is_empty() => PathBuf::from(p),
+        _ => {
+            let out = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("beat");
+            let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+            let status = Command::new(cargo)
+                .current_dir(&root)
+                .args(["rustc", "-p", "pi-beat", "--release", "--locked", "--crate-type", "staticlib", "--target-dir"])
+                .arg(&out)
+                .env_remove("RUSTFLAGS")
+                .env_remove("CARGO_ENCODED_RUSTFLAGS")
+                .status()
+                .expect("could not run cargo to build the beat library");
+            assert!(status.success(), "building the beat file's static library failed");
+            for src in ["beat/src", "beat/Cargo.toml", "core/src/snapshot_layout.rs"] {
+                println!("cargo:rerun-if-changed={}", root.join(src).display());
+            }
+            out.join("release").join("libpi_beat.a")
+        }
+    };
+    assert!(beat.is_file(), "no beat library at {}", beat.display());
+    println!("cargo:rerun-if-changed={}", beat.display());
+    if beat.parent() != lib.parent() {
+        println!("cargo:rustc-link-search=native={}", beat.parent().unwrap().display());
+    }
+    println!("cargo:rustc-link-lib=static=pi_beat");
+    // The bank (docs/BANK.md, D141 item 5): compiled in from ../beats, as the starter pack is, so
+    // the binary needs no file beside it. The files go in as they are, text, with bank.txt; the
+    // host reads them with pib_read when it needs one (term/src/bank.rs). No snapshot is made here.
+    let beats = root.join("beats");
+    println!("cargo:rerun-if-changed={}", beats.display());
+    let mut files: Vec<String> = std::fs::read_dir(&beats)
+        .expect("no beats/ folder")
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n.ends_with(".beat") || n == "bank.txt")
+        .collect();
+    files.sort();
+    let mut src = String::from("// Written by build.rs from beats/: every file as it is.\n");
+    let lit = |n: &str| format!("{:?}", beats.join(n).display().to_string());
+    src += &format!("pub static LIST: &[u8] = include_bytes!({});\n", lit("bank.txt"));
+    src += "pub static FILES: &[(&str, &[u8])] = &[\n";
+    for f in files.iter().filter(|n| n.ends_with(".beat")) {
+        println!("cargo:rerun-if-changed={}", beats.join(f).display());
+        src += &format!("    ({f:?}, include_bytes!({})),\n", lit(f));
+    }
+    src += "];\n";
+    println!("cargo:rerun-if-changed={}", beats.join("bank.txt").display());
+    std::fs::write(PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("bank.rs"), src).unwrap();
     // The commit, for --version. Absent outside a git checkout (a source tarball): "unknown".
     let commit = Command::new("git")
         .args(["-C", root.to_str().unwrap(), "rev-parse", "--short=7", "HEAD"])

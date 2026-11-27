@@ -2,7 +2,7 @@
 #
 # Pages serves the `gh-pages` branch. This workflow keeps it:
 #   - its root: `main` as it is, every file, exactly what Pages served before this existed;
-#   - `pr-<n>/`: a pull request's page (index.html, web/, samples/, fixtures/), refreshed on
+#   - `pr-<n>/`: a pull request's page (index.html, web/, samples/, fixtures/, beats/), refreshed on
 #     every push to the pull request and removed when it closes. The pull request gets one
 #     comment with the link: https://kinggs.github.io/pocket-instruments/pr-<n>/web/rhythm.html
 #
@@ -86,7 +86,7 @@ jobs:
           rm -rf "site/pr-$PR"
           if [ "$ACTION" != closed ]; then
             mkdir "site/pr-$PR"
-            git -C src archive HEAD index.html web samples fixtures | tar -x -C "site/pr-$PR"
+            git -C src archive HEAD index.html web samples fixtures beats | tar -x -C "site/pr-$PR" # beats: the bank (issue 164)
           fi
 
       - name: Push

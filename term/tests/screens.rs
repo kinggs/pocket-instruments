@@ -28,8 +28,13 @@ struct Drawn {
 }
 
 fn draw(v: &[u8; PI_VIEW_SIZE], cores: u16, host: &Host) -> Drawn {
+    draw_at(v, cores, host, true)
+}
+
+/// The same with the flicker in the half given (`flicker_lit`): lit, or dark.
+fn draw_at(v: &[u8; PI_VIEW_SIZE], cores: u16, host: &Host, flicker: bool) -> Drawn {
     let weave = [0u8; PI_WEAVE_CELLS];
-    let s = Scene { view: v, weave: &weave, cores, host, message: None };
+    let s = Scene { view: v, weave: &weave, cores, flicker, host, message: None };
     Drawn { main: main_screen(&s), pocket: pocket_screen(&s) }
 }
 
@@ -201,7 +206,9 @@ fn bar_madder_under_the_chosen_sound_ochre_while_pattern_is_held() {
     assert!(p[1..4].iter().all(|c| c.mono().1.underline));
     set32(&mut v, PI_VIEW_HELD, 1 << PI_KEY_PATTERN);
     set16(&mut v, PI_VIEW_BAR, 1);
-    assert_eq!(main_key(&draw(&v, 0, &host()).main, 0)[2][0], Cell::Half { top: Tok::Tile, bottom: Tok::Ochre });
+    // Since patterns (§21) key 1 here is also the active pattern, whose field flickers: read in
+    // the flicker's dark half, where the face is as it was before.
+    assert_eq!(main_key(&draw_at(&v, 0, &host(), false).main, 0)[2][0], Cell::Half { top: Tok::Tile, bottom: Tok::Ochre });
 }
 
 #[test]
@@ -345,6 +352,21 @@ fn the_helper_and_the_sheet_open_over_the_instrument() {
     assert!(text.contains("bass drum") && text.contains("sample") && text.contains("code") && text.contains("through fx"));
 }
 
+/// `:bank` (D141, proposed): the bank's beats, numbered, on the display at both sizes; words only.
+#[test]
+fn the_bank_s_list_opens_over_the_instrument_at_both_sizes() {
+    let mut h = host();
+    let menu = pi_term::bank::Bank::compiled().menu();
+    h.overlay = Overlay::Bank(menu.clone());
+    let d = draw(&blank(), 0, &h);
+    for text in [d.main.plain(), d.pocket.plain()] {
+        assert!(text.contains("the bank") && text.contains("esc closes"), "{text}");
+        for l in &menu {
+            assert!(text.contains(l.as_str()), "{l} not drawn:\n{text}");
+        }
+    }
+}
+
 #[test]
 fn colour_is_truecolour_and_no_colour_sends_no_colour() {
     let d = draw(&blank(), 0, &host());
@@ -357,4 +379,211 @@ fn colour_is_truecolour_and_no_colour_sends_no_colour() {
     let mut p = Painter::new(false);
     p.paint(draw(&blank(), 0, &host()).main);
     assert_eq!(p.paint(draw(&blank(), 0, &host()).main), "\x1b[0m");
+}
+
+// ---- patterns: ENGINE.md §21, docs/WORKFLOW.md (issue 143) ----
+
+/// Playing, step 6 under the playhead, effect 6 heard, and the view's pattern bytes: pattern 3
+/// plays, second in the chain 1 3, pattern 5 waits; patterns 1, 2 and 6 are used. With pattern
+/// held the core lights field (used), stitch (the next chain, which waits) and bar (pattern 3).
+fn patterns_view(held: bool) -> [u8; PI_VIEW_SIZE] {
+    let mut v = blank();
+    v[PI_VIEW_FLAGS] |= PI_VIEW_FLAG_PLAYING | PI_VIEW_FLAG_STEP;
+    v[PI_VIEW_STEP] = 5;
+    v[PI_VIEW_HEARD] = 6;
+    set16(&mut v, PI_VIEW_FX_SOUNDS, 0xffff);
+    v[PI_VIEW_PATTERN] = 2;
+    v[PI_VIEW_POS] = 1;
+    v[PI_VIEW_CHAIN_LEN] = 2;
+    v[PI_VIEW_CHAIN] = 2 << 4; // entries 0 and 2
+    v[PI_VIEW_NEXT_LEN] = 1;
+    v[PI_VIEW_NEXT] = 4;
+    set16(&mut v, PI_VIEW_USED, 0b10_0011);
+    if held {
+        set32(&mut v, PI_VIEW_HELD, 1 << PI_KEY_PATTERN);
+        v[PI_VIEW_FLAGS] &= !PI_VIEW_FLAG_SOUNDS;
+        set16(&mut v, PI_VIEW_FIELD, 0b10_0011);
+        set16(&mut v, PI_VIEW_STITCH, 1 << 4);
+        set16(&mut v, PI_VIEW_BAR, 1 << 2);
+    }
+    v
+}
+
+#[test]
+fn pattern_held_draws_no_frame_core_or_twill_on_either_screen() {
+    let v = patterns_view(true);
+    let cores = 1 << 5 | 1 << 1;
+    for flicker in [true, false] {
+        let d = draw_at(&v, cores, &host(), flicker);
+        // Key 6 is under the playhead, sounding, and its effect is heard: none of it shows.
+        let k = main_key(&d.main, 5);
+        assert_eq!(k[0][0], Cell::Half { top: Tok::Ground, bottom: Tok::Ecru }, "no ochre frame: the frame is the face (used: lit)");
+        assert_eq!(k[1][2], Cell::text('w', Tok::Ground, Tok::Ecru), "no core");
+        assert!(k[1].iter().all(|c| c.ch() != '╱'), "no twill");
+        let p = pocket_key(&d.pocket, 5);
+        assert_eq!((bg(p[0]), bg(p[2])), (Tok::Ecru, Tok::Ecru));
+        assert!(p.iter().all(|c| c.ch() != '╱'));
+        // Key 2 sounds and is used: lit, no core.
+        assert_eq!(main_key(&d.main, 1)[1][2], Cell::text('2', Tok::Ground, Tok::Ecru));
+        // Unused and not active: dark.
+        assert_eq!(main_key(&d.main, 3)[1][2], Cell::text('4', Tok::Ecru, Tok::Tile));
+        // No colour: key 6 reads as a lit field (reverse, not bold), with no bold frame.
+        let m = mono(&main_key(&d.main, 5).concat());
+        assert!(m.iter().all(|(_, a)| !a.bold), "no ochre (bold) anywhere on key 6: {m:?}");
+        assert_eq!(m[7], ('w', Attr { reverse: true, ..Attr::default() }));
+    }
+    // The same view with pattern let go shows them all again: the frame, the core, the twill.
+    let d = draw(&patterns_view(false), cores, &host());
+    let k = main_key(&d.main, 5);
+    assert_eq!(k[0][0], Cell::Half { top: Tok::Ground, bottom: Tok::Ochre });
+    assert_eq!(k[1][1], Cell::text('╱', Tok::Fern, Tok::Ground));
+    assert_eq!(bg(main_key(&d.main, 1)[1][2]), Tok::Fern, "the core, through the effect");
+}
+
+#[test]
+fn pattern_held_the_used_are_lit_the_chain_stitched_the_active_barred_and_flickering() {
+    let v = patterns_view(true);
+    let lit = draw_at(&v, 0, &host(), true);
+    let dark = draw_at(&v, 0, &host(), false);
+    for d in [&lit, &dark] {
+        // Used: patterns 1, 2 and 6, steady in both halves.
+        for n in [0, 1, 5] {
+            assert_eq!(bg(main_key(&d.main, n)[1][2]), Tok::Ecru, "pattern {} used", n + 1);
+            assert_eq!(bg(pocket_key(&d.pocket, n)[2]), Tok::Ecru);
+        }
+        // The next chain (pattern 5) stitched; the bar ochre under pattern 3.
+        assert_eq!(main_key(&d.main, 4)[1][3], Cell::text('▪', Tok::Ecru, Tok::Tile));
+        assert_eq!(pocket_key(&d.pocket, 4)[3], Cell::text('▪', Tok::Ecru, Tok::Tile));
+        assert_eq!(main_key(&d.main, 2)[2][0].ch(), '▀');
+        assert!(matches!(main_key(&d.main, 2)[2][0], Cell::Half { bottom: Tok::Ochre, .. }));
+        assert!(pocket_key(&d.pocket, 2)[1..4].iter().all(|c| matches!(c, Cell::Text { under: Some(Tok::Ochre), .. })));
+    }
+    // Pattern 3 is empty and active: it flickers, lit then dark (⚠ open (empty flicker)'s default).
+    assert_eq!(main_key(&lit.main, 2)[1][2], Cell::text('3', Tok::Ground, Tok::Ecru));
+    assert_eq!(main_key(&dark.main, 2)[1][2], Cell::text('3', Tok::Ecru, Tok::Tile));
+    assert_eq!(bg(pocket_key(&lit.pocket, 2)[2]), Tok::Ecru);
+    assert_eq!(bg(pocket_key(&dark.pocket, 2)[2]), Tok::Tile);
+    // With no colour the two halves differ: reverse, then not; the bar under it in both.
+    let (ml, md) = (mono(&main_key(&lit.main, 2).concat()), mono(&main_key(&dark.main, 2).concat()));
+    assert_ne!(ml, md);
+    assert_eq!((ml[7].1.reverse, md[7].1.reverse), (true, false));
+    assert_eq!(md[10], ('▄', Attr { bold: true, ..Attr::default() }), "the bar, ochre, is bold");
+    let (pl, pd) = (mono(&pocket_key(&lit.pocket, 2)), mono(&pocket_key(&dark.pocket, 2)));
+    assert_eq!((pl[2].1.reverse, pd[2].1.reverse), (true, false));
+    assert!(pd[1..4].iter().all(|(_, a)| a.underline));
+    // A used active pattern flickers too: dark in the dark half though the core lit its field.
+    let mut v = patterns_view(true);
+    v[PI_VIEW_PATTERN] = 0;
+    assert_eq!(bg(main_key(&draw_at(&v, 0, &host(), false).main, 0)[1][2]), Tok::Tile);
+    assert_eq!(bg(main_key(&draw_at(&v, 0, &host(), true).main, 0)[1][2]), Tok::Ecru);
+}
+
+#[test]
+fn pattern_latched_by_this_host_shows_the_patterns_as_held_does() {
+    // The view's held bit off (as between a tap and the engine's next block); the host's latch on.
+    let mut v = patterns_view(true);
+    set32(&mut v, PI_VIEW_HELD, 0);
+    let mut h = Host::new(Mode::Tap);
+    h.view = v;
+    let mut r = pi_term::input::Reader::new();
+    for i in r.feed(b"8") {
+        if let pi_term::input::Input::Key(e) = i {
+            h.key(e);
+        }
+    }
+    assert!(h.is_latched(PI_KEY_PATTERN));
+    let d = draw_at(&v, 1 << 5, &h, false);
+    assert_eq!(main_key(&d.main, 5)[0][0], Cell::Half { top: Tok::Ground, bottom: Tok::Ecru }, "no frame");
+    assert_eq!(main_key(&d.main, 2)[1][2], Cell::text('3', Tok::Ecru, Tok::Tile), "the flicker's dark half");
+    assert!(d.main.plain().contains("pattern 16"), "the display lists the patterns");
+}
+
+#[test]
+fn the_flicker_is_a_quarter_second_lit_and_a_quarter_dark_and_still_with_reduced_motion() {
+    assert!(flicker_lit(0, false) && flicker_lit(249, false));
+    assert!(!flicker_lit(250, false) && !flicker_lit(499, false));
+    assert!(flicker_lit(500, false));
+    assert!((0..2000).step_by(50).all(|t| flicker_lit(t, true)), "nothing flashes with reduced motion");
+}
+
+#[test]
+fn the_status_line_says_the_pattern_its_place_in_the_chain_and_the_one_waiting() {
+    let mut v = blank();
+    let top = |v: &[u8; PI_VIEW_SIZE]| -> (String, String) {
+        let d = draw(v, 0, &host());
+        (d.main.plain().lines().next().unwrap().into(), d.pocket.plain().lines().next().unwrap().into())
+    };
+    let (m, p) = top(&v);
+    assert!(m.contains("rhythm  pattern 1 ") && !m.contains('/') && !m.contains('→'), "{m}");
+    assert!(p.contains("rhythm pattern 1 "), "{p}");
+    // Pattern 3, second of a chain of four, pattern 5 waiting.
+    v[PI_VIEW_PATTERN] = 2;
+    v[PI_VIEW_POS] = 1;
+    v[PI_VIEW_CHAIN_LEN] = 4;
+    v[PI_VIEW_NEXT_LEN] = 2;
+    v[PI_VIEW_NEXT] = 4 | 6 << 4;
+    let (m, p) = top(&v);
+    assert!(m.contains("rhythm  pattern 3 2/4 → 5 "), "{m}");
+    assert!(p.contains("rhythm pattern 3 2/4 → 5 "), "{p}");
+    // The pocket size beside write, an effect and a long tempo keeps what fits: the pattern first.
+    v[PI_VIEW_FLAGS] |= PI_VIEW_FLAG_WRITE | PI_VIEW_FLAG_PLAYING | PI_VIEW_FLAG_STEP;
+    v[PI_VIEW_STEP] = 12;
+    v[PI_VIEW_HEARD] = 14;
+    let (m, p) = top(&v);
+    assert!(m.contains("pattern 3 2/4 → 5") && m.contains(" fx 14 ") && m.contains(" write "), "{m}");
+    assert!(p.contains("rhythm pattern 3 ") && p.contains(" write ") && p.contains(" fx 14 ") && p.contains("13"), "{p}");
+    // With no colour the words are the same characters (the status line is lettering).
+    let d = draw(&v, 0, &host());
+    assert!(d.main.plain_mono().lines().next().unwrap().contains("pattern 3 2/4 → 5"));
+}
+
+#[test]
+fn while_pattern_is_held_the_display_lists_the_sixteen_by_their_keys() {
+    let v = patterns_view(true);
+    let d = draw(&v, 0, &host());
+    let text = d.main.plain();
+    for n in 1..=16 {
+        assert!(text.contains(&format!("pattern {n}")), "pattern {n}");
+    }
+    assert!(text.contains("chain 1 3, playing 2 of 2; next 5"), "{text}");
+    // Each by its key, the marks as words under the name: in the display's rows 3 to 10.
+    let row = |y: usize| -> String { (0..80).map(|x| d.main.at(x, y).ch()).collect() };
+    assert!(row(3).contains("1 pattern 1") && row(3).contains("3 pattern 3") && row(3).contains("4 pattern 4"), "{}", row(3));
+    let marks = row(4);
+    assert!(marks.contains("used chain"), "pattern 1: used and in the chain: {marks}");
+    assert_eq!(marks.matches("used").count(), 2, "patterns 1 and 2: {marks}");
+    assert!(marks.contains("chain") && !marks.contains("next"), "{marks}");
+    assert!(row(6).contains("next") && row(6).contains("used"), "pattern 5 waits, 6 is used: {}", row(6));
+    // The playing one: its key lit in ochre (reverse and bold with no colour), its name underlined.
+    let x = 1 + 2 * 19 + 1; // the third column's cap: pattern 3, on key 3
+    assert_eq!(d.main.at(x, 3), Cell::text('3', Tok::Ground, Tok::Ochre));
+    assert_eq!(d.main.at(x, 3).mono().1, Attr { reverse: true, bold: true, ..Attr::default() });
+    assert!(matches!(d.main.at(x + 2, 3), Cell::Text { ch: 'p', under: Some(Tok::Ochre), .. }));
+    assert!(d.main.at(x + 2, 3).mono().1.underline);
+    let y = (0..80).find(|&x| d.main.at(x, 3).ch() == '1').unwrap();
+    assert_eq!(d.main.at(y, 3).mono().1, Attr::default(), "another key's cap is plain");
+    // The pocket size: the marks' row says the pattern, the chain and the next; no playhead.
+    let p = d.pocket.plain();
+    let line = p.lines().nth(1).unwrap();
+    assert!(line.contains("pattern 3  chain 1 3  next 5"), "{line}");
+    assert!(!line.contains('█'), "no playhead mark: {line}");
+    // Function held names the pattern its clear empties.
+    let mut f = blank();
+    f[PI_VIEW_PATTERN] = 6;
+    set32(&mut f, PI_VIEW_HELD, 1 << PI_KEY_FUNCTION);
+    assert!(draw(&f, 0, &host()).main.plain().contains("clears pattern 7"));
+}
+
+#[test]
+fn the_pattern_footer_says_how_to_choose_chain_and_copy_in_each_mode() {
+    let v = patterns_view(true);
+    let foot = |mode: Mode| -> String {
+        let mut h = Host::new(mode);
+        h.view = v;
+        draw(&v, 0, &h).main.plain().lines().nth(23).unwrap().to_string()
+    };
+    let hold = foot(Mode::Hold);
+    assert!(hold.contains("choose, then chain") && hold.contains("p+key copy"), "{hold}");
+    let tap = foot(Mode::Tap);
+    assert!(tap.contains("shift+key chain") && tap.contains("p, key copy") && tap.trim_end().ends_with("tap"), "{tap}");
 }

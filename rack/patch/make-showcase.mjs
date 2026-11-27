@@ -9,9 +9,9 @@
 // patch (the notes) and the steps are near the top, as plain data, for Kenny to edit.
 //
 // Four rows, each left to right in signal order:
-//   0  DRUMS and OUT: the main note, the clock (LFO) and RESET (Push) shared by both
-//      modules, the DRUMS Rhythm (one bar of the Amen break; kick and snare on their samples,
-//      D50), its effect 4 (Split on FX SEND, Delay), VCA Mix (one channel a module), Audio 2.
+//   0  DRUMS and OUT: the main note, the clock (LFO) and the play button (Push) shared by both
+//      modules, the DRUMS Rhythm (the bank's Amen Break, four bars, from beats/amen-break.beat;
+//      kick and snare on their samples, D50), its effect 4 (Split on FX SEND, Delay), VCA Mix (one channel a module), Audio 2.
 //   1  MELODY: the MELODIC Rhythm, which plays no drums: its sounds 15 and 16 fire two voices
 //      built in Rack. Split takes its SOUNDS TRIG, SLIDER A OUT and SLIDER B OUT apart; Merge
 //      brings both voices back into its SOUNDS IN on channels 15 and 16. Its RETURN setting
@@ -35,19 +35,19 @@
 // jacks send what a sound was last hit with, on the frame of the hit (§19). So the lead's
 // filter and length change from note to note and the bass plays chosen notes.
 //
-// Starting together ⚠: two modules have two play keys, and the PLAY jack (issue 147) is not
-// built. Today both run on one LFO (one edge a step) and share one RESET button; see
-// startTogether() and PRESS below, which are all that changes when the jack lands.
+// Starting together: both run on one LFO (one edge a step), and one Push drives both PLAY ins
+// (issue 147, D138); see startTogether() and PRESS below.
 //
 // The beats are snapshots the core itself writes (pi_save on the committed web/pi_core.wasm),
-// read back and checked here. Port and param numbers are Rhythm.cpp's enums and Fundamental
-// 2.6.4's (its src/*.cpp, tag v2.6.4); Core's Notes keeps its text as data.text (Rack 2.6.6,
+// read back and checked here; DRUMS's starts as pib_read of the bank's file (web/pi_beat.wasm).
+// Port and param numbers are Rhythm.cpp's enums and Fundamental 2.6.4's (its src/*.cpp, tag v2.6.4); Core's Notes keeps its text as data.text (Rack 2.6.6,
 // src/core/Notes.cpp). A cable names a port by number, so a patch keeps its cables when a
 // panel is redrawn.
 //
 // SPDX-License-Identifier: MIT
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { beatRead, loadBeat } from "../../harness/beat.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const PAGE = 65536;
@@ -56,21 +56,20 @@ const PAGE = 65536;
 // Core's Notes is 16 HP with a fixed display: about 31 characters a line and 21 lines show
 // without scrolling ⚠ (reckoned from Notes.cpp's 81 by 105 mm display, not yet seen).
 
-// What to press to start both modules in step. Its own string, so the PLAY jack (issue 147)
-// can replace it in one place.
-const PRESS = `TO START, in this order:
-1 PLAY on DRUMS
-2 PLAY on MELODY
-3 RESET (button by the LFO)
-RESET again if they drift.`;
+// What to press to start both modules in step: one button (startTogether()).
+const PRESS = `TO START: press HOLD on the
+button by the LFO. Both play,
+in step. Press it again: both
+stop. Each module's own PLAY
+key plays that one alone.`;
 
 const NOTE_MAIN = `POCKET INSTRUMENTS: RHYTHM
 Two Rhythm modules, one clock.
 ${PRESS}
 
-DRUMS: one bar of the Amen
-break on our own sounds. Four
-bars come with patterns.
+DRUMS: the bank's Amen Break,
+four bars, with a Delay throw
+on step 13 of bars 1 and 2.
 MELODY: two voices built in
 Rack, one row each below.
 Delay = effect 4, Rack's own,
@@ -119,22 +118,18 @@ VCF: slider B, per step.
 ADSR, VCA-1: short.`;
 
 // ---- The beats. Steps 0 to 15. ----
-const TEMPO = 136000; // thousandths of a bpm: about the Amen's own tempo
-const MID = 0.5;      // a slider in the middle: a sound as it is
+const TEMPO = 136000; // thousandths of a bpm: the LFO's, and the bank's Amen's (checked below)
 
-// DRUMS: the first bar of the Amen break, written out on our own sounds (no recording, no
-// sample of the record). One bar: the instrument holds one pattern until the patterns work
-// (D110, D133) lands; the four-bar chain follows then. Each step: [step, A, B] (0 to 1);
-// slider B is a drum's length (docs/VOICES.md), so the ghost snares are short.
-const DRUMS = {
-  sampled: [0, 1], // kick and snare on their samples (D50); the hats stay in code
-  lane: [12],       // effect 4 on the backbeat snare: a throw that echoes into the next bar
-  tracks: [
-    [0, [[0, MID, MID], [2, MID, MID], [10, MID, MID], [11, MID, MID]]],                // 1 bass drum
-    [1, [[4, MID, MID], [7, MID, 0.2], [9, MID, 0.2], [12, MID, MID], [15, MID, 0.2]]], // 2 snare, ghosts short
-    [2, [0, 2, 4, 6, 8, 10, 12, 14].map((s) => [s, MID, s % 4 ? 0.35 : 0.55])],        // 3 closed hat, the ride
-  ],
-};
+// DRUMS: the bank's Amen Break, four patterns chained 1 2 3 4, read from its own file
+// (D142 item 6, proposed, for Kenny to rule: O40; docs/BANK.md, "The reference patch"). No step
+// of it is written here, so the patch and the bank cannot drift: amen() reads the file with
+// web/pi_beat.wasm and adds only the patch's throw.
+const AMEN = "beats/amen-break.beat";
+const CHAIN = [0, 1, 2, 3]; // patterns 1 2 3 4: four bars, then bar one again
+// The throw: effect 4 (Rack's Delay) on step 13 (12 counting from 0) of patterns 1 and 2, the
+// backbeat snare, where the one-bar patch had it; it echoes into the next bar. ⚠ Two throws in
+// four bars, not four, is for Kenny's ear (D142 item 6).
+const THROW = { step: 12, patterns: [0, 1] };
 
 // MELODIC: sound 15 the lead, sound 16 the bass.
 const LEAD = 14, BASS = 15; // tracks count from 0
@@ -157,39 +152,118 @@ const MELODIC = {
 
 const u16 = (x) => Math.round(Math.min(1, Math.max(0, x)) * 65535);
 
-// One beat as the core writes it, and read back: the tempo (byte 16), the sampled mask (376),
-// the lane (384 + s), and for each step the keep bit (404 + 2 t) and its A and B
-// (436 + 4 (16 t + s)): §8, §15, §17, §20.
+// One beat as the core writes it, and read back. Since ABI 16 the core writes snapshot version 5
+// (ENGINE.md §21): the tempo (byte 16), the sampled mask (88), the patterns written (92: MELODY
+// writes pattern 1 alone), then pattern 1's block from byte 272: its lane (272 + 288 + s),
+// and for each step the keep bit (272 + 304 + 2 t) and its A and B (272 + 336 + 4 (16 t + s)).
+// Until ABI 16 the core wrote version 4 (§8, §15, §17, §20: 376, 384, 404, 436), and the
+// commands, events and snapshot sat at base + 8192 to 16384: inside today's engine of about
+// 24 KB, so they start past its 32 KiB room now, and the snapshot may be PI_SNAPSHOT_SIZE.
 const DELAY = 4; // effect 4, the delay (Rhythm.cpp's FX_NAMES)
-function snapshot({ sampled, lane, tracks }) {
+const SNAPSHOT_SIZE = 22100; // PI_SNAPSHOT_SIZE
+
+// A fresh engine on the committed web/pi_core.wasm: run(cmds) sends one block of commands,
+// load(bytes) is pi_load, save() is pi_save's bytes.
+function core() {
   const { exports: pi } = new WebAssembly.Instance(new WebAssembly.Module(readFileSync(`${root}web/pi_core.wasm`)), {});
-  const base = pi.memory.grow(2) * PAGE, CMDS = base + 8192, EV = base + 12288, SNAP = base + 16384;
+  const base = pi.memory.grow(2) * PAGE, CMDS = base + 32768, EV = base + 36864, SNAP = base + 40960;
   const e = pi.pi_init(base, pi.pi_size(), 48000, 1);
-  const v = new DataView(pi.memory.buffer);
+  return {
+    run(cmds) {
+      if (cmds.length > 64) throw new Error("more commands than one block takes");
+      const v = new DataView(pi.memory.buffer);
+      cmds.forEach(([type, a, b, value], i) => {
+        const p = CMDS + 12 * i;
+        v.setUint32(p, 0, true); v.setUint8(p + 4, type); v.setUint8(p + 5, a); v.setUint8(p + 6, b); v.setUint8(p + 7, 0); v.setUint32(p + 8, value, true);
+      });
+      pi.pi_process(e, 1, CMDS, cmds.length, EV, 64, 0, 0);
+    },
+    load(bytes) {
+      new Uint8Array(pi.memory.buffer, SNAP, bytes.length).set(bytes);
+      return pi.pi_load(e, SNAP, bytes.length);
+    },
+    save() {
+      const n = pi.pi_save(e, SNAP, SNAPSHOT_SIZE);
+      if (!n) throw new Error("pi_save wrote nothing");
+      return Buffer.from(new Uint8Array(pi.memory.buffer, SNAP, n));
+    },
+  };
+}
+
+// DRUMS: pib_read of the bank's file (web/pi_beat.wasm), loaded into the core, the throw added
+// by the core's own edits (PATTERN, FX; ENGINE.md §21), the chain put back, and saved. Then read
+// back and held to the file: the saved bytes must be pib_read's but for the throw's two lane
+// bytes and the CRC, the chain 1 2 3 4, each of the four patterns with steps on, and the lane
+// effect 4 on the throw's steps and nothing elsewhere. Any other difference stops the generator.
+function amen() {
+  const fail = (what) => { throw new Error(`DRUMS, ${AMEN}: ${what}`); };
+  const read = beatRead(loadBeat(`${root}web/pi_beat.wasm`), readFileSync(`${root}${AMEN}`));
+  if (read.code !== undefined) fail(`pib_read refused it: ${read.msg}`);
+  const beat = Buffer.from(read.snap);
+  const blocks = (bytes) => {
+    const written = bytes.readUInt16LE(92), at = [];
+    for (let p = 0, b = 272; p < 16; p++) if ((written >> p) & 1) { at[p] = b; b += 1364; }
+    return at;
+  };
+  const chainOf = (bytes) => Array.from(bytes.subarray(96, 96 + bytes[94]));
+
+  const c = core();
+  if (c.load(beat) !== 0) fail("the core refused pib_read's snapshot");
+  const [first, ...rest] = chainOf(beat);
+  const cmds = [];
+  for (const p of THROW.patterns) cmds.push([27, 0, 0, p], [23, THROW.step, 0, DELAY]); // PATTERN p, FX
+  cmds.push([27, 0, 0, first], ...rest.map((p) => [28, 0, 0, p]));                     // the chain back
+  c.run(cmds);
+  const bytes = c.save();
+
+  // Read back: a fresh core takes it and saves the same bytes.
+  const again = core();
+  if (again.load(bytes) !== 0 || !again.save().equals(bytes)) fail("the saved snapshot does not load back to itself");
+  if (bytes.readUInt16LE(4) !== 5) fail(`version is ${bytes.readUInt16LE(4)}, not 5`);
+  if (bytes.readUInt32LE(16) !== TEMPO) fail(`tempo is ${bytes.readUInt32LE(16) / 1000} bpm, not the patch clock's ${TEMPO / 1000}`);
+  const chain = chainOf(bytes);
+  if (chain.join(" ") !== CHAIN.join(" ")) fail(`chain is ${chain.map((p) => p + 1).join(" ")}, not ${CHAIN.map((p) => p + 1).join(" ")}`);
+  const at = blocks(bytes);
+  for (const p of CHAIN) {
+    if (at[p] === undefined) fail(`pattern ${p + 1} is not written`);
+    const on = Array.from({ length: 16 }, (_, t) => bytes.readUInt16LE(at[p] + 2 * t)).some((m) => m);
+    if (!on) fail(`pattern ${p + 1} has no step on`);
+    for (let s = 0; s < 16; s++) {
+      const want = THROW.patterns.includes(p) && s === THROW.step ? DELAY : 0;
+      if (bytes[at[p] + 288 + s] !== want) fail(`pattern ${p + 1}'s lane at step ${s + 1} is ${bytes[at[p] + 288 + s]}, not ${want}`);
+    }
+  }
+  // The four patterns' steps, keeps, sliders and lengths, the sounds, the tempo: the file's.
+  const throwAt = new Set(THROW.patterns.map((p) => at[p] + 288 + THROW.step));
+  if (bytes.length !== beat.length) fail(`the snapshot is ${bytes.length} bytes, pib_read's ${beat.length}`);
+  for (let i = 0; i < bytes.length - 4; i++)
+    if (bytes[i] !== beat[i] && !throwAt.has(i)) fail(`byte ${i} is not pib_read's: more than the throw changed`);
+  return bytes.toString("base64");
+}
+
+// MELODY: one pattern, written here by the core's edits.
+function snapshot({ sampled, lane, tracks }) {
+  const c = core();
   const cmds = [[4, 0, 0, TEMPO]];                                         // TEMPO
   for (const t of sampled) cmds.push([22, t, 0, 1]);                       // VOICE: its sample
   for (const [t, steps] of tracks)
     for (const [s, a, b] of steps) cmds.push([16, t, s, 1], [26, t, s, (u16(a) << 16 | u16(b)) >>> 0]); // STEP, KEEP
   for (const s of lane) cmds.push([23, s, 0, DELAY]);                      // FX: the lane
-  if (cmds.length > 64) throw new Error("more commands than one block takes");
-  cmds.forEach(([type, a, b, value], i) => {
-    const p = CMDS + 12 * i;
-    v.setUint32(p, 0, true); v.setUint8(p + 4, type); v.setUint8(p + 5, a); v.setUint8(p + 6, b); v.setUint8(p + 7, 0); v.setUint32(p + 8, value, true);
-  });
-  pi.pi_process(e, 1, CMDS, cmds.length, EV, 64, 0, 0);
-  const n = pi.pi_save(e, SNAP, 4096);
-  if (!n) throw new Error("pi_save wrote nothing");
-  const bytes = Buffer.from(new Uint8Array(pi.memory.buffer, SNAP, n));
+  c.run(cmds);
+  const bytes = c.save(), n = bytes.length;
   const fail = (what) => { throw new Error(`the snapshot's ${what}`); };
+  if (bytes.readUInt16LE(4) !== 5) fail(`version is ${bytes.readUInt16LE(4)}, not 5`);
+  if (bytes.readUInt16LE(92) !== 1 || n !== 1640) fail(`patterns written are ${bytes.readUInt16LE(92)} in ${n} bytes, not pattern 1 alone in 1640`);
   if (bytes.readUInt32LE(16) !== TEMPO) fail(`tempo is ${bytes.readUInt32LE(16)}`);
   const mask = sampled.reduce((m, t) => m | (1 << t), 0);
-  if (bytes.readUInt16LE(376) !== mask) fail(`sampled mask is ${bytes.readUInt16LE(376)}, not ${mask}`);
-  for (let s = 0; s < 16; s++) if (bytes[384 + s] !== (lane.includes(s) ? DELAY : 0)) fail(`lane at step ${s} is ${bytes[384 + s]}`);
+  if (bytes.readUInt16LE(88) !== mask) fail(`sampled mask is ${bytes.readUInt16LE(88)}, not ${mask}`);
+  const P = 272; // pattern 1's block
+  for (let s = 0; s < 16; s++) if (bytes[P + 288 + s] !== (lane.includes(s) ? DELAY : 0)) fail(`lane at step ${s} is ${bytes[P + 288 + s]}`);
   for (const [t, steps] of tracks) {
     const want = steps.reduce((m, [s]) => m | (1 << s), 0);
-    if (bytes.readUInt16LE(404 + 2 * t) !== want) fail(`keeps for track ${t} are ${bytes.readUInt16LE(404 + 2 * t)}, not ${want}`);
+    if (bytes.readUInt16LE(P + 304 + 2 * t) !== want) fail(`keeps for track ${t} are ${bytes.readUInt16LE(P + 304 + 2 * t)}, not ${want}`);
     for (const [s, a, b] of steps) {
-      const at = 436 + 4 * (16 * t + s);
+      const at = P + 336 + 4 * (16 * t + s);
       if (bytes.readUInt16LE(at) !== u16(a) || bytes.readUInt16LE(at + 2) !== u16(b)) fail(`track ${t} step ${s} keeps the wrong A or B`);
     }
   }
@@ -216,8 +290,8 @@ const enabledNotes = (notes) => Array.from({ length: 12 }, (_, i) => notes.inclu
 const modules = [
   // Row 0: DRUMS and OUT.
   [1, "Core", "Notes", RACK, 0, 0, [], { text: NOTE_MAIN }],
-  // (the clock at x 16 and RESET at 25: clock() and startTogether())
-  [ID.drums, "pocket-instruments", "Rhythm", "2.0.0", 28, 0, [], { snapshot: snapshot(DRUMS), return: -1, a: -1, b: -1, fxRack: FX_RACK, fxInPlace: FX_IN_PLACE, clockBeat: false }],
+  // (the clock at x 16 and the play button at 25: clock() and startTogether())
+  [ID.drums, "pocket-instruments", "Rhythm", "2.0.0", 28, 0, [], { snapshot: amen(), return: -1, a: -1, b: -1, fxRack: FX_RACK, fxInPlace: FX_IN_PLACE, clockBeat: false }],
   [7, "Fundamental", "Split", F, 55, 0, []], // FX SEND
   // Delay, effect 4: WET out only. Feedback 35% on the drums: two or three repeats.
   [ID.drumsDelay, "Fundamental", "Delay", F, 60, 0, [[0, DELAY_TIME], [1, 0.35], [2, 0.5], [3, 1.0]]], // TIME, FEEDBACK, TONE, MIX
@@ -264,7 +338,7 @@ const modules = [
   [36, "Fundamental", "VCA-1", F, 52, 3, [[0, 0.8], [1, 1.0]]],                       // a little under the lead
 ];
 
-// Rhythm: inputs CLOCK 0, RESET 1, SOUNDS IN 2, FX RETURN 3, SLIDER A IN 4, SLIDER B IN 5;
+// Rhythm: inputs CLOCK 0, RESET 1, SOUNDS IN 2, FX RETURN 3, SLIDER A IN 4, SLIDER B IN 5, PLAY 6;
 // outputs SOUNDS TRIG 0, SOUNDS OUT 1, AUDIO 2 (one mono jack), FX GATES 3, FX SEND 4,
 // SLIDER A OUT 5, SLIDER B OUT 6.
 // Cables: [from module, output, to module, input, colour].
@@ -323,25 +397,20 @@ function clock(clocked) {
   };
 }
 
-// ---- Starting together ⚠ (issue 147). ----
-// Two modules have two play keys. On a clock, play starts a module from step 1 at its next
-// edge (§5, D101 item 1), so two presses at two moments start out of step; one Push button's
-// trigger into both RESET inputs makes both start step 1 on the same next edge (§4: an edge
-// within 1 ms of a reset is ignored, by both alike). When the PLAY jack exists, this function
-// and PRESS are what change.
-// TODO(issue 147): Kenny ruled one PLAY input on Rhythm, under RESET: input 6, at the end of the
-// enum. It is not built. Once its build merges, this function becomes: this same Push's GATE
-// (output 1; Fundamental 2.6.4 src/Push.cpp: outputs TRIG 0, GATE 1; params PUSH 0, HOLD 1)
-// into both modules' PLAY (input 6), and no RESET cables. Push's HOLD latches: one press starts
-// both stopped modules from step 1 on the same edge, another stops both. Push saves nothing, so
-// HOLD opens off, as the modules open stopped. PRESS then becomes:
-//   "Press HOLD on the button to start both. Press it again to stop."
+// ---- Starting together (issue 147, D138). ----
+// One Push, its GATE (output 1; Fundamental 2.6.4 src/Push.cpp: outputs TRIG 0, GATE 1; params
+// PUSH 0, HOLD 1) into both modules' PLAY in (input 6, the end of Rhythm.cpp's InputId). A gate
+// plays while high and stops when it goes low (D138 item 4, proposed: O39), so pressing Push's
+// HOLD starts both stopped modules from step 1 on the same next clock edge, and pressing it
+// again stops both on the same frame. Push saves nothing: HOLD opens off, as the modules open
+// stopped. No RESET is wired: a stop and a start is a restart from step 1, in step.
 function startTogether(drums, melodic) {
+  const PLAY_IN = 6, GATE = 1;
   return {
     modules: [[6, "Fundamental", "Push", F, 25, 0, []]],
     cables: [
-      [6, 0, drums, 1, "#ffffff"],   // Push's trigger: both RESETs
-      [6, 0, melodic, 1, "#ffffff"],
+      [6, GATE, drums, PLAY_IN, "#ffffff"],   // Push's GATE: both PLAY ins
+      [6, GATE, melodic, PLAY_IN, "#ffffff"],
     ],
   };
 }

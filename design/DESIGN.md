@@ -55,6 +55,7 @@ Kenny's brief for it: dark, high contrast, easy to read with weak eyes.
 | `play-jack-options.png` | Issue 147 (D138): the top of the panel today and with a PLAY jack in three places, drawn by `make_panel.py` with the sockets and keys sketched over it (not Rack's own drawing), as put to Kenny. 1: PLAY in under RESET, nothing moved; 2: in only, the column spaced; 3, then recommended: PLAY in under RESET and PLAY out under AUDIO. Each passes `--check`. **Kenny chose 2, with the column moved up a little** (`play-jack-ruled.png`) |
 | `rack-play-jack-100.png`, `-200.png` | Issue 147's build (D138), from Rack's own screenshot mode at 100% and 200%: the module before (left) and with PLAY under RESET and the column moved up (right). Nothing lit: no module runs in that mode |
 | `play-jack-ruled.png` | The same drawing, today beside what Kenny ruled (D138 item 3): PLAY in only, CLOCK at y 13.15, RESET 25.95, PLAY 38.75 |
+| `rack-pattern-held-lit-100.png`, `-200.png`, `rack-pattern-held-dark-100.png`, `-200.png` | Issue 142's build (ABI 16, `ENGINE.md` §21), from Rack's screenshot mode with the face filled by hand (`PI_FACE_SHOT=3` and `4`, never shipped): playing on step 5 with effect 6 heard and sound 6 sounding, as `rack-lights-playing`, but pattern held: patterns 1, 2 and 4 used (lit), pattern 2 playing (the ochre bar) in the chain 2 4, the chain 4 waiting (its stitch), and no frame, core or twill. In `-lit` pattern 2's key is in its lit quarter second, in `-dark` its dark one. The display's stand-in (⚠ not drawn on the canvas): `pattern 2` under the tempo, `1/2` at its right, `→ 4` at the right of the `fx 6` block's row |
 
 The four `rack-face-*` pairs above were taken before the weave and show its area dark; they
 were not taken again.
@@ -156,6 +157,15 @@ the dash 15 by 4 px. `make play` reads each back off the page in every drawing.
 `design/page-sound-held.png` and `-grey` (the sounds in use, the bar, the dashes, two cores),
 `design/page-helper.png`: taken by `node web/shot.mjs design`, for Kenny's eye. ⚠ The
 numeral sits on the core where both are lit (dark on the core), as the board draws it.
+
+**Built on the page: pattern held (issue 141, 2026-11-27; `ENGINE.md` §21).** While pattern is
+held or latched the keys are the patterns: the field lit on a used pattern, the stitch on the
+chain shown (the next chain while one waits), the ochre bar on the active pattern, and no
+frame, core or twill; the active pattern's key flickers, its field lit and dark a quarter of a
+second each. The display's line under the weave, `pattern 2 2/2 → 3`, is a stand-in ⚠ (no
+board yet). `design/page-pattern-held.png` (the flicker caught lit) and `-dark.png`, each with
+its `-grey` twin: the flickering key is told by lightness, the chain by the stitch's shape, the
+active pattern by the bar's, so no state rests on hue.
 
 **Built in Rack (issue 101, 2026-11-26).** `rack/src/Rhythm.cpp` draws the same lights from the
 same bytes through `pi::keyLights` (`rack/src/jacks.hpp`), with all six source marks: the

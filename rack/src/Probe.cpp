@@ -80,7 +80,7 @@ struct Probe : Module {
     pi::Latest<Snap> inbox; // Rack's loading thread writes, audio thread reads
 
     // The audio thread's own.
-    alignas(16) uint8_t mem[4096]; // the engine is 3 568 bytes since §20 (2 328 with a sample beside each voice)
+    alignas(16) uint8_t mem[32768]; // every host's room since ABI 16 (§21: sixteen patterns); 4 KiB until then
     // The starter pack, read once when the module is made, before any audio. The engine reads
     // these for as long as the module lives (pi_set_sample's contract); nothing changes them.
     std::vector<int16_t> pack[PI_TRACKS];
@@ -293,7 +293,7 @@ struct Probe : Module {
                 mustPublish = false;
                 Snap &out = saved.write();
                 out.len = pi_save(e, out.b, PI_SNAPSHOT_SIZE);
-                if (out.len == PI_SNAPSHOT_SIZE) {
+                if (out.len != 0) { // ABI 16: as long as pi_save says (§21)
                     saved.publish();
                     published++;
                 }
@@ -357,7 +357,8 @@ struct Probe : Module {
             } catch (const std::exception &) {
             }
             // Any version the core has written; the core checks which, and refuses the rest.
-            if (bytes.size() >= PI_SNAPSHOT_SIZE_V1) {
+            // Version 5 can be as short as PI_SNAPSHOT_SIZE_MIN, 276 (ABI 16), under version 1.
+            if (bytes.size() >= PI_SNAPSHOT_SIZE_MIN) {
                 Snap &in = inbox.write();
                 in.len = uint32_t(std::min<size_t>(bytes.size(), PI_SNAPSHOT_SIZE));
                 std::copy(bytes.begin(), bytes.begin() + in.len, in.b);

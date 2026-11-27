@@ -34,7 +34,7 @@ are unsigned. To install one:
    `plugins-mac-arm64` or `plugins-mac-x64`). VCV's manual:
    [Installing](https://vcvrack.com/manual/Installing).
 3. Restart Rack. It unpacks and loads the plugin when it starts.
-4. Open `Showcase.vcv` in Rack. Its note says what to press: PLAY on each Rhythm module, then RESET.
+4. Open `Showcase.vcv` in Rack and press HOLD on the button beside the LFO: both Rhythm modules play.
 
 ⚠ Not yet tried on a Mac: macOS may refuse an unsigned download
 ([issue 83](https://github.com/kinggs/pocket-instruments/issues/83)). Each file has a build
@@ -231,17 +231,21 @@ The reference patch (`rack/patch/showcase.json`, written by `rack/patch/make-sho
 `Showcase.vcv` in each pre-release) uses only Rack's own modules, Core and Fundamental. It has
 two Rhythm modules on one clock: DRUMS and MELODY.
 
-**To start them in step** ⚠ (two modules have two play keys; a PLAY jack is being designed in
-issue 147): press PLAY on DRUMS, then PLAY on MELODY, then the RESET button beside the LFO.
-Both start bar one on the next clock edge. Press RESET again if they ever drift apart.
+**To start them in step,** press HOLD on the button beside the LFO (Fundamental's Push). Its
+gate goes into both modules' PLAY in, so both start bar one on the next clock edge; press it
+again and both stop. Each module's own play key still plays that module alone. The rule for
+PLAY in (a gate plays while high, a short trigger toggles) is D138's, proposed (O39) ⚠.
 
-The drums are one bar: the first bar of the Amen break written out on Rhythm's own sounds (no
-recording of the record). The four-bar version follows once the instrument holds more than one
-pattern. The rows, each left to right in signal order:
+The drums are the bank's Amen Break (`beats/amen-break.beat`): four bars, patterns 1 2 3 4
+chained, written out on Rhythm's own sounds (no recording of the record), then bar one again.
+The generator reads the bank's own file, so the patch and the bank cannot drift; the one thing
+it adds is a Delay throw (effect 4) on step 13 of bars 1 and 2 ⚠ (two throws in four bars, for
+Kenny's ear; D142 item 6, proposed). The melody stays one bar, so it plays four times under the
+drums' four. The rows, each left to right in signal order:
 
 - **Drums and out.** A note. **LFO:** the clock, one edge a step at 136 bpm, into both
-  modules' CLOCK and both Delays. **Push:** RESET to both modules. **Rhythm (DRUMS):** kick
-  and snare on their samples, hats in code; the ghost snares written short. **Split** and
+  modules' CLOCK and both Delays. **Push:** its gate into both modules' PLAY in. **Rhythm (DRUMS):** kick
+  and snare on their samples, hats and the bar-4 crash in code; the ghost snares written short. **Split** and
   **Delay:** effect 4 (below). **VCA Mix:** a fader for each module. **Audio 2:** the mix to
   both ears. Choose your device on it.
 - **Melody.** A note. **Rhythm (MELODY):** no drums. Its sound 15 plays the lead and sound 16
@@ -261,8 +265,8 @@ pattern. The rows, each left to right in signal order:
 beside the dry": the built-in delay stays silent and the dry stays in the mix. FX SEND's
 channel 4 carries sound only while effect 4 is heard, Split takes it out, and Delay's wet
 output goes back in on FX RETURN. The echo is a dotted eighth, kept to the clock. The lanes
-play it on set steps: the drums' backbeat snare on step 13, and the melody on steps 4, 5, 14
-and 15. Hold fx and press 4 to throw it by hand.
+play it on set steps: the drums' backbeat snare on step 13 of bars 1 and 2, and the melody on
+steps 4, 5, 14 and 15. Hold fx and press 4 to throw it by hand.
 
 To play the page from a clone, run `make hear` and open
 `http://127.0.0.1:8417/web/rhythm.html`. Any static file server on the repository root works

@@ -147,8 +147,10 @@ fn hold_shift_latches_the_five_and_a_latch_lets_go_after_the_next_key() {
     // Shift again lets it go without a key.
     t.shift('7');
     assert_eq!(t.shift('7'), vec![up(PI_KEY_SOUND)]);
-    // Play and write do not latch: Shift and p is p.
-    assert_eq!(t.bytes(&kitty_bytes('p', true, Kind::Press)), vec![down(PI_KEY_WRITE)]);
+    // Play does not latch: Shift and o is o. Write did not either, until D135 item 2: see
+    // `hold_shift_latches_write_and_it_lets_go_after_the_next_grid_key`.
+    assert_eq!(t.bytes(&kitty_bytes('o', true, Kind::Press)), vec![down(PI_KEY_PLAY)]);
+    assert!(!t.host.is_latched(PI_KEY_PLAY));
 }
 
 #[test]
@@ -402,4 +404,279 @@ fn foot_s_bytes_for_a_shift_latch_then_a_held_sound() {
         all,
         vec![down(PI_KEY_SOUND), down(5), up(5), up(PI_KEY_SOUND), down(12), up(12), down(PI_KEY_SOUND), down(9), up(9), up(PI_KEY_SOUND)]
     );
+}
+
+// ---- patterns: D135, ENGINE.md §21 (issue 143) ----
+//
+// The gestures are the core's (pattern held: the first grid key chooses, the later ones chain;
+// pattern and write held copies and puts write mode back; function and pattern clears). The host
+// adds only D135's three rules. Each gesture is played through the bytes a terminal sends, into a
+// real engine, and read back from the view's bytes 64 to 87.
+
+/// A host in `mode` and a real engine, with time.
+struct Band {
+    t: T,
+    e: Engine,
+}
+
+const STEP_FRAMES: u32 = 6000; // 120 bpm at 48 kHz: 48 000 × 60 / 120 / 4
+
+impl Band {
+    fn new(mode: Mode) -> Band {
+        let mut e = Engine::new(48000, 1);
+        let mut ev = [Event::default(); 64];
+        e.process(1, &[], &mut ev, None, PI_AUDIO_NONE);
+        let mut t = T::new(mode);
+        t.host.view = e.view();
+        Band { t, e }
+    }
+    fn cmds(&mut self, cmds: &[Cmd]) {
+        let mut ev = [Event::default(); 64];
+        self.e.process(1, cmds, &mut ev, None, PI_AUDIO_NONE);
+        self.t.host.view = self.e.view();
+    }
+    /// Bytes from the terminal; returns what the host sent.
+    fn send(&mut self, bytes: &[u8]) -> Vec<Cmd> {
+        let cmds = self.t.bytes(bytes);
+        self.cmds(&cmds);
+        cmds
+    }
+    fn press(&mut self, c: char) -> Vec<Cmd> {
+        self.send(&kitty_bytes(c, false, Kind::Press))
+    }
+    fn release(&mut self, c: char) -> Vec<Cmd> {
+        self.send(&kitty_bytes(c, false, Kind::Release))
+    }
+    fn shift_press(&mut self, c: char) -> Vec<Cmd> {
+        self.send(&kitty_bytes(c, true, Kind::Press))
+    }
+    fn shift_release(&mut self, c: char) -> Vec<Cmd> {
+        self.send(&kitty_bytes(c, true, Kind::Release))
+    }
+    /// A key held and let go, in the protocol.
+    fn key(&mut self, c: char) -> Vec<Cmd> {
+        let mut v = self.press(c);
+        v.extend(self.release(c));
+        v
+    }
+    fn run(&mut self, frames: u32) {
+        let mut ev = vec![Event::default(); 256];
+        let mut left = frames;
+        while left > 0 {
+            let n = left.min(500);
+            self.e.process(n, &[], &mut ev, None, PI_AUDIO_NONE);
+            left -= n;
+        }
+        self.t.host.view = self.e.view();
+    }
+    fn v(&self) -> &[u8; PI_VIEW_SIZE] {
+        &self.t.host.view
+    }
+    fn pattern(&self) -> u8 {
+        self.v()[PI_VIEW_PATTERN]
+    }
+    fn chain(&self) -> Vec<u8> {
+        nibbles(self.v(), PI_VIEW_CHAIN, self.v()[PI_VIEW_CHAIN_LEN])
+    }
+    fn next(&self) -> Vec<u8> {
+        nibbles(self.v(), PI_VIEW_NEXT, self.v()[PI_VIEW_NEXT_LEN])
+    }
+    fn used(&self) -> u16 {
+        u16_at(self.v(), PI_VIEW_USED)
+    }
+    fn write(&self) -> bool {
+        self.v()[PI_VIEW_FLAGS] & PI_VIEW_FLAG_WRITE != 0
+    }
+    /// Pattern 1 (the active one) with a step on, by an edit.
+    fn with_a_step(mode: Mode) -> Band {
+        let mut b = Band::new(mode);
+        b.cmds(&[Cmd::new(PI_CMD_STEP, 0, 0, 1)]);
+        assert_eq!(b.used(), 1);
+        b
+    }
+}
+
+fn nibbles(v: &[u8; PI_VIEW_SIZE], at: usize, len: u8) -> Vec<u8> {
+    (0..len as usize).map(|i| v[at + i / 2] >> (4 * (i & 1)) & 15).collect()
+}
+
+#[test]
+fn hold_choose_chain_copy_and_clear_are_the_core_s_gestures() {
+    // Choose: hold 8, press w (key 6).
+    let mut b = Band::new(Mode::Hold);
+    assert_eq!(b.press('8'), vec![down(PI_KEY_PATTERN)]);
+    assert_eq!(b.key('w'), vec![down(5), up(5)]);
+    assert_eq!(b.release('8'), vec![up(PI_KEY_PATTERN)]);
+    assert_eq!((b.pattern(), b.chain(), b.next()), (5, vec![5], vec![]), "stopped, a choice lands at once");
+    // Chain: hold 8, press 1 2 3.
+    b.press('8');
+    for c in ['1', '2', '3'] {
+        b.key(c);
+    }
+    b.release('8');
+    assert_eq!((b.pattern(), b.chain()), (0, vec![0, 1, 2]));
+    // Copy: hold p and 8, press 4. Write mode goes back to off.
+    let mut b = Band::with_a_step(Mode::Hold);
+    b.press('p');
+    assert!(b.write(), "write flips on the press, as always");
+    b.press('8');
+    b.key('4');
+    b.release('8');
+    b.release('p');
+    assert_eq!(b.used(), 0b1001, "pattern 1 copied to 4");
+    assert!(!b.write(), "a copy puts write mode back (§21)");
+    assert_eq!(b.pattern(), 0, "the active pattern stays active");
+    // Clear: hold u, press 8.
+    b.press('u');
+    assert_eq!(b.key('8'), vec![down(PI_KEY_PATTERN), up(PI_KEY_PATTERN)]);
+    b.release('u');
+    assert_eq!(b.used(), 0b1000, "the active pattern only");
+}
+
+#[test]
+fn hold_shift_with_a_grid_key_keeps_a_latched_pattern_in_the_protocol() {
+    // D135 item 1: Shift+8, Shift+1, Shift+2, then 3 plain: a chain of three, then the latch goes.
+    let mut b = Band::new(Mode::Hold);
+    assert_eq!(b.shift_press('8'), vec![down(PI_KEY_PATTERN)]);
+    b.shift_release('8');
+    assert_eq!(b.shift_press('1'), vec![down(0)]);
+    assert_eq!(b.shift_release('1'), vec![up(0)], "Shift on the key: pattern stays latched");
+    assert!(b.t.host.is_latched(PI_KEY_PATTERN));
+    assert_eq!(b.shift_press('2'), vec![down(1)]);
+    assert_eq!(b.shift_release('2'), vec![up(1)]);
+    assert_eq!(b.press('3'), vec![down(2)]);
+    assert_eq!(b.release('3'), vec![up(2), up(PI_KEY_PATTERN)], "a plain key lets it go");
+    assert!(!b.t.host.is_latched(PI_KEY_PATTERN));
+    assert_eq!(b.chain(), vec![0, 1, 2]);
+    // Shift on a grid key keeps pattern only: a latched sound still lets go (D60).
+    b.shift_press('7');
+    b.shift_press('q');
+    assert_eq!(b.shift_release('q'), vec![up(4), up(PI_KEY_SOUND)]);
+    // And Shift on a grid key with nothing latched is the key.
+    assert_eq!(b.shift_press('w'), vec![down(5)]);
+    assert_eq!(b.shift_release('w'), vec![up(5)]);
+}
+
+#[test]
+fn hold_shift_latches_write_and_it_lets_go_after_the_next_grid_key() {
+    // D135 item 2: Shift+8, Shift+p, then w: a copy to pattern 6; write mode back; both let go.
+    let mut b = Band::with_a_step(Mode::Hold);
+    b.shift_press('8');
+    b.shift_release('8');
+    assert_eq!(b.shift_press('p'), vec![down(PI_KEY_WRITE)], "the press still flips write mode");
+    assert_eq!(b.shift_release('p'), vec![]);
+    assert!(b.t.host.is_latched(PI_KEY_WRITE) && b.write());
+    assert_eq!(b.key('w'), vec![down(5), up(5), up(PI_KEY_PATTERN), up(PI_KEY_WRITE)]);
+    assert_eq!(b.used(), 0b10_0001);
+    assert!(!b.write(), "a copy puts write mode back");
+    assert!(!b.t.host.is_latched(PI_KEY_WRITE) && !b.t.host.is_latched(PI_KEY_PATTERN));
+    // Shift+p again lets a latched write go, as Shift again lets any latch go (D113).
+    b.shift_press('p');
+    assert_eq!(b.shift_press('p'), vec![up(PI_KEY_WRITE)]);
+}
+
+#[test]
+fn tap_choose_chain_copy_and_clear_in_plain_bytes() {
+    // Choose: tap 8, then w.
+    let mut b = Band::new(Mode::Tap);
+    assert_eq!(b.send(b"8"), vec![down(PI_KEY_PATTERN)]);
+    assert_eq!(b.send(b"w"), vec![down(5), up(5), up(PI_KEY_PATTERN)]);
+    assert_eq!((b.pattern(), b.chain()), (5, vec![5]));
+    // Chain: tap 8, then Shift with each key but the last (US layout: ! @ are Shift 1, 2 ⚠).
+    b.send(b"8");
+    assert_eq!(b.send(b"!"), vec![down(0), up(0)], "Shift+1 keeps the latch");
+    assert_eq!(b.send(b"@"), vec![down(1), up(1)]);
+    assert_eq!(b.send(b"3"), vec![down(2), up(2), up(PI_KEY_PATTERN)]);
+    assert_eq!(b.chain(), vec![0, 1, 2]);
+    // The letters too: Shift is a capital.
+    b.send(b"8");
+    b.send(b"Q");
+    b.send(b"W");
+    b.send(b"e");
+    assert_eq!(b.chain(), vec![4, 5, 6]);
+    // Copy: tap 8, tap p (write held down), then 4.
+    let mut b = Band::with_a_step(Mode::Tap);
+    b.send(b"8");
+    assert_eq!(b.send(b"p"), vec![down(PI_KEY_WRITE)], "D135 item 3: write goes down and stays");
+    assert!(b.write());
+    assert_eq!(b.send(b"4"), vec![down(3), up(3), up(PI_KEY_PATTERN), up(PI_KEY_WRITE)], "until the grid key ends");
+    assert_eq!(b.used(), 0b1001);
+    assert!(!b.write(), "a copy puts write mode back");
+    // Without pattern latched a tap on p flips write mode, as before.
+    assert_eq!(b.send(b"p"), vec![down(PI_KEY_WRITE), up(PI_KEY_WRITE)]);
+    assert!(b.write());
+    b.send(b"p");
+    // Clear: tap u, tap 8; esc lets both go.
+    assert_eq!(b.send(b"u"), vec![down(PI_KEY_FUNCTION)]);
+    assert_eq!(b.send(b"8"), vec![down(PI_KEY_PATTERN)]);
+    assert_eq!(b.used(), 0b1000);
+    assert_eq!(b.send(b"\x1b"), vec![up(PI_KEY_PATTERN), up(PI_KEY_FUNCTION)]);
+}
+
+#[test]
+fn tap_shift_keeps_pattern_in_the_protocol_too_and_a_second_tap_on_p_lets_write_go() {
+    // herdr answers the query and its releases are not real (R80): tap mode in the protocol.
+    let mut b = Band::new(Mode::Tap);
+    b.send(&kitty_bytes('8', false, Kind::Press));
+    assert_eq!(b.send(&kitty_bytes('1', true, Kind::Press)), vec![down(0), up(0)]);
+    b.send(&kitty_bytes('1', true, Kind::Release));
+    assert!(b.t.host.is_latched(PI_KEY_PATTERN));
+    assert_eq!(b.send(&kitty_bytes('2', false, Kind::Press)), vec![down(1), up(1), up(PI_KEY_PATTERN)]);
+    assert_eq!(b.chain(), vec![0, 1]);
+    // A tap on p with pattern latched holds write; a second tap lets it go (⚠ ours).
+    b.send(b"8");
+    assert_eq!(b.send(b"p"), vec![down(PI_KEY_WRITE)]);
+    assert_eq!(b.send(b"p"), vec![up(PI_KEY_WRITE)]);
+    assert!(b.t.host.is_latched(PI_KEY_PATTERN), "pattern is still latched");
+    // Shift+p latches write in tap mode too (D135 item 2), with no pattern latched.
+    let mut b = Band::new(Mode::Tap);
+    assert_eq!(b.send(b"P"), vec![down(PI_KEY_WRITE)]);
+    assert!(b.t.host.is_latched(PI_KEY_WRITE));
+}
+
+/// A change chosen while playing waits for the end of the bar (§21; R90), in either mode.
+fn lands_at_the_end_of_the_bar(mode: Mode, choose: &[&[u8]]) {
+    let mut b = Band::new(mode);
+    b.cmds(&[Cmd::new(PI_CMD_PLAY, 0, 0, 1)]);
+    b.run(STEP_FRAMES * 5 + 100);
+    assert_eq!(b.pattern(), 0);
+    let at = b.v()[PI_VIEW_STEP] as u32;
+    assert!((3..10).contains(&at), "mid-bar: step {at}");
+    for bytes in choose {
+        b.send(bytes);
+    }
+    assert_eq!((b.pattern(), b.next()), (0, vec![2]), "{mode:?}: pattern 3 waits");
+    // To step 16 of the bar: still pattern 1.
+    b.run(STEP_FRAMES * (15 - at));
+    assert_eq!((b.v()[PI_VIEW_STEP], b.pattern()), (15, 0), "{mode:?}: still the old pattern on step 16");
+    b.run(STEP_FRAMES);
+    assert_eq!((b.v()[PI_VIEW_STEP], b.pattern(), b.next()), (0, 2, vec![]), "{mode:?}: landed on the next bar's first step");
+}
+
+#[test]
+fn a_change_lands_at_the_end_of_the_bar_in_hold_and_in_tap() {
+    let hold = [kitty_bytes('8', false, Kind::Press), kitty_bytes('3', false, Kind::Press), kitty_bytes('3', false, Kind::Release), kitty_bytes('8', false, Kind::Release)];
+    lands_at_the_end_of_the_bar(Mode::Hold, &hold.iter().map(|b| b.as_slice()).collect::<Vec<_>>());
+    lands_at_the_end_of_the_bar(Mode::Tap, &[b"8", b"3"]);
+}
+
+/// The bank's words (D141, D142, proposed; the words are for Kenny ⚠): `:bank` lists it,
+/// `:bank <n>` loads one, `:new` empties; the list closes on esc and takes no key.
+#[test]
+fn colon_bank_bank_n_and_new() {
+    let mut t = T::new(Mode::Tap);
+    t.tap(':');
+    t.bytes(b"bank\r");
+    assert_eq!(t.host.take_actions(), vec![Action::Bank(None)]);
+    t.bytes(b":bank 3\r");
+    assert_eq!(t.host.take_actions(), vec![Action::Bank(Some(3))]);
+    t.bytes(b":new\r");
+    assert_eq!(t.host.take_actions(), vec![Action::New]);
+    t.bytes(b":bank amen\r");
+    assert!(matches!(&t.host.take_actions()[..], [Action::Say(m)] if m.starts_with("which beat?")));
+    t.host.overlay = Overlay::Bank(vec!["1  Amen Break".into()]);
+    t.tap('1');
+    assert_eq!(t.host.take_cmds(), vec![], "keys do nothing under the bank's list");
+    t.bytes(b"\x1b[27u");
+    assert_eq!(t.host.overlay, Overlay::None);
 }

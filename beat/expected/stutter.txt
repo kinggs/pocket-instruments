@@ -1,0 +1,14 @@
+# What `node beat/beat.mjs render beats/stutter.beat` prints after its first line, worked by hand
+# from the file and ENGINE.md section 17 before the command could print it (issue 163).
+# One pattern, chain 1, tempo 120, no swing. The lane holds effect 7 (high-pass: sound only, no
+# trace) on steps 9 to 12 and effect 11 (a repeat, every 48 ticks) on steps 13 to 16. At step 13
+# the effect changes (7 to 11), so a run begins: run_step is step 13, run_tick its tick 0. Every
+# sound but the hat (`sound 3 dry`) is in the effects: kick and snare do not play their own
+# steps 13 to 16 and fire instead every 48 ticks from step 13's column, which both have on:
+# 4 steps x 96 ticks / 48 = 8 hits each, all carrying step 13's number, so an `8` on step 13 and
+# nothing on 14 to 16. The hat is outside the effects and plays its own steps 13 and 15. Steps 1
+# to 12 play as written. Lines starting `#` are this note, not output.
+bar 1 (pattern 1)
+   1 kick     |x...|x...|x...|8...|
+   2 snare    |....|x...|....|8...|
+   3 hat      |x.x.|x.x.|x.x.|x.x.|

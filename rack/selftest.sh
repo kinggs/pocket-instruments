@@ -36,6 +36,26 @@
 # wired; on their table clocks, the slow square itself into a pair (a gate), and Push's TRIG into
 # a pair (a trigger that toggles). Each pair must start as often and step on the same frames,
 # the same steps.
+# Since issue 142 (ABI 16; ENGINE.md §21, D133, D135): the four patterns-* fixtures on both clocks
+# (choose, chain, copy and clear by keys, a change and a chain landing at the end of the bar),
+# their views holding the view's new bytes; three more modules: "patterns" plays D135's gestures
+# with a mouse and the keys (Shift keeps a latched pattern for a chain, Shift latches write for a
+# copy, function and pattern clears); "reset" has its own TRIGGERS patched into its own RESET, so
+# its bass drum restarts its chain; "save" drags a slider over sixteen patterns: no save not asked
+# for comes within a quarter second of the one before, and every patch save a second thread makes
+# through dataToJson holds the last move. And the instrument given an old patch's version 4
+# snapshot (fixtures/snapshots-v4.txt) loads it into pattern 1, as the version 1 one does. And
+# beat-four-and-a-fill on both clocks, its beat file opened through the module's own path.
+# They run in a second patch, after the first (below). patterns-change-playing is 100 steps at
+# 120 bpm (12.5 s a pass), so each patch runs 20 seconds a rate.
+# Since issue 164 (D141, D142, proposed): the bank. In the second patch, beat-amen-break on both
+# clocks, its beat the bank's own file as the plugin carries it (res/beats/); two Rhythm modules
+# with no "data" at all, as Rack's module browser adds one, each of which must open on the bank's
+# first beat, pib_read of that file byte for byte; and one ("bankTest") that loads every beat of
+# the bank as its Beat menu does, undoes each as Edit, Undo does, is refused a broken bank and is
+# emptied by Initialize. Every other module, here and in the first patch, has data and must not be
+# new: the self-test's modules start empty, as before. Then a third patch of a few seconds, with
+# PI_RHYTHM_BANK naming a broken bank: a module with no data starts empty and says why.
 #
 #   selftest.sh [seconds] [sample rate]
 #
@@ -52,7 +72,7 @@ fundamental=${FUNDAMENTAL:-$HOME/.local/share/Rack2/plugins-lin-x64/Fundamental}
 user=$(mktemp -d)
 # On a failure Rack's log is kept as build/selftest-<rate>.log: one run in 32 at 96 kHz once
 # failed with a Rhythm module that never saw its CLOCK cable (2026-11-23), and the log was gone.
-trap 's=$?; [ $s -ne 0 ] && mkdir -p "$here/build" && cp "$user/log.txt" "$here/build/selftest-$rate.log" 2>/dev/null && echo "selftest: Rack'"'"'s log kept: rack/build/selftest-$rate.log"; rm -rf "$user"' EXIT
+trap 's=$?; [ $s -ne 0 ] && mkdir -p "$here/build" && cp "$user/all.txt" "$here/build/selftest-$rate.log" 2>/dev/null && echo "selftest: Rack'"'"'s log kept: rack/build/selftest-$rate.log"; rm -rf "$user"' EXIT
 mkdir -p "$user/plugins-lin-x64" "$user/autosave"
 ln -s "$fundamental" "$user/plugins-lin-x64/Fundamental"
 make --no-print-directory -C "$here" install RACK_USER_DIR="$user" >/dev/null
@@ -63,9 +83,14 @@ probe() { printf '{"id":%s,"plugin":"pocket-instruments","model":"Probe","versio
 # straight-sixteenths' version 1 snapshot, written by the ABI 4 core (fixtures/snapshots-v1.txt).
 old=$(sed -n 's/^straight-sixteenths //p' "$here/../fixtures/snapshots-v1.txt" | tr a-f A-F | basenc --base16 -d | base64 -w0)
 [ -n "$old" ] || { echo "selftest: no version 1 snapshot for straight-sixteenths"; exit 2; }
+# And its version 4 snapshot, written by the ABI 15 core (fixtures/snapshots-v4.txt).
+old4=$(sed -n 's/^straight-sixteenths //p' "$here/../fixtures/snapshots-v4.txt" | tr a-f A-F | basenc --base16 -d | base64 -w0)
+[ -n "$old4" ] || { echo "selftest: no version 4 snapshot for straight-sixteenths"; exit 2; }
 cable() { printf '{"id":%s,"outputModuleId":1,"outputId":3,"inputModuleId":%s,"inputId":0,"color":"#ffffff"}' "$1" "$1"; }
 # The Rhythm modules: id, fixture (or none), and x. Their CLOCK is input 0, RETURN input 2; VOICES output 1.
 rhythm() { printf '{"id":%s,"plugin":"pocket-instruments","model":"Rhythm","version":"2.0.0","params":[],"pos":[%s,1],"data":{%s}}' "$1" "$(($1 * 24))" "$2"; }
+# A Rhythm module with no "data" (issue 164): what Rack's module browser adds.
+fresh() { printf '{"id":%s,"plugin":"pocket-instruments","model":"Rhythm","version":"2.0.0","params":[],"pos":[%s,1]}' "$1" "$(($1 * 24))"; }
 edge() { printf '{"id":%s,"outputModuleId":6,"outputId":3,"inputModuleId":%s,"inputId":0,"color":"#ffffff"}' "$1" "$2"; }
 loop() { printf '{"id":%s,"outputModuleId":%s,"outputId":1,"inputModuleId":%s,"inputId":2,"color":"#ffffff"}' "$1" "$2" "$2"; }
 # A module's own output into its own input: cable id, module, output, input. Outputs: FX SEND 4,
@@ -103,8 +128,44 @@ cat > "$user/autosave/patch.json" <<JSON
   $(wire 42 33 3 36 1),$(wire 43 36 0 37 6),$(wire 44 36 0 38 6),
   $(wire 45 30 3 39 0),$(wire 46 30 3 40 0),$(wire 47 36 1 39 6),$(wire 48 36 1 40 6)]}
 JSON
-(cd "$app" && (sleep "$secs"; echo) | ./Rack -h -u "$user" >/dev/null 2>&1) || { echo "selftest: Rack exited badly"; tail -5 "$user/log.txt"; exit 1; }
-lines=$(grep 'Pocket Instruments probe' "$user/log.txt" || true)
+# Issue 142's modules in a second patch, run after the first: in one patch of 52 modules, 2 runs
+# in 6 had every module on an LFO's edges lose its cable (issue 59's symptom, with the plugin
+# from before this change too); the first patch alone, 0 in 6. ⚠ Found since, by a scratch
+# build that logged each module's CLOCK: Rack removes the modules at exit in batches while the
+# engine still runs, and a module left after its LFO has gone loses its cable, starts a pass on
+# its table clock and is logged "on the table". A module on edges listed last in this patch did
+# so on every run, so the modules on edges come first. Not fixed here (issue 59).
+cat > "$user/patch-b.json" <<JSON
+{"version":"2.6.6","modules":[
+ {"id":6,"plugin":"Fundamental","model":"LFO","version":"2.6.4","params":[{"id":2,"value":3.0}],"pos":[0,2]},
+ $(rhythm 53 '"fixture":"beat-four-and-a-fill"'),$(rhythm 54 '"fixture":"beat-four-and-a-fill"'),
+ $(rhythm 56 '"fixture":"beat-amen-break"'),$(rhythm 55 '"fixture":"beat-amen-break"'),
+ $(rhythm 41 '"fixture":"patterns-choose-and-play"'),$(rhythm 42 '"fixture":"patterns-chain"'),
+ $(rhythm 43 '"fixture":"patterns-copy-and-clear"'),$(rhythm 44 '"fixture":"patterns-change-playing"'),
+ $(rhythm 45 '"fixture":"patterns-choose-and-play"'),$(rhythm 46 '"fixture":"patterns-chain"'),
+ $(rhythm 47 '"fixture":"patterns-copy-and-clear"'),$(rhythm 48 '"fixture":"patterns-change-playing"'),
+ $(rhythm 49 '"loop":"patterns"'),$(rhythm 50 '"loop":"reset"'),$(rhythm 51 '"loop":"save"'),
+ $(rhythm 52 "\"snapshot\":\"$old4\""),
+ $(fresh 57),$(fresh 58),$(rhythm 59 '"bankTest":true')],
+ "cables":[$(edge 49 45),$(edge 50 46),$(edge 51 47),$(edge 52 48),$(self 53 50 0 1),$(edge 60 54),$(edge 61 56)]}
+JSON
+# Issue 164: a broken bank, for a module with no data in a third, short patch.
+mkdir -p "$user/broken-bank"
+printf 'amen-break.beat\n' > "$user/broken-bank/bank.txt"
+printf 'pocket-instruments beat 1\ntempo 999\n' > "$user/broken-bank/amen-break.beat"
+cat > "$user/patch-c.json" <<JSON
+{"version":"2.6.6","modules":[$(fresh 70)],"cables":[]}
+JSON
+: > "$user/all.txt"
+runrack() { # one patch, its log added to all.txt; a second argument: seconds, in place of $secs
+    [ "$1" = "$user/autosave/patch.json" ] || cp "$1" "$user/autosave/patch.json"
+    (cd "$app" && (sleep "${2:-$secs}"; echo) | ./Rack -h -u "$user" >/dev/null 2>&1) || { echo "selftest: Rack exited badly"; tail -5 "$user/log.txt"; exit 1; }
+    cat "$user/log.txt" >> "$user/all.txt"
+}
+runrack "$user/autosave/patch.json"
+runrack "$user/patch-b.json"
+(export PI_RHYTHM_BANK="$user/broken-bank"; runrack "$user/patch-c.json" 5) # set -e stops the script if it fails
+lines=$(grep 'Pocket Instruments probe' "$user/all.txt" || true)
 echo "$lines" | sed 's/^.*report\] //'
 n=$(echo "$lines" | grep -c '(removed)' || true)
 quiet=$(echo "$lines" | grep -c '(removed).*audio peak 0\.00 V' || true)
@@ -117,12 +178,13 @@ good=$(echo "$lines" | grep -E '\(removed\): [1-9][0-9]* passes matched, 0 did n
 [ "$(echo "$lines" | grep '(removed)' | grep -c ' 1 loaded, 0 refused')" = 1 ] || { echo "selftest: FAILED (the version 1 snapshot was not loaded)"; exit 1; }
 [ "$(echo "$lines" | grep '(removed)' | grep -c ' 0 loaded, 0 refused')" = 3 ] || { echo "selftest: FAILED (a probe loaded or refused a snapshot it was not given)"; exit 1; }
 # The Rhythm modules (Session 13).
-rl=$(grep 'Pocket Instruments rhythm' "$user/log.txt" || true)
+rl=$(grep 'Pocket Instruments rhythm' "$user/all.txt" || true)
 echo "$rl" | sed 's/^.*report\] //'
 rgood() { # fixture, where: one clean module
     echo "$rl" | grep -E "\(removed\): fixture $1 $2: [1-9][0-9]* passes matched, 0 did not, [0-9]+ cut short, [1-9][0-9]* views held, 0 not; rate $rate Hz, 0 events dropped, .* 0 samples not finite, .* 16 of 16 samples found" | grep -c . || true
 }
-for f in keys-bpm-family keys-tap-and-choose keys-write-a-beat keeps-what-it-was-written-with fx-repeat-punch fx-repeat-swing fx-repeat-holds fx-shuffle; do
+for f in keys-bpm-family keys-tap-and-choose keys-write-a-beat keeps-what-it-was-written-with fx-repeat-punch fx-repeat-swing fx-repeat-holds fx-shuffle \
+         patterns-choose-and-play patterns-chain patterns-copy-and-clear patterns-change-playing beat-four-and-a-fill beat-amen-break; do
     for w in "on the table" "on edges"; do
         [ "$(rgood $f "$w")" = 1 ] || { echo "selftest: FAILED (Rhythm on $f $w at $rate Hz)"; exit 1; }
     done
@@ -136,7 +198,8 @@ echo "$rl" | grep 'fixture keys-write-a-beat on the table' | grep -qE ' [1-9][0-
 # §15 on the instrument: the old patch's beat loaded.
 echo "$rl" | grep -E '\(removed\): fixture none: .* 1 loaded, 0 refused; .* 0 samples not finite, .* [1-9][0-9]* frames with RETURN' | grep -q . || { echo "selftest: FAILED (the Rhythm instrument did not load the version 1 snapshot, or RETURN was not taken)"; exit 1; }
 # Session 18. FX GATES held to every view that says fx= (the format 3 and 4 fixtures), none not.
-for f in keeps-what-it-was-written-with fx-repeat-punch fx-repeat-swing fx-repeat-holds fx-shuffle; do
+for f in keeps-what-it-was-written-with fx-repeat-punch fx-repeat-swing fx-repeat-holds fx-shuffle \
+         patterns-choose-and-play patterns-chain patterns-copy-and-clear patterns-change-playing; do
     [ "$(echo "$rl" | grep "fixture $f " | grep -cE ' [1-9][0-9]* gates held, 0 not;')" = 2 ] || { echo "selftest: FAILED (FX GATES on $f at $rate Hz)"; exit 1; }
 done
 [ "$(echo "$rl" | grep -c ' gates held, [1-9]')" = 0 ] || { echo "selftest: FAILED (FX GATES were not a view's fx)"; exit 1; }
@@ -150,7 +213,7 @@ echo "$rl" | grep 'loop return:' | grep -qE ' [1-9][0-9]* frames with RETURN' ||
 echo "$rl" | grep -E "loop latch: [1-9][0-9]* passes held to the core, 0 not, [1-9][0-9]* frames the same, 0 not" | grep -q . || { echo "selftest: FAILED (the fx latch at $rate Hz)"; exit 1; }
 # D138: modules run from one PLAY signal, in step: each pair the same starts, the same steps and
 # the same sum of every step's engine frame and number, so every step on the same frame.
-pl=$(grep 'Pocket Instruments rhythm play (removed)' "$user/log.txt" || true) # printed above, with the other Rhythm lines
+pl=$(grep 'Pocket Instruments rhythm play (removed)' "$user/all.txt" || true) # printed above, with the other Rhythm lines
 played() { echo "$pl" | sed -n "s/^.*module $1: rate $rate Hz, \([0-9]*\) starts, \([0-9]*\) steps, sum \([0-9a-f]*\)\$/\1 \2 \3/p"; }
 for pair in "31 32 3 one LFO's edges, Push's gate into both PLAY ins" "39 40 3 one LFO's beats, Push's gate into both PLAY ins" \
             "34 35 3 their table clocks, one LFO's square into both PLAY ins" "37 38 2 their table clocks, Push's trigger into both PLAY ins"; do
@@ -162,7 +225,43 @@ for pair in "31 32 3 one LFO's edges, Push's gate into both PLAY ins" "39 40 3 o
     set -- $a
     [ "$1" -ge "$least" ] && [ "$2" -gt 0 ] || { echo "selftest: FAILED (PLAY: modules $x and $y started $1 times, $2 steps, at $rate Hz; at least $least starts wanted)"; exit 1; }
 done
+# Issue 142 (ABI 16, §21). D135's gestures and RESET restarting a chain, every pass.
+for l in patterns reset; do
+    echo "$rl" | grep -E "loop $l: [1-9][0-9]* passes held to the core, 0 not, [1-9][0-9]* frames the same, 0 not" | grep -q . || { echo "selftest: FAILED (the $l loop at $rate Hz)"; exit 1; }
+done
+# Both old patches' beats (version 1 and version 4) load into pattern 1, the chain pattern 1 alone.
+for m in 13 52; do
+    echo "$rl" | grep -qE "patterns \(removed\): module $m: pattern 1, chain length 1, used 0001;" || { echo "selftest: FAILED (module $m's old snapshot is not pattern 1's)"; exit 1; }
+done
+# (and the two new modules of issue 164, each of which loaded the bank's first beat once)
+[ "$(echo "$rl" | grep -cE '\(removed\): fixture none: .* 1 loaded, 0 refused;')" = 4 ] || { echo "selftest: FAILED (the version 1 and version 4 snapshots, and the two new modules' beats, were not each loaded once)"; exit 1; }
+# §21's saves: none not asked for within a quarter second of the one before, and every patch save
+# made through dataToJson while a slider was dragged held the last move.
+sv=$(echo "$rl" | sed -n 's/^.*patterns (removed): module 51: .*save loop: \([0-9]*\) saves not asked in \([0-9]*\) frames, closest \([0-9]*\) frames apart; \([0-9]*\) patch saves held the last move, \([0-9]*\) not$/\1 \2 \3 \4 \5/p')
+set -- $sv
+[ $# = 5 ] && [ "$3" -ge $((rate / 4)) ] && [ $(($1 * rate)) -le $((4 * $2 + rate)) ] && [ "$4" -ge 5 ] && [ "$5" = 0 ] || { echo "selftest: FAILED (saves at $rate Hz: '$sv': saves, frames, closest, patch saves held, not)"; exit 1; }
+# Issue 142: the beat file opened through the module's own path (Rhythm::openBeat, as the menu's
+# Open), its fixture's trace matched above on both clocks; two refused files changed nothing; and
+# the beat saved again through saveBeat is the file's canonical text.
+for w in "on the table" "on edges"; do
+    echo "$rl" | grep -E "rhythm beat \(removed\): beat-four-and-a-fill $w: beat-four-and-a-fill.beat opened [1-9][0-9]* times, 0 not; [1-9][0-9]* pairs of refused files changed nothing, 0 did; saved again [1-9][0-9]* times as its canonical text, 0 not" | grep -q . || { echo "selftest: FAILED (the beat file $w at $rate Hz)"; exit 1; }
+done
+# Issue 164 (D141, D142, proposed). beat-amen-break on both clocks from the bank's own file, its
+# trace and views matched above; the two modules with no data opened on the bank's first beat,
+# byte for byte, and no other module was new; the bank loaded and undone beat by beat as the Beat
+# menu and Edit, Undo do, a broken bank refused, Initialize empty; the broken bank's new module empty.
+for w in "on the table" "on edges"; do
+    echo "$rl" | grep -E "rhythm beat \(removed\): beat-amen-break $w: \.\./beats/amen-break\.beat opened [1-9][0-9]* times, 0 not; [1-9][0-9]* pairs of refused files changed nothing, 0 did; saved again [1-9][0-9]* times as its canonical text, 0 not" | grep -q . || { echo "selftest: FAILED (the bank's beat file $w at $rate Hz)"; exit 1; }
+done
+for m in 57 58; do
+    echo "$rl" | grep -qE "rhythm bank \(removed\): module $m: new: opened on the bank's first beat, $(head -1 "$here/../beats/bank.txt" | sed 's/\./\\./g'), [0-9]+ bytes; the module's beat is it: yes" || { echo "selftest: FAILED (module $m, with no data, did not open on the bank's first beat at $rate Hz)"; exit 1; }
+done
+[ "$(echo "$rl" | grep -c 'rhythm bank (removed): module [0-9]*: new:')" = 3 ] || { echo "selftest: FAILED (a module with data was new, or a new one was not, at $rate Hz)"; exit 1; }
+echo "$rl" | grep -qE "rhythm bank test \(removed\): module 59: ([1-9][0-9]*) beats loaded as their files, 0 not; \1 undone to the beat before, 0 not; a broken bank changed nothing 1 times, 0 did \(.*line 2.*\); Initialize emptied it 1 times, 0 not" || { echo "selftest: FAILED (the bank, its undo, a broken bank or Initialize at $rate Hz)"; exit 1; }
+echo "$rl" | grep -qE "rhythm bank \(removed\): module 70: new: started empty: the bank's first beat did not open: amen-break\.beat: line 2.*; the module's beat is empty: yes" || { echo "selftest: FAILED (a broken bank's new module at $rate Hz)"; exit 1; }
+echo "selftest: saves at $rate Hz while a slider is dragged over sixteen patterns: $1 in $2 frames, closest $3 frames apart (a quarter second is $((rate / 4))); $4 of $4 patch saves held the last move."
 echo "selftest: 4 probes clean in Rack at $rate Hz, each sounding; one on the sixteen samples, from a version 1 snapshot."
-echo "selftest: 16 Rhythm modules held to the three format 2 fixtures, the four format 3 and the format 4 one on both clocks at $rate Hz, by their own parameters, FX GATES to each view's fx; one through RETURN; the instrument loaded a version 1 snapshot."
+echo "selftest: 24 Rhythm modules held to the three format 2 fixtures, the four format 3, the format 4 one and the four format 5 (patterns) on both clocks at $rate Hz, by their own parameters, FX GATES to each view's fx; one through RETURN; the instrument loaded a version 1 snapshot and a version 4 one, each into pattern 1."
 echo "selftest: 8 Rhythm modules by PLAY in pairs (D138), each pair every step on the same frame: Push's gate into both, on one LFO's edges and on its beats; one gate and Push's trigger into both, on their table clocks."
-echo "selftest: 5 Rhythm modules through their own cables (VOICES to RETURN with effect 2 punched; FX SEND's sixteen channels to FX RETURN with effect 4 Ours, effect 2 beside the dry and effect 2 in place of the dry, FX SEND held to jacks.hpp; A OUT and B OUT to A IN and B IN), each frame the core's own; the fx latch (D78)."
+echo "selftest: the bank (issue 164): beat-amen-break from the plugin's res/beats on both clocks; 2 modules with no data opened on the bank's first beat, byte for byte, and no module with data did; every bank beat loaded and undone; a broken bank refused, and a new module on it empty; Initialize empty."
+echo "selftest: 5 Rhythm modules through their own cables (VOICES to RETURN with effect 2 punched; FX SEND's sixteen channels to FX RETURN with effect 4 Ours, effect 2 beside the dry and effect 2 in place of the dry, FX SEND held to jacks.hpp; A OUT and B OUT to A IN and B IN), each frame the core's own; the fx latch (D78); D135's pattern gestures; RESET restarting a chain from the module's own TRIGGERS; saves four a second, the last move in every patch save."

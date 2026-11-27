@@ -38,7 +38,7 @@ const root = fileURLToPath(new URL("..", import.meta.url)); // pocket-instrument
 const serveOnly = process.argv[2] === "--serve";
 const asked = serveOnly ? [] : process.argv.slice(2);
 const browsers = asked.length ? asked : ["chromium", "firefox"];
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm", ".s16": "application/octet-stream", ".txt": "text/plain" };
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm", ".s16": "application/octet-stream", ".txt": "text/plain", ".beat": "text/plain" }; // .beat: the bank (issue 164)
 
 let waiting = null;
 const server = createServer((req, res) => {

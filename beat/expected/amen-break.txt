@@ -1,0 +1,25 @@
+# What `node beat/beat.mjs render beats/amen-break.beat` prints after its first line, worked by
+# hand from the file and docs/BEAT.md before the command could print it (issue 163). The first
+# line (the WAV, its length, its peak) is not worked: the tail and the peak are measured.
+# Chain 1 2 3 4: one bar a pattern, each of length 16. No swing, no probability under 100, no
+# effects lane, so every step that is on fires once, on its own step (ENGINE.md section 5):
+# every letter and every `x` of a row is an `x` here, every `.` a `.`. Rows: the keys with a row
+# in the bar's pattern, rising; the key in four columns, its name padded to eight, then the grid
+# in groups of four (docs/BEAT.md's example). Lines starting `#` are this note, not output.
+bar 1 (pattern 1)
+   1 kick     |x.x.|....|..xx|....|
+   2 snare    |....|x..x|.x..|x..x|
+   3 hat      |x.x.|x.x.|x.x.|x.x.|
+bar 2 (pattern 2)
+   1 kick     |x.x.|....|..xx|....|
+   2 snare    |....|x..x|.x..|x..x|
+   3 hat      |x.x.|x.x.|x.x.|x.x.|
+bar 3 (pattern 3)
+   1 kick     |x.x.|....|..x.|....|
+   2 snare    |....|x..x|.x..|..x.|
+   3 hat      |x.x.|x.x.|x.x.|x.x.|
+bar 4 (pattern 4)
+   1 kick     |..xx|....|..x.|....|
+   2 snare    |.x..|x..x|.x..|..x.|
+   3 hat      |x.x.|x.x.|x...|x.x.|
+   7 cymbal   |....|....|..x.|....|
