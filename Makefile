@@ -80,6 +80,10 @@ test: build check-p1 check-beat
 	target/harness --beat $(BEAT)-cases.txt $(BEAT)-cpp.txt
 	PI_REQUIRE_WASM=1 PI_REPORT=$(REPORT)-node.txt PI_WEAVE=$(WEAVE)-node.txt PI_RENDER=$(CURDIR)/target/render-node \
 	  PI_BEAT=$(BEAT)-node.txt PI_BEAT_CASES=$(BEAT)-cases.txt node --test harness/
+	# The agent's command (docs/BEAT.md, D140; issue 163): check every .beat, the refusals and exit
+	# codes, render the bank (committed and built .wasm alike) and the worked example against the
+	# harness's render and trace, the hand-worked grids, pack.
+	node --test beat/
 	$(CXX) -std=c++11 $(RACK_MATH) $(OUR_MATH) $(RACK_ARCH) -Wall -Wextra -Werror -Icore/include rack/test/jacks.cpp $(NATIVE) -o target/jacks
 	target/jacks
 	cmp $(REPORT)-rust.txt $(REPORT)-cpp.txt
