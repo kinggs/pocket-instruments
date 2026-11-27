@@ -641,3 +641,123 @@ write on at 0). Held, as there at `at` 4: the fields show the volume (`ffff`), A
 (0) and B the tempo, `(bpm − 60) × 65535 / 180` rounded down: 21845 at 120, 29126 at 140.
 Nothing fires, so `expect` is empty. `keys-bpm-family` does not move: each of its clean
 presses goes down and up in one frame.
+
+## Format 5, and five fixtures in `designed/` (designed 2026-11-27 for patterns, issue 4: `ENGINE.md` §21, D133, D134; not built)
+
+Format 4, and:
+
+| Field | Meaning |
+|---|---|
+| `format` | 5 |
+| `commands` | also `pattern`, `chain` and `copy` (`value` 0 to 15): `ENGINE.md` §21's three edits, sent where format 1's edits are. At step 0 they are edits like `step`: from a snapshot they come from the snapshot (version 5) |
+| `views` | format 4's line with ` pat=<n> pos=<n> chain=<digits> next=<digits or -> used=<four hex digits>` on its end (the view's bytes 64 to 87, §21) |
+| `beat` | optional: a `.beat` file beside the fixture (`docs/BEAT.md`). The harness reads it with the beat reader (`pib_read`) and loads the bytes with `pi_load` before frame 0. Only the beat reader's build runs these; a fixture with `beat` has no run from a snapshot, since the beat is one |
+
+Nothing in formats 1 to 4 changes: every existing fixture's trace and views stay the same
+bytes, and they run with the chain at pattern 1 alone.
+
+**Written by hand before any core of §21 exists,** from `ENGINE.md` §21 and the sections it
+changes, with no engine and no model. A throwaway script laid the JSON out (as in Session
+10); every tick, hit, mask and count in it was typed in from the working below. **Kenny's
+PO-12 (R90) came in before they were worked,** so they hold its answers: a change lands at
+the end of the bar, the lights while pattern is held, effects kept per pattern and carried
+by a copy, a choice replacing a chain, play restarting a chain. **None of them reaches
+either of §21's two ⚠ open lines** (the lights during a chain, an empty chosen pattern's
+flicker): the one view with pattern held has a chain of one and a used chosen pattern, and
+the flicker is the host's, not in the view. One reading of the design that is not Kenny's
+hardware is reached: **write mode put back after a copy** (`patterns-copy-and-clear`, the
+views at 2 to 4); if Kenny rules otherwise, those views and the key at 4 are worked again.
+
+The build that makes §21 moves the four `patterns-*` fixtures up, unchanged, and only then
+runs them. `beat-four-and-a-fill` (and its `.beat`) waits for the beat reader's build (D134).
+Before any change, that build writes `snapshots-v4.txt`: each existing fixture's version 4
+snapshot from the ABI 15 core, committed first, never regenerated.
+
+### `patterns-choose-and-play`
+
+- Write on at 0. At 1, keys 1 and 9 put the kick (the chosen sound) on steps 1 and 9 of
+  pattern 1: field `0101`. A key in write mode makes no sound: no trace line.
+- At 2, pattern + key 2, stopped: pattern 2 is active at once (§21: "Stopped, a choice lands
+  at once"); the field shows its kick steps, none. `used=0001`: pattern 1 only.
+- At 3, keys 5 and 13 in pattern 2: field `1010`, `used=0003`. At 4, pattern + key 1: back
+  to pattern 1, field `0101`.
+- At 5, write off, and pattern goes down and stays down over the view: the pattern-held row.
+  Field: the used patterns, `0003`. Stitch: the chain's patterns, pattern 1 alone, `0001`.
+  Bar: the active pattern, `0001`. `sounds=0`, `held=020000` (bit 17). The flicker of key 1
+  is the host's and not in the text. Pattern goes up at 6 with no grid key: nothing.
+- The play edit at 6 lands before tick 576: pattern 1 from its step 0 (§5). Kick at 576 and
+  1344. The stop at 22 lands before tick 2112. Pattern 2 chosen at 23, stopped: at once. Play
+  at 24: tick 2304 is its step 0; kick at 2688 (step 4) and 3456 (step 12). 32 step lines
+  and 4 hits: 36. `fires=2` at 21, `4` at 39.
+
+### `patterns-chain`
+
+- At 0, by edits: pattern 1 length 4 and a kick on step 1; `pattern 1` (index 1, so pattern
+  2), stopped, at once: length 4, hats on steps 1 and 3; `pattern 2`: length 4, a snare on
+  step 2. The chain is then pattern 3 alone.
+- At 1, pattern held and keys 1, 2, 1, 3: the first key makes a new chain of pattern 1, active
+  at once (stopped); the next three are added. `chain=0102`, `pos=0`, `len=4` (pattern 1's).
+  `used=0007`. From a snapshot the chain loads as pattern 3 alone and these keys rebuild it,
+  so the view is the same.
+- The play edit at 2: tick 192 is pattern 1's step 0. Each wrap moves the chain on (§21,
+  "Advancing"): pattern 2 at 576 (hats at 576 and 768), pattern 1 at 960, pattern 3 at 1344
+  (the snare at 1440, step 1, unswung: swing 0), and the chain starts over at 1728 (R86).
+  20 step lines and 6 hits: 26.
+- Views: at 9, pattern 2, step 3: no kick there, so field `0000`; stitch the hats, `0005`;
+  `fires=1,0,2`. At 17, pattern 3: stitch `0002`; `fires=2,1,2`. At 21, pattern 1: field
+  `0001`; `fires=3,1,2`.
+
+### `patterns-copy-and-clear`
+
+- At 0, an `fx` edit puts effect 2 on pattern 1's step 3 (`fxsteps=0004`), and write goes on.
+  At 1, keys 1 and 7 (keeping 32768, 32768), A to 20000 for every sound, key 11 (keeping
+  20000, 32768): field `0441`. No sound has been hit, so `ea` is the kick's own A, the hand's
+  20000.
+- At 2, write goes down (write mode off, and remembered on), pattern goes down, key 4: the
+  copy (§21's row "pattern and write are held"). Pattern 1, its lane and its kept values go
+  to pattern 4 (R90: "Yes, effects copy"), and write mode goes back to on. `used=0009`.
+  Pattern 1 stays active.
+- At 3, pattern + key 4: pattern 4 active, field `0441`, `fxsteps=0004`: the lane came with
+  it. At 4, key 13 (write on): field `1441`, keeping (20000, 32768).
+- At 5, pattern + key 1, then function + pattern: clear empties pattern 1 only, its lane too:
+  field `0000`, `fxsteps=0000`, `used=0008`.
+- At 6, pattern + key 4, and write off: `sounds=1`. The play edit at 7: pattern 4 from tick
+  672: kick at 672, 1248, 1632, 1824. Effect 2 is heard on step 3 and changes no trace. The
+  last hit (step 13) kept (20000, 32768): `ea=20000 eb=32768`. 16 step lines and 4 hits: 20.
+
+### `patterns-change-playing`
+
+- At 0, by edits: pattern 1 a kick on step 1; pattern 2 hats on 1 and 9; pattern 3 a snare on
+  5; `pattern 0` brings pattern 1 back, the chain pattern 1 alone; then the play edit: tick 0
+  is step 0. All sixteen steps long, so the end of the pattern is the end of the bar (R90).
+- At 5 (tick 480), pattern + key 2: playing, so it waits: `next=1`, `pat=0`. It lands where
+  pattern 1 wraps, tick 1536: hats at 1536 and 2304.
+- At 20 (tick 1920), pattern + keys 3 and 1: a next chain of two, `next=20`. It lands at 3072:
+  pattern 3 (the snare at 3456, step 4), and the chain moves on at 4608 to pattern 1 (the
+  kick at 4608): `pos=1` at 63.
+- At 50 (tick 4800), pattern + key 3 alone, while that chain runs: `next=2`. At 6144 it
+  replaces the chain (R90: "clear the chain so that only pattern 1 plays"): the snare at 6528;
+  at 7680 pattern 3 again, a chain of one.
+- The stop at 82 lands before tick 7872 (steps 0 and 1 of that bar played). The play at 84:
+  pattern 3 alone, from its step 0 at 8064 (R90: "Same when I stop then start"); the snare
+  at 8448. With a chain of one, play's restart and a resume would agree here.
+- 98 step lines and 7 hits: 105. `used=0007` throughout.
+
+### `beat-four-and-a-fill`
+
+`docs/BEAT.md`'s worked example. The beat is loaded before frame 0, then the play edit at 0:
+tick 0 is pattern 1's step 0, the chain at its first pattern.
+
+- Bars 1 to 3 and 5 (ticks 0, 1536, 3072, 6144): pattern 1. The kick on steps 0, 4, 8, 12
+  (the trace counts from 0), the hat on 2, 6, 10, 14, the clap on 4 and 12: all even grid
+  steps, so swing 12 moves none. 16 step lines and 10 hits a bar.
+- Bar 4 (4608): pattern 2. The kick on 0, 4, 8, 10; the hat on 2 and 6; the snare on 12 (5760),
+  13 (grid step 61, odd: 5856 + 12 = 5868), 14 (5952) and 15 (grid step 63: 6048 + 12 =
+  6060). Step 14's probability, 70, takes the run's first draw, 270369 from seed 1 (§5): 69,
+  under 70, so it fires. 16 step lines and 10 hits.
+- Five bars of 26 lines: 130.
+- Views: at 15, pattern 1's kick steps `1111`, the other sounds' `5454` (the hat `4444` and
+  the clap `1010`); `fires=4,0,4,…,2` (the clap is track 8); the clap's sample and switch:
+  `sampled=0100`, `fxsounds=feff`; `a=30000 b=36000`, the hand's; `ea=32768`, the kick's
+  kept pair `a`. At 63, pattern 2: field `0511`, stitch `f044`, the lane `3000`, `pos=3`;
+  fires 16, 4, 14 and 6. At 79, pattern 1 again, `pos=0`: fires 20, 4, 18 and 8.
