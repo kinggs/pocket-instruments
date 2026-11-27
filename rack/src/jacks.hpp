@@ -272,7 +272,15 @@ struct Lights {
     bool frame, twill, field, core, fern, stitch, bar, pressed;
     uint8_t mark;
 };
-inline Lights keyLights(const uint8_t *v, int n, bool coreOn, bool fxLatched, Routes r) {
+//
+// While pattern is held, or latched by the host (ABI 16; ENGINE.md §21, "The view", D133 item 5),
+// the core's field, stitch and bar are the patterns: used, in the chain shown, active. The host
+// draws them and pressed, and not the frame, the core or the twill (R90: holding pattern "stops
+// the normal playing views"), and the active pattern's field is lit and dark in turn, a quarter
+// of a second each, whether or not that pattern is used (§21, ⚠ open (empty flicker), its
+// default). `flickerLit` is that turn, from the drawing thread's clock (patternFlicker).
+inline Lights keyLights(const uint8_t *v, int n, bool coreOn, bool fxLatched, Routes r, bool patternLatched = false,
+                        bool flickerLit = true) {
     uint32_t held = viewU32(v, PI_VIEW_HELD), bit = 1u << n, heard = v[PI_VIEW_HEARD];
     uint32_t flags = v[PI_VIEW_FLAGS];
     auto mask = [&](uint32_t at) { return (uint32_t(v[at]) | uint32_t(v[at + 1]) << 8) & bit; };
@@ -293,8 +301,52 @@ inline Lights keyLights(const uint8_t *v, int n, bool coreOn, bool fxLatched, Ro
         if (r.fx & r.insert & bit) l.mark = MARK_DISC;
         else if (r.fx & bit) l.mark = MARK_RING;
     }
+    if ((held >> PI_KEY_PATTERN & 1) || patternLatched) {
+        l.frame = l.twill = l.core = l.fern = false;
+        if (uint32_t(n) == v[PI_VIEW_PATTERN]) l.field = flickerLit;
+    }
     return l;
 }
+// The flicker's turn at `seconds` on the drawing thread's clock: lit for a quarter of a second,
+// then dark for one (§21: "2 flickers"; ⚠ the rate is ours, not measured).
+inline bool patternFlicker(double seconds) { return seconds < 0 || uint64_t(seconds * 4) % 2 == 0; }
+
+// The display's patterns (§21, "The display"; ⚠ how each host draws it is a stand-in until
+// Kenny rules a look): which pattern plays (byte 64), "pattern 3"; while a chain of more than
+// one runs, its place (pos + 1 of chain_len, bytes 65 and 66), "2/4"; while a next chain waits
+// (byte 67), the pattern it begins with (byte 80's low four bits), "→ 5". The words are the
+// terminal's (WORKFLOW.md, "Patterns, on every way of playing"). Empty where nothing is shown.
+struct PatternText {
+    char pattern[16], place[8], next[12];
+};
+inline PatternText patternText(const uint8_t *v) {
+    PatternText t{};
+    std::snprintf(t.pattern, sizeof t.pattern, "pattern %u", unsigned(v[PI_VIEW_PATTERN] & 15) + 1);
+    if (v[PI_VIEW_CHAIN_LEN] > 1)
+        std::snprintf(t.place, sizeof t.place, "%u/%u", unsigned(v[PI_VIEW_POS]) + 1, unsigned(v[PI_VIEW_CHAIN_LEN]));
+    if (v[PI_VIEW_NEXT_LEN]) std::snprintf(t.next, sizeof t.next, "\xe2\x86\x92 %u", unsigned(v[PI_VIEW_NEXT] & 15) + 1);
+    return t;
+}
+
+// Saving while playing (ENGINE.md §21, D133 item 9): whether this frame saves a snapshot. At
+// most once in `gap` frames (a quarter of a second: four a second) while the generation moves,
+// and the last move always, once that gap has passed since the save before. A save the saving
+// thread asks for (`ask`, a count it steps before it writes the patch: Rhythm::dataToJson) is
+// made on the next frame whatever the gap, so the patch holds the last move. Pure: the module
+// calls it once a frame with `moved` true while the engine holds a move not yet saved.
+// rack/test/jacks.cpp, "saves", holds it.
+struct SaveGate {
+    uint32_t since = 0xffffffffu; // frames since the last save, held at `gap`; the first is at once
+    uint32_t answered = 0;        // the last `ask` seen; the module hands it back once it is saved
+    bool frame(bool moved, uint32_t ask, uint32_t gap) {
+        if (since < gap) since++;
+        bool asked = ask != answered;
+        answered = ask;
+        if (!moved || (since < gap && !asked)) return false;
+        since = 0;
+        return true;
+    }
+};
 
 // PLAY in (D138; ENGINE.md §19, designed 2026-11-27; the rule ⚠ proposed, O39): whether this
 // frame presses play. One rule for a gate and a trigger. A rise presses play if the module is
