@@ -34,6 +34,9 @@ pub struct Engine {
     pub(crate) hit_any: u16,
     /// §16: bit `t`, track `t` has fired on the playhead's step so far. Not saved.
     pub(crate) on_step: u16,
+    /// §13 (D130): frames run since `pi_init`, added once a block. A key's own frame is this
+    /// plus its offset in the block. Not saved: the moment's.
+    pub(crate) frames_run: u64,
 }
 
 impl Engine {
@@ -55,6 +58,7 @@ impl Engine {
             hit: [[0; 2]; TRACKS],
             hit_any: 0,
             on_step: 0,
+            frames_run: 0,
         }
     }
 
@@ -173,6 +177,7 @@ impl Engine {
         self.fires = out.fires;
         self.on_step = out.on_step;
         self.dropped = self.dropped.saturating_add(out.dropped);
+        self.frames_run = self.frames_run.wrapping_add(frames as u64);
         out.len()
     }
 
