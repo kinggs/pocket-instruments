@@ -34,7 +34,7 @@ are unsigned. To install one:
    `plugins-mac-arm64` or `plugins-mac-x64`). VCV's manual:
    [Installing](https://vcvrack.com/manual/Installing).
 3. Restart Rack. It unpacks and loads the plugin when it starts.
-4. Open `Showcase.vcv` in Rack and press play on the Rhythm module.
+4. Open `Showcase.vcv` in Rack. Its note says what to press: PLAY on each Rhythm module, then RESET.
 
 ⚠ Not yet tried on a Mac: macOS may refuse an unsigned download
 ([issue 83](https://github.com/kinggs/pocket-instruments/issues/83)). Each file has a build
@@ -228,28 +228,41 @@ make -C rack showcase RACK_DIR=/path/to/Rack-SDK  # rack/build/Showcase.vcv: the
 ```
 
 The reference patch (`rack/patch/showcase.json`, written by `rack/patch/make-showcase.mjs`;
-`Showcase.vcv` in each pre-release) uses only Rack's own modules, Core and Fundamental. Open
-it in Rack and press play on the Rhythm module. The beat is one bar: the Amen break's first
-bar written out on Rhythm's own sounds (no recording of the record). A chained version
-follows once the instrument holds more than one pattern. Left to right, in signal order:
+`Showcase.vcv` in each pre-release) uses only Rack's own modules, Core and Fundamental. It has
+two Rhythm modules on one clock: DRUMS and MELODY.
 
-- **Notes** (Core): what the patch does, in a few lines. Two more notes head the rows below.
-- **Rhythm:** the drums. The kick plays its sample inside Rhythm, not its code voice
-  (right-click, Sounds).
-- **Audio 2** (Core): AUDIO to your sound card. Choose the device on it.
-- **Split** (SOUNDS TRIG): sound 15's trigger is the only clock of the voice.
-- **Random:** a new voltage on each of those triggers.
-- **8vert:** scales it to ±1 V, two octaves.
-- **Quantizer:** holds it to a minor scale (A minor, with the VCO's tuning).
-- **VCO:** the saw.
-- **Split** (SLIDER A OUT) and **VCF:** slider A moves the cutoff.
-- **ADSR** and **VCA-1:** a pluck, on the same trigger.
-- **Split** (SLIDER B OUT) and **Delay:** slider B sets the echo's mix and feedback.
-- **Merge:** the voice back into SOUNDS IN on channel 15. Rhythm plays it as sound 15, once,
-  and its effects reach it.
+**To start them in step** ⚠ (two modules have two play keys; a PLAY jack is being designed in
+issue 147): press PLAY on DRUMS, then PLAY on MELODY, then the RESET button beside the LFO.
+Both start bar one on the next clock edge. Press RESET again if they ever drift apart.
 
-Moving a slider sets it for all sixteen sounds (`docs/ENGINE.md` §20). The voice follows on
-sound 15's next hit.
+The drums are one bar: the first bar of the Amen break written out on Rhythm's own sounds (no
+recording of the record). The four-bar version follows once the instrument holds more than one
+pattern. The rows, each left to right in signal order:
+
+- **Drums and out.** A note. **LFO:** the clock, one edge a step at 136 bpm, into both
+  modules' CLOCK and both Delays. **Push:** RESET to both modules. **Rhythm (DRUMS):** kick
+  and snare on their samples, hats in code; the ghost snares written short. **Split** and
+  **Delay:** effect 4 (below). **VCA Mix:** a fader for each module. **Audio 2:** the mix to
+  both ears. Choose your device on it.
+- **Melody.** A note. **Rhythm (MELODY):** no drums. Its sound 15 plays the lead and sound 16
+  the bass, and each of their steps keeps its own sliders A and B. **Split** ×3 take apart
+  SOUNDS TRIG, SLIDER A OUT and SLIDER B OUT. **Merge:** both voices back into SOUNDS IN on
+  channels 15 and 16, so Rhythm plays them in place of its own sounds 15 and 16, once, and its
+  effects reach them. **Split** and **Delay:** effect 4.
+- **Lead.** A note. **Random:** a new voltage on each trigger. **8vert:** down to ±1 V, two
+  octaves. **Quantizer:** A C D E G (A minor pentatonic, with the VCO's tuning). **VCO:** the
+  saw. **VCF:** slider A, set per step: the filter opens across the bar. **ADSR** and
+  **VCA-1:** slider B, set per step, is how long each note rings.
+- **Bass.** A note. **8vert** and **Quantizer:** slider A, set per step, is the note (A, C, E,
+  G). **VCO:** the square, two octaves down. **VCF:** slider B, set per step. **ADSR** and
+  **VCA-1:** short notes.
+
+**Effect 4, the delay, is Rack's** on both modules. Each module's menu has effect 4 on "Rack's,
+beside the dry": the built-in delay stays silent and the dry stays in the mix. FX SEND's
+channel 4 carries sound only while effect 4 is heard, Split takes it out, and Delay's wet
+output goes back in on FX RETURN. The echo is a dotted eighth, kept to the clock. The lanes
+play it on set steps: the drums' backbeat snare on step 13, and the melody on steps 4, 5, 14
+and 15. Hold fx and press 4 to throw it by hand.
 
 To play the page from a clone, run `make hear` and open
 `http://127.0.0.1:8417/web/rhythm.html`. Any static file server on the repository root works
