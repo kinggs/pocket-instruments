@@ -1,7 +1,8 @@
 # The terminal host
 
-**Status (2026-11-26):** designed in issue 8 (D123), for Kenny; built the same day ("Built",
-at the end). The look is a stand-in until Kenny rules it. Rhythm in a Linux
+**Status (2026-11-27):** designed in issue 8 (D123), for Kenny; built the same day ("Built",
+at the end). One command with a menu and a config file designed in issue 122 (D125), not
+built yet. The look is a stand-in until Kenny rules it. Rhythm in a Linux
 terminal, from the same core as the page and Rack. The engine does not change: this host
 sends what a finger did and draws the 64-byte view (`ENGINE.md` §13, §14), as the others do.
 
@@ -19,7 +20,8 @@ R78 to R81:
 
 ## The crate
 
-- **`term/`, its own crate and its own Cargo workspace** (package `pi-term`). The core keeps
+- **`term/`, its own crate and its own Cargo workspace** (package `pocket-instruments`, D125;
+  `pi-term` before it; its library stays `pi_term`). The core keeps
   no dependencies; this crate has two. The root workspace excludes it, so `make build` and
   the core's lock file do not see them.
 - **It links the core's static library through the C ABI,** the same `libpi_core.a` the C++
@@ -28,8 +30,8 @@ R78 to R81:
   build script takes the library from `PI_CORE_LIB` (the Makefile passes the one `make test`
   just checked) or, with none given, builds it from `core/` with the same `cargo rustc`
   command `make build` uses. So `cargo build --release` in `term/` works alone.
-- **The binary is `pi-rhythm`** ⚠: a working name. The family's name is not cleared (O3), so
-  it is one line to change before anything is packaged.
+- **The binary is `pocket-instruments`** (D125, below), `pi-rhythm` before it. ⚠ The
+  family's name is not cleared (O3), so nothing is packaged until it is.
 - **One binary, no files beside it.** The starter pack's sixteen samples are compiled in
   (`samples/raw/*.s16`, 508 KB, CC0). The only file it writes or reads is the beat (below).
 - **`--help` and `--version`.** The version prints the crate's version, the commit it was
@@ -52,6 +54,43 @@ drawn from a cell buffer by this crate, with only what changed sent.
 
 Apache-2.0 allows linking into an MIT program; a binary someone distributes carries cpal's
 notice. `CREDITS.md` lists both.
+
+## The command, the menu and the config (D125)
+
+```
+pocket-instruments [options]            the intro and the menu
+pocket-instruments rhythm [options]     straight into Rhythm
+```
+
+The options are today's (`--keys`, `--pocket`, `--no-color`, `--audio`, `--beat`,
+`--reduced-motion`, `--help`, `--version`), before or after the instrument's name; given to the
+menu, they hold for what it starts.
+
+- **Start-up is done once,** before the menu: the protocol's query and the key mode, so the
+  menu reads keys as Rhythm does. The engine, its sound and the beat start when an instrument
+  starts and stop when it ends; the beat is saved on leaving, as now. A sound device that
+  cannot open is said on the menu, not by exiting.
+- **The intro page** (80 by 24; the pocket size at 48 by 10 keeps the name, the menu and the
+  keys, and drops the rest):
+
+  | Row | What |
+  |---|---|
+  | top | `pocket instruments` and the version, as the status line is drawn |
+  | a few lines | "Small calculator-format instruments, free and open source." The homage line: "An homage to Teenage Engineering's pocket operators; not affiliated." |
+  | the menu | `1  rhythm  a sixteen-step drum machine`, the chosen line a lit field |
+  | settings | `keys hold (this terminal reports key-up)`, `sound default (config)`, `colour on`, `motion full`: each value and where it came from (option, config, `NO_COLOR`, default) |
+  | bottom | `1 or enter play   ? options   q quit`, and the config file's path |
+
+  The keys act on press. `?` shows the `--help` text in the same frame; esc or `?` returns.
+- **Leaving:** `:q` back to the menu (or out, when started as `pocket-instruments rhythm`);
+  Ctrl+Q out from anywhere. ⚠ Kenny tries it.
+- **The config file** is read once, before anything is drawn; its form, keys and order are
+  D125 items 5 and 6. Tests hold the parser to every case: each key and value, both
+  spellings of colour, a comment, a blank line, a bad value, an unknown key, a table, a
+  missing file, and the order against `NO_COLOR` and the options.
+- **The proofs stand as they are:** P2 through the host is the same test, the key path does
+  not change. New tests read the intro page's cells back, in colour and without, at both sizes,
+  and drive the menu's keys.
 
 ## Sound
 

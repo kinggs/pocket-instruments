@@ -240,6 +240,13 @@ was seen in the bytes below.
 | R80 | **herdr 0.9.5 answers the query but its key-up is not real.** It replied `CSI ? 31 u` and passed the protocol's sequences, but each release came in the same read as its press: `7` down and up at 1512 ms though `7` was held 300 ms, and `1`, pressed inside that hold, arrived after `7`'s release. `HERDR_ENV=1` inside it | Measured |
 | R81 | **Sound through PipeWire, five minutes each, no xrun.** cpal's ALSA host (through PipeWire's ALSA plugin, node `alsa_playback.audioprobe`): 300.0 s, 14 400 512 frames (1.00004 of the clock), 0 xruns, 0 errors, the longest gap between callbacks 12.7 ms at 512-frame quanta, the longest callback 0.73 ms; `pw-top` at 290 s showed ERR 0 on the stream and on the Scarlett. cpal's PipeWire host (node `audioprobe`, built with cpal's `pipewire` feature): 300.0 s, 14 399 488 frames (0.99996), 0 xruns, 0 errors, the longest gap 43.2 ms at 1024-frame quanta, the longest callback 0.73 ms; ERR 0 on the stream and on the Scarlett's output. During that run something else was recording: the Scarlett's input node drove the graph at a quantum of 1024 and showed ERR 48 ⚠ (not this host's; noted for issue 56, not read further). ⚠ Measured, not heard; issue 56's loss is in recording and was not looked for here | Measured |
 
+## For the terminal's launcher (D125)
+
+| # | Fact | Source |
+|---|---|---|
+| R82 | **A program's own configuration may override `NO_COLOR`.** no-color.org, read 2026-11-27: "User-level configuration files and per-instance command-line arguments should override the NO_COLOR environment variable" | <https://no-color.org/> |
+| R83 | **The names were free on 2026-11-27,** looked up, not a register search: `pocket-instruments`, `pocket-instrument` and `pi-rhythm` had no package on the AUR (`aur.archlinux.org/rpc/v5/info` and `/search`), none in the Arch repositories (`archlinux.org/packages/search/json`), and no crate on crates.io (`crates.io/api/v1/crates/<name>` gave 404). ⚠ Free today is no claim on tomorrow; issue 45 holds the register search | Looked up |
+
 ## Not yet checked
 
 - EUIPO and UK registered designs and trade marks for Teenage Engineering AB.
