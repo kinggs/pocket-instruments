@@ -2695,23 +2695,19 @@ design held. What it did not say, or said wrongly, ruled in D80 and marked:
   OUT and B OUT into A IN and B IN, each frame to a second engine given what those cables
   should carry.
 
-### §19, designed 2026-11-27: PLAY in and PLAY out, several instruments started as one (D138; issue 147; proposed, for Kenny to rule; not built)
+### §19, designed 2026-11-27: PLAY in, several instruments started as one (D138; issue 147; the jack and its place ruled by Kenny, its rule proposed (O39); not built)
 
 For Rack. Two Rhythm modules in one patch, a drums one and a melodic one, each have their own
-play key, so they cannot be started together (issue 147). Two one-channel jacks, both named
-PLAY because the key is play. **No change to the core:** no command, no ABI, no fixture, no
-byte of any report or render. The module presses the play key, and the core decides what the
-press means (D51, §13), so a press from the jack is exactly a press of a finger.
+play key, so they cannot be started together (issue 147). One one-channel input, PLAY,
+named for the key. **No change to the core:** no command, no ABI, no fixture, no byte of any
+report or render. The module presses the play key, and the core decides what the press means
+(D51, §13), so a press from the jack is exactly a press of a finger. One press starts several
+instruments through a stock button patched into every PLAY in: Fundamental's Push (R94).
+A module's own play key starts and stops only that module.
 
-- **PLAY out** (output 7, after B OUT): **a gate, 10 V while the view says playing** (§14,
-  flag 1), 0 V stopped. On the table clock it goes high on the frame of the press; on edges
-  and on one edge a beat, on the frame of the press too, while play waits for its first edge
-  (§13, §4 ruling 1): playing is set at the press. Written every frame while patched, from
-  the view read on that frame (the module reads the view on every frame it sent a command,
-  so the gate moves on the press's own frame).
 - **PLAY in** (input 6, after B IN): read on every frame, as CLOCK and RESET are
   (`docs/RACK-RULES.md`), through a Schmitt trigger at 0.1 V and 2 V (R92; CLOCK's and
-  RESET's own thresholds). **One rule for a gate and a trigger:**
+  RESET's own thresholds). **⚠ Proposed (O39): one rule for a gate and a trigger:**
 
   ```
   on a rise:   if stopped: press play                    # start
@@ -2724,65 +2720,55 @@ press means (D51, §13), so a press from the jack is exactly a press of a finger
 
   So a gate plays while high and stops when it goes low, as Clocked's "level sensitive"
   input does (R95); and a trigger toggles, as SEQ3's and Clocked's RUN in do (R93, R95), so
-  their RUN out, a 1 ms trigger on each change (R93, R95), and Rack's own MIDI start and stop
-  triggers (R96) drive it as they are. A trigger that stops is acted on at its fall, 1 ms
-  after its rise: until it falls the module cannot tell it from a gate. 10 ms is ours: ten
-  times Rack's trigger (R92), and far shorter than any press a hand makes ⚠.
+  Push's GATE and TRIG (R94), SEQ3's and Clocked's RUN out (a 1 ms trigger on each change,
+  R93, R95) and Rack's own MIDI start and stop triggers (R96) drive it as they are. A
+  trigger that stops is acted on at its fall, 1 ms after its rise: until it falls the module
+  cannot tell it from a gate. 10 ms is ours: ten times Rack's trigger (R92), and far shorter
+  than any press a hand makes ⚠.
 - **A press** is `KEY_DOWN` then `KEY_UP` of play, on one frame, after `RESET` and before
-  `CLOCK` and before the keys the module scans. Before `CLOCK`, so that a follower pressed
-  one frame after its leader, on the frame an edge reaches both, starts on that edge with
-  its leader. What it does is §13's row for play, unchanged: stopped, on the table clock
-  `RESET` then `PLAY 1` (step 1 on this frame); on edges and on one edge a beat `PLAY 1`
-  alone (step 1 at the next edge, or the next beat); playing, `PLAY 0`. A chain restarts
-  from its first pattern (§21; R90). The play key lights as for a finger; nothing is
-  latched or unlatched.
-- **A finger wins.** While the play key is down (a mouse, the space bar, a Shift latch),
-  PLAY in presses nothing. ⚠ Ours; the alternative would send a second `KEY_DOWN` the core
-  ignores (§13) and a `KEY_UP` under the finger.
-- **Unpatching PLAY in presses nothing.** Rack sets an unpatched input to 0 V, which would
-  read as a fall: it is not a stop. A cable patched while it is high is a rise: a stopped
-  module starts. ⚠ Ours.
-- **Nothing is saved.** Playing is not saved (§21), so every module opens stopped and
-  every PLAY out low; Push's HOLD (R94) opens off too. A cable that is high when the patch
-  opens is a rise on the first frame. ⚠ A clock that saves its own running state, SEQ3 or
-  Clocked (R93, R95), opens running, so a trigger from its RUN out toggles a module that
-  opened stopped the wrong way: save such a patch with the clock stopped.
-- **Cross-patched,** A's PLAY out into B's PLAY in and B's into A's: either play key starts
-  and stops both, and the echo presses nothing, because the rule starts only a stopped
-  module and stops only a playing one. A gate cannot oscillate.
-- **In step.** A cable is one frame late (R92), so a follower is pressed one frame after its
-  leader. **On one shared CLOCK** (edges or one edge a beat) both start on the same edge
-  and stop before the same edge: worked through two engines frame by frame (D138, the
-  evidence), with the edge 0, 1 and 2 frames after the leader's press, and on a stop the
-  frame before an edge. A shared RESET still aligns both, as it does today. **On their own
-  table clocks** a follower plays one frame behind for as long as it plays (21 µs at
-  48 kHz; at the same tempo there is no drift, §4). A source that feeds every PLAY in at
-  once, Push's GATE, starts them on one frame on any clock. ⚠ **A chain of followers**
-  (A into B into C) is a frame later at each link, and an edge on the frame between B and C
-  starts C a step behind: patch the leader's PLAY out to every follower.
+  `CLOCK` and before the keys the module scans. What it does is §13's row for play,
+  unchanged: stopped, on the table clock `RESET` then `PLAY 1` (step 1 on this frame); on
+  edges and on one edge a beat `PLAY 1` alone (step 1 at the next edge, or the next beat);
+  playing, `PLAY 0`. A chain restarts from its first pattern (§21; R90). The play key lights
+  as for a finger; nothing is latched or unlatched. Before `CLOCK`, so that a press on the
+  frame an edge arrives starts on that edge.
+- **⚠ Ours (O39): a finger wins.** While the play key is down (a mouse, the space bar, a
+  Shift latch), PLAY in presses nothing; the alternative would send a second `KEY_DOWN` the
+  core ignores (§13) and a `KEY_UP` under the finger.
+- **⚠ Ours (O39): unpatching PLAY in presses nothing.** Rack sets an unpatched input to 0 V,
+  which would read as a fall: it is not a stop. A cable patched while it is high is a rise:
+  a stopped module starts.
+- **Nothing is saved.** Playing is not saved (§21), so every module opens stopped; Push's
+  HOLD (R94) opens off too. A cable that is high when the patch opens is a rise on the first
+  frame. ⚠ (O39) A clock that saves its own running state, SEQ3 or Clocked (R93, R95), opens
+  running, so a trigger from its RUN out toggles a module that opened stopped the wrong way:
+  save such a patch with the clock stopped.
+- **In step.** Every cable is one frame late (R92), so one signal into every PLAY in reaches
+  them all on the same frame: they start on that frame on the table clock, on the same edge
+  on a shared CLOCK (edges or one edge a beat), and stop on the same frame. No RESET is
+  needed to start them in step: a press on a stopped module starts it from step 1, and a
+  chain from its first pattern, on every clock. A shared RESET still realigns modules a
+  finger has pushed apart, as it does today.
 - **RESET on the same frame:** `RESET`, then the press, then `CLOCK` (which RESET masks for
   1 ms, R92). Stopped on edges, step 1 is the next edge; on the table, this frame.
-- **What it costs:** while PLAY in is patched, a Schmitt trigger and a few compares a
-  frame; while PLAY out is patched, one flag and one voltage a frame; unpatched, a test of
-  each. To be measured when built.
+- **What it costs:** while PLAY in is patched, a few compares a frame; unpatched, a test.
+  To be measured when built.
 - **The other hosts:** nothing. The page and the terminal each play one instrument and have
   no cables. ⚠ Not asked.
 
-**On the panel** (layout B, D114; `design/make_panel.py --check` passes): PLAY in under
-RESET at (9.5, 39.0) mm, on the body with ecru lettering; RESET moves up from y 27.5 to
-26.25 so the three share the column evenly (1.20 mm between CLOCK and RESET and between
-RESET and PLAY, 1.15 mm over key 1); CLOCK does not move. PLAY out under AUDIO at (126.58,
-36.65), on an ecru plate as wide as AUDIO's (11.15 mm), 1.65 mm under AUDIO's plate and
-over the function keys, 0.50 mm from the display's frame. What comes in is left of the
-display and what goes out is right of it, as D114 has it. No port moves or is renumbered:
-a patch saved before keeps every cable.
+**On the panel** (layout B, D114; ruled by Kenny, D138 item 3; `design/make_panel.py --check`
+passes): PLAY in under RESET, on the body with ecru lettering, and the left column moved up a
+little: CLOCK at (9.5, 13.15) mm, was 13.5 (its label 0.52 mm under the top left screw);
+RESET at (9.5, 25.95), was 27.5; PLAY in at (9.5, 38.75). An even pitch of 12.8 mm: 1.25 mm
+between CLOCK and RESET and between RESET and PLAY, 1.40 mm over key 1. Nothing else moves; the
+whole look is for a later design session. No port moves or is renumbered: a patch saved before
+keeps every cable.
 
 **Proven when built by:** `make -C rack selftest` at its three rates: two modules on one
-LFO's edges, cross-patched, the leader pressing its own play key on and off, every step of
-both on the same frame and the same step; two on their table clocks from one gate into
-both PLAY ins, the same; two from a 1 ms trigger, toggled together; every existing
-self-test as before; and a patch saved before the change opening with every cable on the
-same jack.
+LFO's edges, two on its beats and two on their table clocks, each pair from one gate into both
+PLAY ins, and two from one trigger, toggled together, every step of each pair on the same
+frame and the same step; every existing self-test as before; and a patch saved before the
+change opening with every cable on the same jack. `rack/test/jacks.cpp` holds the rule.
 
 ## 20. The sliders are the hand's; a step keeps what it was written with (ABI 8; designed 2026-11-23; D75; built in Session 21)
 
