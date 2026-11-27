@@ -1,7 +1,7 @@
 # The workflow
 
 **Status:** a draft from the published guide (R23). Since 2026-11-23 partly checked on Kenny's PO-12: the effects (nine of thirteen checks), the lights with write off, and how
-the knobs act; each such row says so. The rest is still not checked on the hardware. By D29 it is
+the knobs act; since 2026-11-27 the patterns (R90); each such row says so. The rest is still not checked on the hardware. By D29 it is
 built from as it stands: a row is ticked, or a mismatch added to the differences table, as
 Kenny meets it. P8 is judged against this file (D22).
 
@@ -16,7 +16,7 @@ hardware business with no meaning in software.
 | ✓ | To do this | Press | Scope |
 |---|---|---|---|
 | ☐ | Choose a sound | hold sound + a grid key | in |
-| ☐ | Choose a pattern | hold pattern + a grid key. The active pattern's light blinks | later |
+| ☑ | Choose a pattern | hold pattern + a grid key. The active pattern's light blinks. **Kenny's PO-12 (R90):** it lands at the end of the bar; the chosen pattern flickers, a pattern with steps glows, an empty one is dark | ~~later~~ designed (D133, `ENGINE.md` §21; issue 4) |
 | ☐ | Start and stop | play | in |
 | ☐ | Turn write mode on or off | write. A record mark shows on the display | in |
 | ☐ | Put the chosen sound on a step | in write mode, a grid key | in |
@@ -30,9 +30,9 @@ hardware business with no meaning in software.
 | ☐ | Repeat a step within itself (2, 4, 8, 16) | hold a grid key + bpm, again to cycle | later |
 | ☐ | Punch in an effect | while playing, hold fx + a grid key. It is recorded on the steps that pass, write on or off (R49, R53) | designed (D66; Session 16) |
 | ☐ | Clear the effects | hold fx alone while it plays: each step that passes is emptied | designed (D66; Session 16) |
-| ☐ | Chain patterns, up to sixteen, repeats allowed | hold pattern + grid keys in order | later |
-| ☐ | Copy the pattern to another slot | hold write + pattern + a grid key | later |
-| ☐ | Clear the pattern | function + pattern | in |
+| ☑ | Chain patterns, up to sixteen, repeats allowed | hold pattern + grid keys in order. **Kenny's PO-12 (R90):** choosing one pattern while a chain plays replaces the chain at the end of the bar, and it stays replaced after stop and play; play restarts a chain from its first pattern | ~~later~~ designed (D133, §21) |
+| ☑ | Copy the pattern to another slot | hold write + pattern + a grid key. **Kenny's PO-12 (R90):** the effects copy with it | ~~later~~ designed (D133, §21) |
+| ☐ | Clear the pattern | function + pattern. Designed (D133): the active pattern only | in |
 | ☐ | Change the sync mode | hold function + bpm | never (Rack has cables) |
 | ☐ | Clock, alarm, battery, power off, factory reset | various | never |
 
@@ -119,7 +119,7 @@ on questions 4 to 6, 8 and 9. Where it speaks:
 | 2. Write mode | A tap puts the chosen sound on that step; a second tap takes it off | R28 |
 | 3. The lights | Write: the chosen sound's steps are lit. Playing: the current step is brightest, and keys whose sounds are firing flash for half a step. Sound held: every key lit, the chosen one brighter. Pattern held: non-empty patterns lit, the chosen one brighter | R26, R27 |
 | 7. Play and stop | Stop returns to step 1; play always starts there | new |
-| Changing pattern while playing | Waits for the end of the bar | new |
+| Changing pattern while playing | Waits for the end of the bar | new. **Confirmed on Kenny's PO-12, 2026-11-27 (R90)** |
 | 10. Positions | Right-hand column, top to bottom: function, fx, play, write | R26, R27; settles the middle two |
 
 It also latches the sound and pattern keys on a click, as D23 does, and maps the grid to a
@@ -146,15 +146,15 @@ is a mismatch (D29), listed until ruled on.
 | The lights with write off | **Fact (Kenny, D71):** the chosen sound's steps are lit, steady, write on or off; choosing another sound shows that sound's steps; write changes only the display's mark and what a tap does. **While playing, every sound's key flashes as that sound fires, and the playhead's key flashes as it passes;** on one key the two are one flash | ~~**Mismatch.** D37: with write off no step is lit. D71 proposes following the hardware~~ **Closed (Session 20, 2026-11-23; D72 item 3, D82):** the chosen sound's steps are lit with write off as with write on; each key still goes white as its own sound fires (a lit one comes back lit) and the frame marks the playhead, so ours keeps the two flashes apart. No stitch with write off (D82 item 3) |
 | Effects are recorded with write off | Both videos; four reviews (R49) | Designed so (D66) |
 | Clearing effects | Hold fx through the steps; a whole pass clears all | Designed so |
-| Effects belong to a pattern | Written across four chained patterns and cleared across them; a copied pattern given its own (R53) ⚠ | One pattern; the lane is saved with it |
+| Effects belong to a pattern | Written across four chained patterns and cleared across them; a copied pattern given its own (R53) ⚠ | One pattern; the lane is saved with it. **Fact (Kenny, R90):** "The FX is saved per pattern", kept on leaving and coming back, and "effects copy". Designed so (D133) |
 | Effects only while playing | "the only way this works is while you're doing play" (R53) ⚠ | Stopped, a punch is heard on taps and writes nothing (D66 item 3) |
 | Live record | Hold write + keys while playing; each key records its own sound, snapped to the grid | Later row; agrees with R27 |
 | Recording a knob | Hold write and turn A or B while playing: the movement is kept over the sixteen steps | Later row |
 | The tempo presets | bpm steps 140 (techno), 80 (hip hop), 120 (disco) | 80, 120, 140 rising: the same cycle |
 | The step multiplier | Hold the step + bpm; shown cycling 2, 3, 4, 6, 8 and then none (R53); the guide says 2, 4, 8, 16 ⚠ | Later row. Question 8 is settled on the keys, not on the values |
 | Removing a multiplier | Cycle round to none, or turn the step off and on | Later |
-| Chains | Hold pattern, tap patterns in order, repeats allowed, up to sixteen | Later row; agrees |
-| Copy a pattern | write + pattern + key | Later row; agrees |
+| Chains | Hold pattern, tap patterns in order, repeats allowed, up to sixteen | ~~Later row; agrees~~ Designed (D133); the guides agree (R86) |
+| Copy a pattern | write + pattern + key | ~~Later row; agrees~~ Designed (D133); the guides agree (R86) |
 | Battery | sound + bpm | never |
 
 ## The effects: what to check on the PO-12
@@ -201,6 +201,55 @@ is time, none of it blocking:
 | ☐ | Write on, hold a lit step and turn A | the hardware's way to change one step (not in our first build) |
 | ☐ | Playing, hold write and turn A for a bar | recording a knob's movement (not in our first build) |
 
+## Patterns: what Kenny's PO-12 showed (2026-11-27, R90)
+
+Asked by the design pass for issue 4, after the guides were read (R86). Kenny's words, by
+hand and eye, no recording:
+
+| ☐ | Do | Seen | It decides |
+|---|---|---|---|
+| ☑ | Playing, choose another pattern, early and late in a bar | "Pattern changes at the end of bar." ⚠ one observation | §21: a next chain lands where the playing pattern wraps |
+| ☑ | Pattern 1 and 2 with steps, 2 chosen, 3 empty; hold pattern, stopped and playing | "When on pattern 2, 1 glows, 2 flickers, and 3 is blank. Same when I hit it while playing (it stops the normal playing views)" | §21: field the used patterns, the active one flickering (the host), and no playhead, firing or effect light while pattern is held |
+| ☑ | An effect recorded in pattern 1; go to 2, then back to 1 | "The FX is saved per pattern. So 2 doesn't get 1's pattern. And when I go back to 1, it still has the [FX]" | §17 and §21: the lane is each pattern's |
+| ☑ | Copy pattern 1, with an effect, to 3; choose 3; play | "Yes, effects copy." | §21: a copy carries the lane |
+| ☑ | A chain playing; choose pattern 1 alone; then stop and play | "It immediately (end of bar) clear the chain so that only pattern 1 plays. Same when I stop thenm start." | §21: a choice replaces the chain, at the end of the bar, and stays |
+| ☑ | A chain of 1 then 2; stop while 2 plays; play | "Play restarts the chain yes." | §21: play starts a chain from its first pattern |
+| ☐ | Hold pattern while a chain plays | not answered | §21's ⚠ open (chain lights): ours, the chain's patterns stitched, the playing one flickering |
+| ☐ | Choose an empty pattern and hold pattern | not answered | §21's ⚠ open (empty flicker): ours, it flickers |
+| ☐ | Copy with write mode off, then press a grid key | not asked | §21: ours, write mode is put back after a copy ⚠ |
+
+## Patterns, on every way of playing (D133, D135; designed, not built)
+
+What the core does is `ENGINE.md` §21; what each host sends for it is below. One rule for
+latches on every host (D113): **Shift latches; a latched key lets go after the next grid
+key; Shift on that grid key keeps the latch.** `esc` lets every latch go.
+
+| To do this | Touch (the page on a phone) | A mouse and the computer keys (the page and Rack) | The terminal, hold (key-up reported) | The terminal, tap (no key-up) |
+|---|---|---|---|---|
+| Choose pattern *n* | hold pattern, tap *n* | hold `8` and press *n*'s key; or Shift+click pattern (or Shift+`8`), then click *n* (or its key) | hold `8`, press *n*'s key | tap `8`, then *n*'s key |
+| Chain *a b c* | hold pattern, tap *a*, *b*, *c*, let go | hold `8` and press the keys in order; or latch pattern, Shift+*a*, Shift+*b*, then *c* plain (it lets the latch go), or `esc` | hold `8`, press the keys | tap `8`, then Shift with each key but the last |
+| Copy to slot *n* | hold write and pattern, tap *n* | hold `p` and `8`, press *n*'s key; or Shift+click write and Shift+click pattern (either order), then click *n* | hold `p` and `8`, press *n*'s key | tap `8`, tap `p` (with pattern latched, write stays down until the next grid key), then *n*'s key |
+| Clear the active pattern | hold function, tap pattern | hold `u`, press `8`; or Shift+click function, click pattern | hold `u`, press `8` | tap `u`, tap `8` |
+| See which pattern plays | the display (stand-in, below) | the display; Rack's too | the status line: `pattern 3`, `2/4` while a chain runs, `→ 5` while one waits | the same |
+
+- **Shift on a grid key keeps a latched pattern** so a mouse or a terminal without key-up
+  can chain (D135 item 1). Plain, it lets go as every latch does (D60). ⚠ In a terminal
+  without the keyboard protocol Shift with `1` to `4` arrives as `!` `@` `#` `$` on a US
+  layout and as other characters on others, as Shift with `7` to `9` does (`docs/TERMINAL.md`).
+- **Shift latches write too, as a modifier for copy** (D135 item 2). Its press still flips
+  write mode at once, as write always does; a copy puts write mode back (§21). D60 had play
+  and write ignore the latch.
+- **In tap mode a tap on `p` while pattern is latched holds write down** until the next grid
+  key ends (D135 item 3); otherwise a tap on `p` flips write mode as now.
+- **While pattern is held or latched the grid shows the patterns** (§21): used ones lit, the
+  active one flickering, the chain's stitched, and no playhead, firing or effect light. The
+  terminal's display lists the sixteen patterns by their keys, each marked used, in the
+  chain, playing or waiting (D117 item 2's list, for pattern).
+- **The display** says which pattern plays, the chain's place and the pattern waiting. On the
+  page and in Rack how it is drawn is a stand-in until Kenny rules a look on the canvas.
+- **Rack:** the RESET jack restarts the chain from its first pattern (§21). The menu opens
+  and saves a beat file (`docs/BEAT.md`).
+
 ## Deliberate differences from the hardware
 
 D22 asks for every one to be listed and explained. So far:
@@ -217,7 +266,18 @@ D22 asks for every one to be listed and explained. So far:
 | While bpm is held the grid shows the volume as a row of lit keys | D51: glowing keys can say it; ⚠ what the hardware shows is not known |
 | Probability on a step | not on the hardware; the brief asks for it. It needs a gesture that does not collide with anything above. Open |
 | A length under sixteen | same |
-| One pattern at first | D12: the tiny rhythm machine comes first. Sixteen sounds from the start (D30) |
+| ~~One pattern at first~~ Sixteen patterns, designed 2026-11-27 (D133) | D12: the tiny rhythm machine came first. Sixteen sounds from the start (D30) |
+| A pattern shorter than sixteen steps changes, and moves its chain on, at its own end, not at the grid's bar | D133 item 3: the hardware has no length (O10); on sixteen steps the two are the same, as R90 saw |
+| While pattern is held the chain's patterns carry the stitch ⚠ | Ours (§21's ⚠ open (chain lights)): what the PO-12 shows during a chain is not known (R90) |
+| An empty chosen pattern flickers while pattern is held ⚠ | Ours (§21's ⚠ open (empty flicker)), so a player always sees where they are; not seen on the PO-12 |
+| The flicker is a quarter of a second lit and dark, drawn by each host | The PO-12's rate was not measured; a light of ours is drawn by the host from the view |
+| After a copy, write mode is as it was before write went down ⚠ | Ours: write is a modifier in the copy; what the PO-12 does is not known |
+| With a mouse or the keys, Shift on a grid key keeps pattern latched (a chain), and Shift latches write (a copy) | D135, D23: a mouse is one finger; D60 had write ignore the latch |
+| The terminal's tap mode holds write down after a tap while pattern is latched | D135 item 3: no key-up to hold it with (D117 item 4) |
+| The display says which pattern plays, the chain's place and the one waiting | Ours: a screen can say it; the hardware blinks one LED (R86) |
+| Rack's reset restarts the chain from its first pattern | Rack has a reset jack; the hardware has none |
+| A held repeat across a change to another pattern starts again on the new pattern's first step ⚠ | Ours (§21): the step its key came down on belongs to the old pattern; R53 and R90 are silent |
+| A seventeenth pattern in a chain is ignored ⚠ | R86: "up to 16"; what the PO-12 does with a seventeenth is not known |
 | Our own sixteen sounds, in the same roles on the same keys | D31: synthesised by us, close in character, never sampled. (Since D35 and D50: or a public-domain sample, per key. Still nothing from the hardware) |
 | Each sound has a switch, through the effects or not; the hardware's effects are on everything (R50) | D66 item 4: Kenny's "per channel". All in at the start, so untouched it is the hardware |
 | In Rack the effect being heard goes out as a gate, and the effects' bus goes out and comes back | D68: so a punch can drive, or be, a Rack effect |
