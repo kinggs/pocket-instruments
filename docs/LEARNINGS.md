@@ -1795,3 +1795,11 @@ above; these are what only the chain showed.
 - **A review brief that asks for "undefined behaviour" and probes of overflow can trip
   another provider's filter** and return nothing after twenty minutes. Ask for a read and
   reasons, and say not to run programs; it came back with the best finding of the day.
+
+## 2026-11-27 — three merges in a minute
+
+- **`cancel-in-progress: false` does not keep every run.** GitHub holds one waiting run per
+  concurrency group; a newer run replaces it, cancelled. Merging #117 and #118 seconds apart
+  cancelled main's push run (harmless: the next run rebuilt the root from main) and #117's close
+  run, which left `pr-117/` online. A workflow that queues must make each run repair what an
+  earlier one would have done, not trust every event to get its own run.

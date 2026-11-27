@@ -67,6 +67,19 @@ jobs:
           find site -mindepth 1 -maxdepth 1 ! -name .git ! -name 'pr-*' -exec rm -rf {} +
           git -C src archive origin/main | tar -x -C site
 
+      # GitHub keeps one waiting run per concurrency group: a newer run replaces it, even with
+      # cancel-in-progress off. A replaced close run would leave its preview behind (pr-117 did,
+      # 2026-11-27), so every run removes the preview of any pull request that is not open.
+      # If the list cannot be read, the step fails and nothing is removed.
+      - name: Previews of closed pull requests go
+        run: |
+          open=$(gh pr list -R "$REPO" --state open --limit 1000 --json number --jq '.[].number')
+          for dir in site/pr-*/; do
+            [ -d "$dir" ] || continue
+            n=${dir#site/pr-}; n=${n%/}
+            if ! grep -qx "$n" <<<"$open"; then echo "removing pr-$n"; rm -rf "site/pr-$n"; fi
+          done
+
       - name: This pull request's preview
         if: github.event_name == 'pull_request'
         run: |
