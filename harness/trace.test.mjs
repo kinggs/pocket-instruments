@@ -8,6 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { beatRead, loadBeat } from "./beat.mjs";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const WASM = here("../target/wasm32-unknown-unknown/release/pi_core.wasm");
@@ -249,18 +250,42 @@ test("every fixture gives its trace on both sources, at every rate and block siz
   const m = load();
   const names = readdirSync(FIXTURES).filter((n) => n.endsWith(".json")).sort();
   assert.ok(names.length >= 10);
-  let report = "", runs = 0;
+  let report = "", runs = 0, beats = 0;
   for (const file of names) {
     const fx = JSON.parse(readFileSync(FIXTURES + file, "utf8"));
     const name = file.replace(/\.json$/, "");
     assert.ok([1, 2, 3, 4, 5].includes(fx.format));
     assert.ok(fx.format >= 2 || !fx.views, "views are format 2's to 5's");
-    assert.ok(!fx.beat, "a fixture with a beat file waits for the beat reader (D134)");
     const format = fx.format; // format 3's views carry §17's fields, format 4's §20's too, format 5's §21's
     assert.equal(fx.ticks_per_step, 96);
     // A run's text is its trace, then its views: run() holds each view to its own line.
     const trace = fx.expect.map((l) => l + "\n").join("");
     const wanted = (views) => trace + views.map((v) => v[1] + "\n").join("");
+    // A fixture with a beat file (fixtures/README.md, format 5): read by pib_read from
+    // pi_beat.wasm and loaded before frame 0; no tempo or step-0 edits of the harness's and no
+    // run from a snapshot, since the beat is one. Its bytes go in the report once.
+    if (fx.beat) {
+      const got = beatRead(loadBeat(), readFileSync(FIXTURES + fx.beat));
+      assert.ok(got.snap, `${name}: ${got.msg}`);
+      report += `# ${name} beat ${hex(got.snap)}\n`;
+      for (const [sourceName, source] of SOURCES) {
+        for (const rate of RATES) {
+          for (const block of BLOCKS) {
+            const label = `${name} ${sourceName} ${rate} ${block}`;
+            const e = engine(m, rate, fx.seed + 12345);
+            new Uint8Array(m.pi.memory.buffer, m.base + SNAP, got.snap.length).set(got.snap);
+            assert.equal(m.pi.pi_load(e, m.base + SNAP, got.snap.length), 0, label);
+            const { cmds, end, views } = schedule(fx, rate, source, true);
+            const text = run(m, e, cmds, end, block, null, views, label, 1, format);
+            assert.equal(text, wanted(views), label);
+            report += `# ${label}\n${text}`;
+            runs++;
+          }
+        }
+      }
+      beats++;
+      continue;
+    }
     for (const [sourceName, source] of SOURCES) {
       for (const rate of RATES) {
         for (const block of BLOCKS) {
@@ -298,7 +323,7 @@ test("every fixture gives its trace on both sources, at every rate and block siz
       }
     }
   }
-  assert.equal(runs, names.length * 2 * 3 * 5);
+  assert.equal(runs, (names.length - beats) * 2 * 3 * 5 + beats * 2 * 3 * 3);
   if (process.env.PI_REPORT) writeFileSync(process.env.PI_REPORT, report);
 });
 

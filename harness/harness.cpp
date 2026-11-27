@@ -8,9 +8,15 @@
 //   harness --render <scenario.json> <prefix>   P7: writes <prefix>-<source>-<rate>.f32, the mix,
 //                                               and <...>-16ch.f32 / -17ch.f32 for its "layouts";
 //                                               "delay": 1 lends effect 4 a line (ABI 12)
+//   harness --beat <cases file> <report file>   the beat reader and writer (docs/BEAT.md) on the
+//                                               static library, each case the Rust tests wrote
+//
+// Since issue 140 it links the beat file's static library too (beat/include/pi_beat.h): a
+// fixture with a "beat" starts from its file, read by pib_read.
 //
 // SPDX-License-Identifier: MIT
 #include "fixture.hpp"
+#include "pi_beat.h"
 
 #include <algorithm>
 #include <cstring>
@@ -18,6 +24,29 @@
 #include <filesystem>
 
 // ---- the engine, in memory this program owns ----
+
+static std::string hex(const std::vector<uint8_t> &bytes) {
+    std::string out;
+    for (uint8_t x : bytes) {
+        char two[3];
+        std::snprintf(two, sizeof two, "%02x", x);
+        out += two;
+    }
+    return out;
+}
+
+static std::vector<uint8_t> unhex(const std::string &h) {
+    if (h.size() % 2) die("odd hex");
+    std::vector<uint8_t> out(h.size() / 2);
+    for (size_t i = 0; i < out.size(); i++) out[i] = uint8_t(std::stoul(h.substr(2 * i, 2), nullptr, 16));
+    return out;
+}
+
+static std::vector<uint8_t> read_file(const std::string &path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) die("cannot read " + path);
+    return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+}
 
 struct Host {
     std::vector<uint64_t> mem;
@@ -193,6 +222,90 @@ static int render(const std::string &scenario, const std::string &prefix) {
     return 0;
 }
 
+// ---- the beat file (docs/BEAT.md): the same cases and the same report as the Rust tests ----
+
+// FNV-1a, 32 bits, as core/src/tests/beat.rs hashes a case's bytes for the report.
+static uint32_t fnv(const std::vector<uint8_t> &b) {
+    uint32_t h = 0x811C9DC5u;
+    for (uint8_t x : b) h = (h ^ x) * 0x01000193u;
+    return h;
+}
+
+// pib_read: the snapshot, or the code and the message.
+static int32_t beat_read(const std::vector<uint8_t> &text, std::vector<uint8_t> &snap, uint32_t &own, std::string &msg) {
+    snap.assign(PIB_SNAPSHOT_MAX, 0);
+    uint8_t m[PIB_MSG_MAX];
+    own = 0;
+    int32_t n = pib_read(text.data(), uint32_t(text.size()), snap.data(), uint32_t(snap.size()), &own, m, sizeof m);
+    if (n < 0) {
+        msg = reinterpret_cast<const char *>(m);
+        snap.clear();
+    } else snap.resize(size_t(n));
+    return n;
+}
+
+static std::vector<uint8_t> beat_write(const std::vector<uint8_t> &snap, uint32_t own) {
+    std::vector<uint8_t> text(PIB_TEXT_MAX);
+    int32_t n = pib_write(snap.data(), uint32_t(snap.size()), own, text.data(), uint32_t(text.size()));
+    if (n < 0) die("pib_write refused a snapshot: " + std::to_string(n));
+    text.resize(size_t(n));
+    return text;
+}
+
+// The core as referee: the bytes load, and pi_save gives them back.
+static void core_saves_the_same(const std::vector<uint8_t> &bytes, const std::string &label) {
+    Host h(48000, 99);
+    if (pi_load(h.e, bytes.data(), uint32_t(bytes.size())) != PI_OK) die(label + ": pi_load refused what pib_read gave");
+    std::vector<uint8_t> again(PI_SNAPSHOT_SIZE);
+    again.resize(pi_save(h.e, again.data(), uint32_t(again.size())));
+    if (again != bytes) die(label + ": pi_save gives other bytes");
+}
+
+static int beat(const char *cases, const char *out) {
+    std::ifstream in(cases);
+    if (!in) die("cannot read the beat cases");
+    std::string line, report;
+    int snaps = 0, texts = 0;
+    while (std::getline(in, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        size_t a = line.find(' '), b = line.find(' ', a + 1);
+        if (a == std::string::npos || b == std::string::npos) die("a beat case is not a kind, a label and bytes");
+        std::string kind = line.substr(0, a), label = line.substr(a + 1, b - a - 1);
+        std::vector<uint8_t> bytes = unhex(line.substr(b + 1));
+        char tail[160];
+        if (kind == "snap") {
+            std::vector<uint8_t> text = beat_write(bytes, 0x0101), back;
+            uint32_t own;
+            std::string msg;
+            if (beat_read(text, back, own, msg) < 0) die(label + ": its own text refused: " + msg);
+            if (back != bytes) die(label + ": text and back, other bytes");
+            if (beat_write(back, own) != text) die(label + ": other text again");
+            core_saves_the_same(back, label);
+            std::snprintf(tail, sizeof tail, " snap %zu text %zu %08x back %zu %08x own %u\n", bytes.size(), text.size(), fnv(text), back.size(),
+                          fnv(back), own);
+            report += label + tail;
+            snaps++;
+        } else if (kind == "text") {
+            std::vector<uint8_t> snap;
+            uint32_t own;
+            std::string msg;
+            int32_t n = beat_read(bytes, snap, own, msg);
+            if (n < 0) report += label + " refused " + std::to_string(n) + " " + msg + "\n";
+            else {
+                core_saves_the_same(snap, label);
+                std::vector<uint8_t> text = beat_write(snap, own);
+                std::snprintf(tail, sizeof tail, " read %zu %08x own %u text %zu %08x\n", snap.size(), fnv(snap), own, text.size(), fnv(text));
+                report += label + tail;
+            }
+            texts++;
+        } else die("a beat case of an unknown kind: " + kind);
+    }
+    if (snaps < 50 || texts < 100) die("expected the beat cases");
+    std::ofstream(out, std::ios::binary) << report;
+    std::printf("harness --beat: %d snapshots and %d texts through libpi_beat.a, the core the referee\n", snaps, texts);
+    return 0;
+}
+
 // §16: the weave for each view of fixtures/weave-views.txt, as text: a digit a cell. The Rust
 // tests and the Node harness write the same file, and the Makefile compares the three.
 static int weave(const char *views, const char *out) {
@@ -226,6 +339,7 @@ int main(int argc, char **argv) {
     if (pi_abi_version() != PI_ABI_VERSION) die("the library's ABI is not the header's");
     if (std::string(argv[1]) == "--weave") return argc == 4 ? weave(argv[2], argv[3]) : (die("usage: harness --weave <views file> <report file>"), 1);
     if (std::string(argv[1]) == "--render") return argc == 4 ? render(argv[2], argv[3]) : (die("usage: harness --render <scenario.json> <prefix>"), 1);
+    if (std::string(argv[1]) == "--beat") return argc == 4 ? beat(argv[2], argv[3]) : (die("usage: harness --beat <cases file> <report file>"), 1);
 
     std::vector<std::filesystem::path> files;
     for (auto &entry : std::filesystem::directory_iterator(argv[1]))
@@ -236,7 +350,7 @@ int main(int argc, char **argv) {
     const uint32_t rates[] = {44100, 48000, 96000}, blocks[] = {1, 128, 512};
     const std::pair<const char *, uint32_t> sources[] = {{"table", PI_SOURCE_TABLE}, {"edges", PI_SOURCE_EDGES}};
     std::string report;
-    int runs = 0, failed = 0;
+    int runs = 0, failed = 0, beats = 0;
 
     for (auto &path : files) {
         Json fx = read_fixture(path.string());
@@ -255,6 +369,33 @@ int main(int argc, char **argv) {
             }
             report += "# " + label + "\n" + got + seen;
         };
+
+        // A fixture with a beat file (fixtures/README.md, format 5): read by pib_read and loaded
+        // before frame 0; no tempo or step-0 edits of the harness's and no run from a snapshot,
+        // since the beat is one. Its bytes go in the report once.
+        if (fx.find("beat")) {
+            std::vector<uint8_t> snap;
+            uint32_t own;
+            std::string msg;
+            std::string file = (path.parent_path() / fx.at("beat").str).string();
+            if (beat_read(read_file(file), snap, own, msg) < 0) die(file + ": " + msg);
+            report += "# " + name + " beat " + hex(snap) + "\n";
+            for (auto &[source_name, source] : sources)
+                for (uint32_t rate : rates)
+                    for (uint32_t block : blocks) {
+                        std::vector<Timed> cmds;
+                        std::vector<View> views;
+                        uint64_t end = schedule(fx, rate, source, true, cmds, &views);
+                        Host h(rate, seed + 12345);
+                        if (pi_load(h.e, snap.data(), uint32_t(snap.size())) != PI_OK) die(name + ": pi_load refused its beat");
+                        std::string seen;
+                        bool ok = true;
+                        std::string got = run(h, cmds, end, block, nullptr, &views, &seen, &ok, PI_AUDIO_MIX, format);
+                        check(name + " " + source_name + " " + std::to_string(rate) + " " + std::to_string(block), got, seen, ok);
+                    }
+            beats++;
+            continue;
+        }
 
         for (auto &[source_name, source] : sources) {
             for (uint32_t rate : rates) {
@@ -289,15 +430,6 @@ int main(int argc, char **argv) {
                 std::vector<Timed> cmds;
                 std::vector<View> views;
                 uint64_t end = schedule(fx, rate, source, true, cmds, &views);
-                auto hex = [](const std::vector<uint8_t> &bytes) {
-                    std::string out;
-                    for (uint8_t x : bytes) {
-                        char two[3];
-                        std::snprintf(two, sizeof two, "%02x", x);
-                        out += two;
-                    }
-                    return out;
-                };
                 std::string seen;
                 bool ok = true;
                 std::string got = run(b, cmds, end, 128, nullptr, &views, &seen, &ok, PI_AUDIO_MIX, format);
@@ -350,5 +482,5 @@ int main(int argc, char **argv) {
 
     if (argc > 2) std::ofstream(argv[2], std::ios::binary) << report;
     std::printf("harness: %d runs, %d failed\n", runs, failed);
-    return failed == 0 && runs == int(files.size()) * 2 * 3 * 5 ? 0 : 1;
+    return failed == 0 && runs == (int(files.size()) - beats) * 2 * 3 * 5 + beats * 2 * 3 * 3 ? 0 : 1;
 }
