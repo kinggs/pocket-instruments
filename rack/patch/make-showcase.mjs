@@ -329,10 +329,13 @@ function clock(clocked) {
 // trigger into both RESET inputs makes both start step 1 on the same next edge (§4: an edge
 // within 1 ms of a reset is ignored, by both alike). When the PLAY jack exists, this function
 // and PRESS are what change.
-// TODO(issue 147): Kenny ruled one PLAY input on Rhythm, under RESET (not yet built). Once it
-// lands, this same Push (already beside the LFO) drives both modules' PLAY input instead of
-// RESET, in the mode the design names, and PRESS becomes the one press. Add PLAY to the input
-// list above Rhythm's cables, and drop the RESET cables only if the design says so.
+// TODO(issue 147): Kenny ruled one PLAY input on Rhythm, under RESET: input 6, at the end of the
+// enum. It is not built. Once its build merges, this function becomes: this same Push's GATE
+// (output 1; Fundamental 2.6.4 src/Push.cpp: outputs TRIG 0, GATE 1; params PUSH 0, HOLD 1)
+// into both modules' PLAY (input 6), and no RESET cables. Push's HOLD latches: one press starts
+// both stopped modules from step 1 on the same edge, another stops both. Push saves nothing, so
+// HOLD opens off, as the modules open stopped. PRESS then becomes:
+//   "Press HOLD on the button to start both. Press it again to stop."
 function startTogether(drums, melodic) {
   return {
     modules: [[6, "Fundamental", "Push", F, 25, 0, []]],
