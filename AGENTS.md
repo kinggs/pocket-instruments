@@ -22,6 +22,7 @@ Not affiliated with Teenage Engineering; their names are used only to describe.
 | `term/` | The terminal host (`docs/TERMINAL.md`): its own crate and Cargo workspace, one command, `pocket-instruments`, with a menu of instruments (D125), on the core's static library through the C ABI. Tests in `term/tests/` |
 | `harness/` | The same fixtures through the `.wasm` in Node and through C++ on the static library; the bench, the fuzz, the race harness |
 | `fixtures/` | Test vectors and the traces they must produce. Formats: `fixtures/README.md` |
+| `beats/` | The bank of beats (`docs/BANK.md`; D141, proposed): seven `.beat` files of our own, the Amen Break first, and `bank.txt`, the menu's order. `make test` reads every file; no host offers them yet |
 | `samples/` | The starter drum pack: sixteen CC0 files and their origins |
 | `design/` | The look: `DESIGN.md`, the panel and the script that draws it. The drawings are on [the design canvas](https://claude.ai/artifact/Rswd7LH4BPVAPzA5r1AbxK); the tokens and rules in [Loom, the design system](https://claude.ai/artifact/EzTa2cGzc2duUV25f9Huo1) |
 | `docs/` | The design documents (below) |
@@ -33,6 +34,7 @@ The live backlog is GitHub issues. There is no plan file.
 |---|---|---|
 | `docs/ENGINE.md` | The engine's specification | By a decision; the header and fixtures change with it |
 | `docs/BEAT.md` | The beat file: a beat as text, one to one with the snapshot (D134; designed, not built) | By a decision, with its own version number |
+| `docs/BANK.md` | The bank of beats, and the beat a new player opens on (D141, D142; proposed, not built) | By a decision |
 | `docs/DECISIONS.md` | Every decision and why. The Open table is at its end | Append only. A decision is superseded, not rewritten |
 | `docs/PROOFS.md` | What must be proven, the pass bar, the result | Bar before the run, result after |
 | `docs/REFERENCES.md` | Outside facts, with source and date | Re-check an old entry before leaning on it |
@@ -173,7 +175,9 @@ line tool, and one pattern only.
 
 Both come with the patterns work (D110). ⚠ The issues for it were still being opened when
 this was written: search the issues for "patterns" and for "agent can play". The beat file's
-form is designed (`docs/BEAT.md`, D134), not built: nothing reads it yet.
+form is designed (`docs/BEAT.md`, D134), not built: nothing reads it yet. The agent's command
+is designed, not built (D140; `docs/BEAT.md`, "The agent's command", which also drafts what
+this section will say once it is).
 
 Until then a beat lives in two places only:
 
