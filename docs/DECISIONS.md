@@ -2895,16 +2895,27 @@ they follow is Kenny's ⚠.
 3. The `.vcvplugin` files and CI's artifacts take the slug in their names
    (`pocket-instruments-<version>-<platform>`), as Rack's `plugin.mk` names them.
 
+### D129 — Three ways to write the name, `pocket-instruments` first
+**2026-11-27 · decided (Kenny: "I feel like we could have 'three' ways to Write Pocket Instruments. 'Pocket Instruments', 'pocket-instruments' and PocketInstruments. Since some things will be finicky with dashes and spaces and things. With a 'preferred' one perhaps? I like when things are close to the github names in open source world.") · refines D127 item 3 · nothing renamed**
+
+| Form | Where | Today |
+|---|---|---|
+| `pocket-instruments` | **Preferred**, the repository's own name: any identifier that allows a hyphen | the repository, the command and its package (D125), the data and config folders, the Rack slug (D128), the window's app-id (`org.omarchy.pocket-instruments`) |
+| Pocket Instruments | Prose and display: what a person reads | titles, the README, the Rack plugin's name and brand; lower-case `pocket instruments` where Loom's words are lower-case (the intro page) |
+| `PocketInstruments` | The fall-back where neither a space nor a hyphen is allowed and case is | none today |
+
+A tool that turns the hyphen into its own form does so by its own rule (Rust's `pocket_instruments` for a crate named `pocket-instruments`); that is the preferred form read by that tool, not a fourth name. ⚠ A reverse-DNS ID (a Flatpak's, say), if one is ever needed, is chosen then.
+
 ## Open
 
 | ID | Question | Needs |
 |---|---|---|
 | O1 | ~~What do the front-face drawings of the design patents actually claim?~~ | Answered 2026-11-18: R4, R5, R6. Led to D20 |
 | O2 | Will the VCV Library build or accept a plugin with Rust in it? | Watch Phona (R16a, R16b: not submitted yet, 2026-11-19). **Asked 2026-11-19:** the owner emailed support@vcvrack.com with four questions (can the Library build a Rust part; would prebuilt static libraries do; is macOS 10.12 a problem; is self-hosting the route) and P3's results. ~~No reply yet~~ **Answered 2026-11-23: R46.** The Library will not build it; it takes binary packages from an identity-verified author, by email. 10.12 is fine. Left: whether to ask VCV for the submission details (the owner's) |
-| O3 | Is the name "Pocket Instruments" free, and is it too close to POCKET OPERATOR? | A register search; a decision on a family name. **The name chosen 2026-11-27: D127 item 3.** The register search stays open (issue 45) |
+| O3 | Is the name "Pocket Instruments" free, and is it too close to POCKET OPERATOR? | A register search; a decision on a family name. **The name chosen 2026-11-27: D127 item 3.** A first look found no such mark in WIPO's Global Brand Database (R85); the rest of the search stays open (issue 45) |
 | O4 | ~~How does swing behave on an external clock?~~ | Answered 2026-11-19: D24 |
 | O5 | ~~Saved state: one readable format shared by both hosts, or a versioned binary snapshot each host wraps?~~ | Answered 2026-11-19: D25 |
-| O6 | EU and UK registered designs and marks | A search of EUIPO and UKIPO |
+| O6 | EU and UK registered designs and marks | A search of EUIPO and UKIPO. **Marks, 2026-11-27:** POCKET OPERATOR is registered in the EU (018268254) and the UK (UK00918268254), classes 9 and 35 (R85). Designs not searched |
 | O7 | A lawyer's view of the mockup before public release | P9 |
 | O8 | ~~Answered by D23.~~ The hardware is played with two fingers: hold a function key, press a grid key or turn a knob. A mouse has one pointer. How are combinations made in Rack? Proposed: a click on a function key latches it (it glows) until the next grid press or a second click; computer keys held while hovering also work. The phone browser has real multi-touch and needs neither | Session 1, with D22 in mind; try it at P8 |
 | O11 | ~~On the hardware each grid key is its own sound in play mode (R26, R27). Sixteen tracks from the start, or four and twelve dead keys?~~ | Answered 2026-11-19: D30 |
