@@ -792,6 +792,12 @@ Each fixture's `about` says the same in a sentence. A view of format 1 to 4 has 
 
 ## `beat-amen-break`, worked by hand (2026-11-27; issue 164, D141, D142 proposed; in `designed/` until the hosts read the bank)
 
+**Built (issue 164, the same day):** moved up from `designed/` unchanged, in a commit of its own,
+and passed at its first run in Rust, C++, Node and the terminal host. Since then it is also
+played from each host's own bank: the terminal's first start, the page's first start (`make
+play`, both browsers) and the Rhythm module's self-test on both clocks, from the plugin's
+`res/beats/`.
+
 The bank's default beat, the beat a new player opens on (`docs/BANK.md`). Its `beat` is the
 bank's own file, `../beats/amen-break.beat`, named from `fixtures/` (each harness reads a
 fixture's `beat` beside the fixture), so the fixture and the bank cannot drift: there is no

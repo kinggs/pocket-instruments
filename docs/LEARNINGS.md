@@ -1879,3 +1879,20 @@ above; these are what only the chain showed.
 - **A diagnostic print is code under the sanitizer too.** The first instrumented copy read the
   audio thread's block counter unguarded and ThreadSanitizer reported it, which looked like a
   core race until read.
+
+## 2026-11-27 — the bank on three hosts (issue 164)
+
+- **In a headless Rack, a module's other threads have no `APP`.** `Module::toJson` crashed in
+  `ParamQuantity::toJson` and `Module::onReset` in `ParamQuantity::setImmediateValue` when a
+  self-test thread called them: Rack's context is per thread. Even `dataFromJson`, called while
+  a patch loads, saw `APP` null there. A self-test thread can call only what the module owns:
+  `dataToJson`, `dataFromJson`, and its own part of `onReset` (split out as `initialize()`).
+- **Rack calls `dataFromJson` before `onAdd` when it loads a patch,** for a module whose JSON
+  has `"data"`, even `{}`; a module with no `"data"` gets no `dataFromJson` at all. So a flag
+  set in the constructor and cleared by `dataFromJson` tells a new module from a saved one by
+  the time `onAdd` runs. Seen in the self-test (none of its 48 modules with data was new); the
+  module browser's own order is still to try by hand.
+- **A listener that removes itself while `forEach` walks the array makes the next listener
+  miss that message.** The page's `listeners.forEach` skipped a load's result whenever a
+  check's one-shot listener sat just before it; the bank's list was the first code to load
+  while a check waited on a snapshot. Walk a copy.

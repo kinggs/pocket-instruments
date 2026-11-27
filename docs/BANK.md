@@ -1,8 +1,8 @@
 # The bank of beats, and the beat a new player opens on
 
 **Status:** designed 2026-11-27 for issue 134 (D141, D142), proposed, for Kenny to rule. The
-seven beats are written and committed in `beats/`; no host offers them yet. **Nobody has heard
-them.** Where this file and D141 or D142 differ, the decisions are the record. The
+seven beats are written and committed in `beats/`; ~~no host offers them yet~~ the three hosts
+offer them since issue 164 ("Built", at the end). **Nobody has heard them.** Where this file and D141 or D142 differ, the decisions are the record. The
 builds: issue 164 (the bank and the default on the three hosts), issue 165 (the reference patch).
 
 Kenny, leaving for the weekend: "Really want patterns working well, and want to have a default
@@ -260,3 +260,83 @@ patterns 1 and 2, where today's one bar has it on step 13) and saves the snapsho
 So the patch and the bank cannot drift: the same file, with one lane added and said in a Core
 Notes line. ⚠ Two throws in four bars, not four, is ours for Kenny's ear. The MELODY module
 keeps its one bar: four drum bars under a one-bar melody loop four times.
+
+## Built (issue 164, 2026-11-27): the bank and the default on the three hosts
+
+Built on D141 and D142 **as proposed, not yet ruled by Kenny** (O40). Which beat is the default
+is `beats/bank.txt`'s first line and nothing else: no host, test or check names the Amen as the
+default. A ruling that moves it changes `bank.txt`, and then `fixtures/beat-amen-break.json` must
+name the new first beat (two checks say so: the terminal's and the page's). No file of the
+engine changed; `pi_init` is as it was.
+
+**How the files reach each host,** all read by `pib_read` when a beat is wanted (no snapshot is
+made at build time, so none can fall behind its file):
+
+| Host | Carried | Read |
+|---|---|---|
+| The page | Served beside it: `../beats/` from `web/rhythm.html`. `pages.yml` now copies `beats` into a pull request's preview (main's root already held every file); `make hear` serves the repository's root, so it is there | `fetch` with no cache, then `beatRead` (the page's `pib_read`, issue 141) |
+| Rack | Copied into the plugin as `res/beats/` by `rack/Makefile`'s `PACK`, as `res/samples/` is; `rack/check-dist.sh` holds the `.vcvplugin` to `bank.txt` | The file read with `asset::plugin`, then `Rhythm::openBeat`, the menu's Open (issue 142) |
+| The terminal | Compiled in by `term/build.rs`: every `beats/*.beat` and `bank.txt` with `include_bytes!`, as the files are, as the starter pack is | `beat::from_file`, the path `:e` takes (issue 143) |
+
+**What a player sees** (every look a stand-in ⚠, words only, until Kenny rules one):
+
+| | The page | Rack | The terminal |
+|---|---|---|---|
+| New | No beat in its storage, or storage it cannot read: it opens on the bank's first beat and says "A new beat: Amen Break, from the bank below. Empty is there too." It is stored at once as the player's beat | A module with no data at all, as the module browser adds one: it opens on the bank's first beat | No file at the beat's path (or no path at all): it opens on the bank's first beat and the footer says `a new beat: Amen Break, from the bank (:bank lists it, :new empties)`; written to the path at the next save |
+| Not new: the player's beat, as before | A stored beat of any version, refused or not | A module from a patch, a duplicate, a paste or a preset: it carries data | A file there of any version, read or left alone |
+| Load from the bank | The Beats list in the Beat section of the sheet: each beat's name, from the file | The module's menu, **Beat**: each beat's name | `:bank` lists them on the display, numbered; `:bank <n>` loads the n-th |
+| The replaced beat, kept once | In the storage's second key, `pocket-instruments/rhythm/previous`, and offered as **Your last beat** (a swap: the beat it replaces is kept in its place) | Rack's undo history: Edit, Undo (Ctrl+Z) | `rhythm.previous.beat` beside the beat file (`<name>.previous.beat` beside a `--beat` file); `:e rhythm.previous.beat` opens it |
+| Empty, one gesture | **Empty** in the Beats list | Initialize, unchanged | `:new` |
+| A bank beat that does not read | The default: the page starts empty and says "Started empty: the bank's first beat did not open: …"; in the list, that beat is shown with why and cannot be pressed | The default: the module starts empty and Rack's log says why; in the menu, that beat is a line with why | The default: the instrument starts empty, the footer says why, and the whole line is said again on leaving |
+
+**Rack's way in, as built.** The constructor reads `bank.txt`'s first beat beside the starter
+pack (two small files; the constructor already reads sixteen). `onAdd` opens it through
+`openBeat` and the ordinary queued load, unless `dataFromJson` came first. Read for this
+(Rack SDK 2.6.6, `include/engine/Module.hpp`): `dataFromJson` is "Not called if 'data'
+property is not present"; `onAdd` is "Called after adding the module to the Engine";
+`include/engine/Engine.hpp`: `addModule` "Exclusively locks", so `onAdd` reads no file (the
+text was read in the constructor; `pib_read` and a copy into the inbox are microseconds).
+**Tried in a headless Rack:** a module in a patch with `"data"` (even `{}`) has `dataFromJson`
+called before `onAdd`, so it is not new (selftest.sh: every one of its modules with data, and
+it has 48, is not new; the two with no `"data"` are). ⚠ **Not tried:** a module added from the
+browser by hand (Rack draws nothing headless), a duplicate, a paste and a preset. A duplicate,
+paste and preset carry `"data"` with a snapshot; if Rack called `onAdd` before their
+`dataFromJson`, the saved beat is queued after the default and the last load wins. ⚠ A user's
+own default preset (Rack's "Save default") with no snapshot in its data would leave a new
+module on the default: such a preset is written by `dataToJson`, which always writes the beat
+once the module has run.
+
+**Undo in Rack.** A bank load pushes a `history::ModuleChange` whose old JSON carries the
+module's data from before the load (`loadFromBank` takes it). Rack's undo gives it to the
+widget's `fromJson`, and so to `dataFromJson`, which queues the old snapshot. ⚠ The self-test
+does what that reaches (`dataFromJson` of the kept data, on another thread: `Module::toJson`
+and `fromJson` need Rack's UI thread, since a `ParamQuantity` reads `APP`); the menu's own
+Ctrl+Z is for Kenny to try.
+
+**Empty on the page and in the terminal** is the text `pocket-instruments beat 1` alone, every
+line at its default (`docs/BEAT.md`, "The form"), read by `pib_read`: the terminal's tests and
+`make play` hold it to the core's own `pi_init` save (seed 1, as each host's), byte for byte.
+
+**Every test still starts empty.** The default is loaded only on a host's start-up path for a
+person: the core's tests, the C++, Node and race harnesses, the bench and the fuzz never reach
+one; under `?auto` the page opens on the bank only in the three checks of a person's start
+(`first`, `kept`, `badbank`), and `make play` fails if any other phase does; Rack's self-test
+modules carry data, and the self-test fails if any of them is new; the terminal's tests build
+their engines directly, and its start-up test points `--beat` at a missing file in a scratch
+folder. `target/report-rust.txt` and every `target/render-*.f32` are the same bytes as before
+the first change but for `beat-amen-break`'s own runs (the pull request has the comparison).
+
+**⚠ Readings the build made where D141 and D142 are silent:**
+
+1. **Empty and `:new` keep the beat they replace,** as a bank load does (Rack's Initialize is
+   in Rack's undo history too). D142 says only "an empty instrument in one gesture".
+2. **A load from the Beats list does not ask first,** as Open does: the replaced beat is kept,
+   one press brings it back.
+3. **Your last beat is a swap:** loading it keeps the beat it replaces in its place.
+4. **The terminal with no beat path at all** (no `$HOME`, no `--beat`) opens on the default and
+   saves nowhere, as it saved nowhere before. `:bank <n>` and `:new` then refuse: there is
+   nowhere to keep the replaced beat.
+5. **A terminal load whose replaced beat cannot be written** to `rhythm.previous.beat` loads
+   nothing and says why.
+6. **The config file names no other default:** this file does not say it may.
+7. **`:bank` shows the list over the display,** as `?` shows the keys; esc closes.

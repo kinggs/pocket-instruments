@@ -455,3 +455,33 @@ of this document (a version 4 snapshot, binary) is superseded as D136 item 8 rul
 ⚠ For Kenny: a `rhythm.beat` edited by hand is written back in canonical form at the next
 save, at quit included, so its comments and spacing go (`docs/BEAT.md`: "written back
 canonical"); the note said for an old binary file is a stand-in's words.
+
+## Built (issue 164, 2026-11-27): the bank, and a new player's first beat
+
+On D141 and D142, **proposed, not yet ruled by Kenny** (`docs/BANK.md`, "Built (issue 164)").
+The words are the build's ⚠, for Kenny to rule.
+
+- **The bank is compiled in** (`term/build.rs`): every `beats/*.beat` and `beats/bank.txt`, as
+  the files are; `term/src/bank.rs` reads a beat with `beat::from_file`, the path `:e` takes.
+- **A first start:** with no file at the beat's path (`rhythm.beat`, or `--beat FILE`), the
+  instrument opens on `bank.txt`'s first beat and the footer says `a new beat: Amen Break, from
+  the bank (:bank lists it, :new empties)`. It is written to the path at the next save, as any
+  beat. **A file there always wins,** whatever its version and whether it reads: a refused one is
+  left alone and the instrument starts empty, as before. The config file names no other default.
+- **`:bank`** lists the bank over the display, numbered, with the beat's name from its file;
+  esc closes. **`:bank <n>`** loads the n-th. **`:new`** loads the empty beat (the text
+  `pocket-instruments beat 1` alone, which is `pi_init`'s beat). Each first writes the beat it
+  replaces to **`rhythm.previous.beat`** beside the beat file (`<name>.previous.beat` beside a
+  `--beat` file), once: the next load writes over it. The footer says
+  `Amen Break; the last beat kept: :e rhythm.previous.beat`. If it cannot be written, nothing
+  is loaded. With no beat path at all there is nowhere to keep it, and both refuse.
+- **A bank beat that does not read** leaves the instrument empty and says why; the whole line
+  is said again on the terminal after leaving.
+- `--help`'s last line names `bank [N]` and `new`.
+
+| Check | Result |
+|---|---|
+| `term/tests/bank.rs`, 6 tests | The bank compiled in is `beats/` byte for byte, every beat reads; the empty text is `Engine::new(48000, 1).save()`; `--beat` at a missing file in a scratch folder opens on `pib_read` of `bank.txt`'s first file, byte for byte, and writes nothing; a text beat, a version 4 binary one and three refused files there each win over the default (the refused left alone, byte for byte); a broken bank beat, a missing file, an empty list: empty, and why; on a host started as main.rs starts one (`--audio none`), `:bank 1` keeps the player's beat as its own text and loads the default, `:e` of the kept file brings it back, `:bank 3` and `:new` each keep what they replace, `:new` is `pi_init`'s beat, and a previous file that cannot be written loads nothing |
+| `term/tests/fixtures.rs`, `a_first_start_with_no_beat_file_plays_beat_amen_break` | The start-up's snapshot plays `fixtures/beat-amen-break.json`'s trace and views on both sources, on an engine with the host's seed; the fixture must name `bank.txt`'s first file |
+| `term/tests/keys.rs`, `colon_bank_bank_n_and_new`; `term/tests/screens.rs`, `the_bank_s_list_opens_over_the_instrument_at_both_sizes` | The words, and the list drawn at 80 by 24 and 48 by 10 |
+| P2 through the host | `beat-amen-break` among the fixtures, 18 runs; the report the same bytes as the other three |
