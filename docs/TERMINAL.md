@@ -171,7 +171,7 @@ The shared map, as on the page and in Rack (D28, D116, D119 item 3), and the ste
 | `7` `8` `9` | sound, pattern, bpm |
 | `u` `i` `o` `p` | function, fx, play, write |
 | Shift + a function key | latch it |
-| `t` `g`, `y` `h` | slider A, B up and down: 4096 from where the hand left it |
+| `t` `g`, `y` `h` | slider A, B up and down: 1024 (a 64th) from where the hand left it; with bpm held, one swing step (A) or one bpm (B), still as a slider move (D126). A held key repeats |
 | `space` | play, stop |
 | `,` `.` | tempo down, up: 1 bpm, 60 to 240 |
 | `<` `>` | swing less, more: 1, 0 to 48 |
