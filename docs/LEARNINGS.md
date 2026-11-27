@@ -1826,3 +1826,22 @@ above; these are what only the chain showed.
 - **A struct twenty times larger changed a per-call cost the bench sees, and not by layout
   alone.** One frame a call costs 1.7 and 3.5 ns more; putting the bank last changed nothing
   and putting its small fields first made it worse. Measured, written down, not explained.
+
+## 2026-11-27 — patterns in Rack (issue 142)
+
+- **A save throttle needs a way out for the save that matters.** Four saves a second is easy;
+  a patch written inside the quarter second after the last move would have held the move
+  before it. `dataToJson` now asks the audio thread for the save it owes and waits a frame. The
+  self-test that proves it stops a drag and saves the patch at once from a second thread, as
+  Rack would; with the ask planted out, 37 of 40 patch saves missed the last move.
+- **`make` does not rebuild when only a flag changes.** `PI_FACE_SHOT=4` after `=3` gave the
+  same picture twice. Delete `rack/build/src/Rhythm.cpp.o` between face builds.
+- **A generator's fix read off the memory map alone was half a fix.** Moving
+  `make-showcase.mjs`'s buffers past the 32 KiB engine was right, and its first read-back check
+  then refused the beat: it read version 4's offsets from a version 5 snapshot. Run a generator
+  after any change to the core it calls, even when its output is not to be committed.
+- **Issue 59's symptom, seen more often under load.** With twelve more modules, several runs
+  while other work loaded the machine had every module meant for an LFO's edges report "on the
+  table" with "1 cut short", and the loop modules report a layout their cables do not need,
+  after they had started on those cables. A clean run shows "0 cut short" there. ⚠ A reading:
+  the cables were seen and later lost, not never seen. Not chased (issue 59).

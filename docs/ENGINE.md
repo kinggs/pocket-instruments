@@ -3439,3 +3439,24 @@ which and why ⚠ (for Kenny: the row stands; that sentence is what was wrong).
   the frame of a change (an early edge's flush) plays what its own pattern keeps, not the new
   one's. A next chain is "playing" by `PLAY` (between play and the first step it is a next
   chain, and lands on that step).
+
+**Built in Rack (issue 142, 2026-11-27).** `rack/src/Rhythm.cpp` sends the keys and holds no
+rule of its own (D51). While held bit 17 is set or the module holds pattern latched it draws
+field, stitch, bar and pressed and no frame, core or twill, and flickers the active pattern's
+key from when pattern went down, a quarter of a second lit, then dark, used or not (both ⚠
+open lines at their defaults; `pi::keyLights`, `rack/test/jacks.cpp`). The display's stand-in:
+`pattern 3` under the tempo, `2/4` at its right while a chain of more than one runs, `→ 5` at
+the right of the `fx` block's row while one waits (`pi::patternText`). D135 by a mouse and the
+keys: Shift on a grid key keeps pattern's latch, Shift latches write. RESET restarts the chain
+(the core's; `rack/selftest.sh`'s "reset" case, the module's own TRIGGERS into its own RESET).
+**Saving while playing:** at most one save a quarter second while the generation moves, the
+last move always (`pi::SaveGate`); and so that a patch saved inside that quarter second holds
+the last move, `dataToJson` asks the audio thread for a save when one is owed and waits for its
+next frame, 50 ms at most. Measured with `perf` on a headless Rack at 48 kHz, eight modules with
+sixteen patterns each and slider A moved every 16th frame: before, `pi_save` was 97% of the
+samples and the engine fell to about 38% of real time (1 150 saves a second a module of the 3 000
+asked for); after, 97 saves a module in 25 s, `pi_save` 15% of a run of 14 000 samples, the
+engine in real time. Stopped, with nothing moving, `Rhythm::process` is within the spread of two
+runs before and after. ⚠ Readings built on: only pattern keeps its latch on a Shifted grid key
+(D135 item 1 names it alone); a request that finds the engine stopped writes the last save made.
+The beat file's open and save wait on the `beat/` crate (issue 140).
