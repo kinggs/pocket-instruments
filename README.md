@@ -34,7 +34,7 @@ are unsigned. To install one:
    `plugins-mac-arm64` or `plugins-mac-x64`). VCV's manual:
    [Installing](https://vcvrack.com/manual/Installing).
 3. Restart Rack. It unpacks and loads the plugin when it starts.
-4. Open `Showcase.vcv` in Rack. Its note says what to press: PLAY on each Rhythm module, then RESET.
+4. Open `Showcase.vcv` in Rack and press HOLD on the button beside the LFO: both Rhythm modules play.
 
 ⚠ Not yet tried on a Mac: macOS may refuse an unsigned download
 ([issue 83](https://github.com/kinggs/pocket-instruments/issues/83)). Each file has a build
@@ -231,16 +231,17 @@ The reference patch (`rack/patch/showcase.json`, written by `rack/patch/make-sho
 `Showcase.vcv` in each pre-release) uses only Rack's own modules, Core and Fundamental. It has
 two Rhythm modules on one clock: DRUMS and MELODY.
 
-**To start them in step** ⚠ (two modules have two play keys; a PLAY jack is being designed in
-issue 147): press PLAY on DRUMS, then PLAY on MELODY, then the RESET button beside the LFO.
-Both start bar one on the next clock edge. Press RESET again if they ever drift apart.
+**To start them in step,** press HOLD on the button beside the LFO (Fundamental's Push). Its
+gate goes into both modules' PLAY in, so both start bar one on the next clock edge; press it
+again and both stop. Each module's own play key still plays that module alone. The rule for
+PLAY in (a gate plays while high, a short trigger toggles) is D138's, proposed (O39) ⚠.
 
 The drums are one bar: the first bar of the Amen break written out on Rhythm's own sounds (no
 recording of the record). The four-bar version follows once the instrument holds more than one
 pattern. The rows, each left to right in signal order:
 
 - **Drums and out.** A note. **LFO:** the clock, one edge a step at 136 bpm, into both
-  modules' CLOCK and both Delays. **Push:** RESET to both modules. **Rhythm (DRUMS):** kick
+  modules' CLOCK and both Delays. **Push:** its gate into both modules' PLAY in. **Rhythm (DRUMS):** kick
   and snare on their samples, hats in code; the ghost snares written short. **Split** and
   **Delay:** effect 4 (below). **VCA Mix:** a fader for each module. **Audio 2:** the mix to
   both ears. Choose your device on it.
