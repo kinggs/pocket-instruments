@@ -227,10 +227,29 @@ make -C rack install RACK_DIR=/path/to/Rack-SDK   # builds the core and the plug
 make -C rack showcase RACK_DIR=/path/to/Rack-SDK  # rack/build/Showcase.vcv: the reference patch
 ```
 
-The reference patch (`rack/patch/showcase.json`, written by `rack/patch/make-showcase.mjs`)
-uses only Rack's own modules: Rack's kick in place of sound 1, a swept VCF as effect 7, an LFO
-on slider A, and a delay on the output. Open it in Rack and press play. It is the patch the
-README's picture shows, and a quick way to try every jack.
+The reference patch (`rack/patch/showcase.json`, written by `rack/patch/make-showcase.mjs`;
+`Showcase.vcv` in each pre-release) uses only Rack's own modules, Core and Fundamental. Open
+it in Rack and press play on the Rhythm module. The beat is one bar: the Amen break's first
+bar written out on Rhythm's own sounds (no recording of the record). A chained version
+follows once the instrument holds more than one pattern. Left to right, in signal order:
+
+- **Notes** (Core): what the patch does, in a few lines. Two more notes head the rows below.
+- **Rhythm:** the drums. The kick plays its sample inside Rhythm, not its code voice
+  (right-click, Sounds).
+- **Audio 2** (Core): AUDIO to your sound card. Choose the device on it.
+- **Split** (SOUNDS TRIG): sound 15's trigger is the only clock of the voice.
+- **Random:** a new voltage on each of those triggers.
+- **8vert:** scales it to ±1 V, two octaves.
+- **Quantizer:** holds it to a minor scale (A minor, with the VCO's tuning).
+- **VCO:** the saw.
+- **Split** (SLIDER A OUT) and **VCF:** slider A moves the cutoff.
+- **ADSR** and **VCA-1:** a pluck, on the same trigger.
+- **Split** (SLIDER B OUT) and **Delay:** slider B sets the echo's mix and feedback.
+- **Merge:** the voice back into SOUNDS IN on channel 15. Rhythm plays it as sound 15, once,
+  and its effects reach it.
+
+Moving a slider sets it for all sixteen sounds (`docs/ENGINE.md` §20). The voice follows on
+sound 15's next hit.
 
 To play the page from a clone, run `make hear` and open
 `http://127.0.0.1:8417/web/rhythm.html`. Any static file server on the repository root works
