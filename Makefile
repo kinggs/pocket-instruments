@@ -251,9 +251,11 @@ hear:
 # The phone page (web/rhythm.html) in the same two browsers: keys entered by pointer events,
 # the worklet's trace and views held to the format 2 fixtures, every drawing held to its
 # view, a reload, and P6's browser half (web/play.mjs says the bar). About twenty seconds a
-# browser. Needs `make test` first, for the Node report.
+# browser. Needs `make test` first, for the Node report. Then web/hit.mjs (issue 150): the page
+# at 390 by 844 in Chromium, every key, function key and slider pressed by position (D139).
 play:
 	node web/play.mjs $(REPORT)-node.txt
+	node web/hit.mjs
 
 # The terminal host (docs/TERMINAL.md, D123): its own crate and workspace in term/, linked to the
 # static library just built and checked. `make term` writes term/target/release/pocket-instruments (D125).

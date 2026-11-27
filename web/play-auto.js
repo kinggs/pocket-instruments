@@ -128,8 +128,9 @@ function cloth(v) {
 }
 
 // Where a slider's cap sits for a value, from the track's height (design/DESIGN.md: the cap
-// is 26 px tall and travels the rest).
-const topFor = (which, value) => (1 - value / 65535) * Math.max(0, r.sliders[which].querySelector(".tr").clientHeight - 26);
+// is 44 px tall since D139, 26 until then, and travels the rest).
+const CAP = 44;
+const topFor = (which, value) => (1 - value / 65535) * Math.max(0, r.sliders[which].querySelector(".tr").clientHeight - CAP);
 let capWant = null; // where the hand is, when a phase moves it apart from the chosen sound's own
 
 // Every drawing is read back off the face and held to the view it was drawn from. This reads
@@ -184,7 +185,7 @@ r.afterDraw = (v) => {
   // moved by the hand is ahead of the view until then.
   for (const which of [0, 1]) {
     const key = which ? "b" : "a";
-    want[`hit ${key}`] = topFor(which, u16(v, 60 + 2 * which)) + 12;
+    want[`hit ${key}`] = topFor(which, u16(v, 60 + 2 * which)) + CAP / 2 - 1; // the 2 px mark's middle on the cap's (+12 at 26 px)
     got[`hit ${key}`] = parseFloat(r.sliders[which].querySelector(".hit").style.top);
     if (r.latest.taken >= r.sent) {
       const hand = !(u32(v, 8) & (1 << 18)) && capWant ? capWant[which] : u16(v, 20 + 2 * which);
