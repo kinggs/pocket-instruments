@@ -38,9 +38,7 @@ kitty, Ghostty, WezTerm) keys are held as on the hardware; elsewhere, tmux inclu
 I love, love Teenage Engineering's pocket operators. This project is completely inspired by
 them.
 
-At the same time, I love modular synths. And you can never get a module to take over a voice,
-or do the processing for something, on a pocket operator. Unless... you build an open and free
-module that does it, in VCV Rack. Then suddenly you get:
+At the same time, I love the freedom of modular synths. So I wanted both. Then suddenly you get:
 
 - **A full drum machine in your rack.** Sixteen sounds, each synthesised in code or played from
   a sample, sixteen steps, punch-in effects, the pocket operator's own way of playing.
@@ -49,7 +47,7 @@ module that does it, in VCV Rack. Then suddenly you get:
   your favourite oscillator, put a Rack filter where an effect was, drive the sliders from an
   LFO. Extend it and change it until it is yours.
 - **And not only in Rack.** One Rust engine plays the same bits everywhere, so you can also
-  have fun with it on a phone, in a browser, and in a Linux terminal.
+  have fun with it on a phone, in a browser, and in a Linux terminal / TUI.
 - **A place to learn and practise.** The workflow stays close to the hardware: the same keys,
   the same combinations, the same order of doing things. What you learn here carries straight
   over to the real thing.
