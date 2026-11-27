@@ -176,7 +176,8 @@ function judge(phases) {
   if (!(L.shiftKeys?.held === 1 << 16 && L.shiftKeys?.sel === 4 && L.shiftKeys?.after === 0 && L.shiftKeys?.lit === false)) bad.push(`D113: Shift+7 q: ${JSON.stringify(L.shiftKeys)}`);
   if (!(L.dblA === 32768 && L.dblBpm?.swing === 0 && L.dblBpm?.tempo === 120000)) bad.push(`double-click: A ${L.dblA}; with bpm ${JSON.stringify(L.dblBpm)}`);
   const K = p.keep?.keep || {};
-  const keepOk = K.size === 1464 && K.loadedCap === true && K.chosen?.a === 60000 && K.chosen?.mark === 60000 &&
+  // ABI 16 (§21): version 5 with one pattern written, 276 + 1364 (version 4's 1464 until then).
+  const keepOk = K.size === 1640 && K.loadedCap === true && K.chosen?.a === 60000 && K.chosen?.mark === 60000 &&
     K.chosen?.capStayed === true && K.marks?.join() === "20000,60000" && K.kept?.keep === 0b10001 &&
     K.kept?.step1?.join() === "60000,32768" && K.kept?.step5?.join() === "20000,32768";
   if (!keepOk) bad.push(`§20, the hand and what a step keeps: ${JSON.stringify(K)}`);

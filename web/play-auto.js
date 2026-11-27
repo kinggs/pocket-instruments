@@ -567,7 +567,20 @@ async function phaseKeep() {
   r.post({ save: true });
   const now = new Uint8Array((await saved).snapshot);
   K.size = now.length;
-  const v3 = now.slice(0, 408), d = new DataView(v3.buffer);
+  // Since ABI 16 the page saves version 5 (ENGINE.md §21): its fields laid out as version 3
+  // had them, pattern 1's from its block if it is written (a cleared pattern otherwise).
+  // Until then version 4's first 408 bytes were taken as they were.
+  const v3 = new Uint8Array(408), d = new DataView(v3.buffer), n5 = new DataView(now.buffer);
+  v3.set(now.subarray(0, 20));                                   // magic, kind, seed, tempo
+  const p1 = n5.getUint16(92, true) & 1 ? now.subarray(272, 272 + 1364) : null;
+  v3[20] = p1 ? p1[1360] : 16;                                   // length
+  v3[21] = now[20];                                              // swing
+  v3.fill(100, 56, 312);                                         // probabilities
+  if (p1) v3.set(p1.subarray(32, 288), 56);
+  d.setUint16(376, n5.getUint16(88, true), true);                // sampled
+  v3[378] = now[21];                                             // volume
+  if (p1) v3.set(p1.subarray(288, 304), 384);                    // the lane
+  d.setUint16(400, n5.getUint16(90, true), true);                // fx sounds
   d.setUint16(4, 3, true);
   d.setUint32(8, 392, true);
   for (let t = 0; t < 16; t++) d.setUint16(24 + 2 * t, 0, true); // no steps but one
@@ -604,8 +617,11 @@ async function phaseKeep() {
   const after = next("snapshot");
   r.post({ save: true });
   const s = new DataView((await after).snapshot);
-  K.kept = { keep: s.getUint16(404 + 2, true), step1: [s.getUint16(436 + 4 * 16, true), s.getUint16(438 + 4 * 16, true)],
-    step5: [s.getUint16(436 + 4 * 20, true), s.getUint16(438 + 4 * 20, true)] };
+  // Version 5 (§21): pattern 1's block at 272, its keeps at 304 in it and the values at 336
+  // (version 4's 404 and 436 until ABI 16).
+  const P = 272;
+  K.kept = { keep: s.getUint16(P + 304 + 2, true), step1: [s.getUint16(P + 336 + 4 * 16, true), s.getUint16(P + 338 + 4 * 16, true)],
+    step5: [s.getUint16(P + 336 + 4 * 20, true), s.getUint16(P + 338 + 4 * 20, true)] };
 }
 
 // Run steps as the views show them while playing: one more each time the playhead moves,
