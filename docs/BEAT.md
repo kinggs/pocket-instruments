@@ -293,3 +293,131 @@ finds its offsets.
   10. `pib_write` refuses any snapshot the core would not write (a field outside its range, a
       cleared pattern written, bytes after a chain's length, a value kept where nothing is):
       so whatever it writes reads back to the same bytes.
+
+## The agent's command (designed 2026-11-27, D140; proposed, for Kenny to rule; not built)
+
+Issue 6: "a small command checks a beat file, renders it to sound, and makes a link or a Rack
+paste". Nothing below is built; the build is issue 163. Where this section and D140 differ,
+D140 is the record. The bank of beats it is proved on is `docs/BANK.md`.
+
+**What it is: `node beat/beat.mjs`, one Node script over the two committed `.wasm` files**
+(`web/pi_core.wasm` and `web/pi_beat.wasm`). An agent with only the repository needs Node and
+nothing else: no Rust, no C++ compiler, no ALSA headers, no build. The bits are the native
+ones: `make test` already holds the `.wasm` to the same report as the static library (P2), and
+fails if a committed copy is stale. `--built` takes the copies `make build` just wrote in
+`target/` instead. It reuses the Node harness rather than repeating it: the module loading and
+the beat calls of `harness/beat.mjs`, and the starter pack, effect 4's line and the render loop
+of `harness/trace.test.mjs`, moved into one module that both import (no byte of any report
+moves). One instrument, one script: nothing generic.
+
+```
+node beat/beat.mjs check <file.beat>...
+node beat/beat.mjs render <file.beat> [-o <out.wav>] [--rate 44100|48000|96000] [--times <n>] [--trace]
+node beat/beat.mjs pack <file.beat> [-o <out.beat>]
+```
+
+| Exit | Means |
+|---|---|
+| 0 | every file read by `pib_read` and loaded by `pi_load` (and, for `render` and `pack`, written) |
+| 1 | a file is refused: by `pib_read` (its message), or by `pi_load` (its code) |
+| 2 | the command misused, a file that cannot be read or written, or `--link` (issue 7, not built) |
+
+**check** reads each file with `pib_read`, loads the snapshot into a fresh engine (`pi_init`,
+then `pi_load`) and saves it again with `pi_save`. One line a file, on standard output:
+
+```
+beats/amen-break.beat: ok. "Amen Break", 136 bpm, chain 1 2 3 4: 4 bars, 7.059 s; patterns 1 2 3 4; snapshot 5 732 bytes
+mine.beat: line 14, column 12: <the crate's message, as pib_read wrote it>
+```
+
+A file that reads but is not in canonical form adds `(not canonical: pack writes it so)` and
+still exits 0. A file with `own` keys adds the hosts' words: `key 9 used its writer's own
+sample; playing the starter pack's`.
+
+**render** plays the beat once through its chain and writes a WAV, by default
+`target/beat/<file name>.wav`:
+
+- **Format: WAV, 32-bit IEEE float, mono, 48 000 Hz.** The engine renders 32-bit floats
+  (`PI_AUDIO_MIX`), and a float WAV holds them bit for bit: its data is the same bytes as a
+  harness `.f32`, with no dither or rounding to choose, and audio players and editors open it.
+  `--rate` takes the harness's other two rates.
+- **What plays:** the starter pack on every key (a `sample` key plays its sample, as on every
+  host), effect 4 lent its line (`pi_set_delay`), the table clock, `PLAY 1` on frame 0.
+- **The length:** from step 1 of the chain's first pattern to the step where the chain would
+  start over: the sum, over the chain's entries, of each pattern's length times a step
+  (60 / tempo / 4 seconds). `--times <n>` plays the chain *n* times (1 to 16). Swing moves no
+  step past that end.
+- **The tail:** then `PLAY 0`, and the render runs on until half a second in a row stays under
+  −80 dBFS (1e-4, where a voice is cut to zeros, `ENGINE.md` §11), at most 4 s (a cymbal rings
+  at most 1.2 s; effect 4's echo is what the cap is for).
+- **What it prints,** so a beat can be read without ears: the file written, its length (chain
+  and tail), the peak, and every bar of the pass as a sixteen-step grid per sound, from the
+  trace (`x` a firing; a digit where an effect's repeat fired that many times, against the step
+  its run began on, `ENGINE.md` §17):
+
+  ```
+  target/beat/amen-break.wav: 48 000 Hz, mono, 32-bit float; 7.059 s of chain, 0.989 s of tail; peak 0.819 (-1.7 dBFS)
+  bar 1 (pattern 1)
+     1 kick     |x.x.|....|..xx|....|
+     2 snare    |....|x..x|.x..|x..x|
+     3 hat      |x.x.|x.x.|x.x.|x.x.|
+  ```
+
+  `--trace` prints the trace's lines instead, in the fixtures' form (`0 trig 0 0`), so an agent
+  can make a fixture of what it rendered.
+
+**pack** writes the beat in canonical form (`pib_read`, then `pib_write`) to standard output,
+or to `-o`. That one text is everything the command hands on:
+
+- **To the link (issue 7):** the canonical text, as UTF-8 bytes, after a check passes. Issue 7
+  designs the link's form; until it is built, `--link` exits 2 and says so.
+- **To Rack:** the `.beat` file itself, which the Rhythm module's beat menu opens (issue 142),
+  as the page's Open does (issue 141) and the terminal's `:e` (issue 143). One file, three
+  hosts. Not a `.vcv` patch (D140 item 4 says why).
+
+**In CI** (`make test`, so `.github/workflows/test.yml` runs it): `check` on every `.beat` in
+`fixtures/` and `beats/` exits 0; `check` on a refused text kept inside the test (not a `.beat`
+in either folder: the core's tests read every one of those and require it to pass) exits 1
+with the crate's message, byte for byte; `render --trace fixtures/beat-four-and-a-fill.beat
+--times 2` gives the first 80 steps of `fixtures/beat-four-and-a-fill.json`'s trace, worked by
+hand long before; `render` on every bank file exits 0 with a peak under 1, a WAV whose length
+is the chain's plus a tail, and the same WAV bytes from the committed `.wasm` as with
+`--built`; `pack` on every bank file gives the file back unchanged.
+
+### What `AGENTS.md`'s "Playing the instrument" will say once built (a draft; not in AGENTS.md yet)
+
+> ## Playing the instrument
+>
+> A beat is a text file, `docs/BEAT.md` ("The form"): sixteen patterns of sixteen steps, a
+> chain, the tempo, each sound's sliders. Keys: 1 kick, 2 snare, 3 hat, 4 open hat, 5 synth
+> snare, 6 sticks, 7 cymbal, 8 noise, 9 clap, 10 click, 11 low tom, 12 high tom, 13 cowbell,
+> 14 blip, 15 tone, 16 bass (`docs/VOICES.md`). There is no velocity: a quieter hit is a
+> shorter one (slider B), kept on its step with a `value` letter. Start from the bank in
+> `beats/` (`docs/BANK.md`).
+>
+> ```
+> node beat/beat.mjs check my.beat             # what is wrong, with line and column; exit 1 if refused
+> node beat/beat.mjs render my.beat            # target/beat/my.wav, and every bar printed as a grid
+> node beat/beat.mjs pack my.beat -o my.beat   # canonical form: the file the page, Rack and the terminal open
+> ```
+>
+> Read the grid `render` prints against what you meant before you say it is done; nobody has
+> heard it until a person does. Write no pattern of Teenage Engineering's (none a unit ships
+> with, D137), none from Pocket Operations (O29) and none from a pattern book or product.
+> Never write over a player's saved beat (the terminal's `rhythm.beat`, a page's storage, a
+> patch) unasked.
+
+**The acceptance example,** "Please create a 4-pattern Amen Break on my pocket instrument
+rhythm": the agent reads that section and "The form", writes `amen.beat` (four patterns, chain
+`1 2 3 4`, from the break's commonly described structure, or starting from
+`beats/amen-break.beat`), then runs:
+
+```
+node beat/beat.mjs check amen.beat
+node beat/beat.mjs render amen.beat          # reads the four grids against the structure it meant; fixes and runs again
+node beat/beat.mjs pack amen.beat -o amen.beat
+```
+
+It answers with the file, the WAV's path and the four grids, and how to open the file: on the
+page (Open), in Rack (the module's menu, Beat, Open) or in the terminal (`:e amen.beat`). Into
+the terminal's own saved beat only if the player says so, keeping the old one beside it.
