@@ -52,6 +52,8 @@ Kenny's brief for it: dark, high contrast, easy to read with weak eyes.
 | `rack-weave-busy-100.png`, `-200.png` | The third bar of a busier pattern, write on, four sounds on this step: the cloth has scrolled, so three woven beats and the one on the loom. Diamonds for four, three and one step set (madder round ochre round ecru; the same a size smaller; a small ecru one), then half of the next meeting the beater at its widest, four cells; the shuttle on its way back up, its thread below it. ⚠ The half diamond's ochre runs into the ochre beater: one of the things to judge |
 | `rack-weave-stopped-200.png` | Stopped after seven steps: the cloth as it was left, the beater back to one cell, the shuttle at the top with no thread, `step --` |
 | `phone-weave-step13.png` | The phone page's display at three device pixels a CSS pixel (a headless browser, the view filled by hand): the same moment as `rack-weave-step13`, to compare the two hosts' painting of the same cells |
+| `play-jack-options.png` | Issue 147 (D138): the top of the panel today and with a PLAY jack in three places, drawn by `make_panel.py` with the sockets and keys sketched over it (not Rack's own drawing), as put to Kenny. 1: PLAY in under RESET, nothing moved; 2: in only, the column spaced; 3, then recommended: PLAY in under RESET and PLAY out under AUDIO. Each passes `--check`. **Kenny chose 2, with the column moved up a little** (`play-jack-ruled.png`) |
+| `play-jack-ruled.png` | The same drawing, today beside what Kenny ruled (D138 item 3): PLAY in only, CLOCK at y 13.15, RESET 25.95, PLAY 38.75 |
 
 The four `rack-face-*` pairs above were taken before the weave and show its area dark; they
 were not taken again.
@@ -473,6 +475,15 @@ lower row, y 116.3 (triggers and sound):
   two outputs on the dark body, against R33, so it went.
 
 ### Layout B: one row of jacks, at 27 HP (D114, D119; 2026-11-26; built in issue 101)
+
+**Ruled 2026-11-27 (D138 item 3, issue 147): PLAY in under RESET, the column moved up a
+little.** PLAY in at (9.5, 38.75) mm, on the body with ecru lettering, single-channel, so no
+stitches. CLOCK up from y 13.5 to 13.15 (its label 0.52 mm under the top left screw, as close as
+the 0.5 mm rule lets it), RESET from 27.5 to 25.95: an even pitch of 12.8 mm, 1.25 mm between
+each jack's socket and the next one's label, 1.40 mm over key 1. `make_panel.py --check`
+passes; `play-jack-ruled.png` shows it. Kenny chose option 2 of `play-jack-options.png` and
+asked for the shift; nothing else moves, because the whole look (bigger keys, less empty space)
+is for a later design session. Not chosen: option 3's PLAY out under AUDIO (D138, "Not chosen").
 
 **As built (issue 101, `make_panel.py --check` passing).** Where the build parted from the
 arithmetic below, measured by `--check` and put to Kenny:
