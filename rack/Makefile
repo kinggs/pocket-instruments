@@ -110,12 +110,13 @@ check-link: $(TARGET)
 	@$(PI_NM) --defined-only $(TARGET) | grep -qE ' T _?pi_process$$' || { echo "P3: pi_process is not in the plugin"; exit 1; }
 	@echo "P3: $(TARGET) holds the core and needs no Rust runtime symbol."
 
-# Rack itself, headless, on four probes at three sample rates. See selftest.sh.
+# Rack itself, headless, on four probes and the Rhythm modules at three sample rates, 20 seconds
+# each: patterns-change-playing takes 12.5 s a pass (issue 142). See selftest.sh.
 .PHONY: selftest
 selftest:
-	./selftest.sh 12 44100
-	./selftest.sh 12 48000
-	./selftest.sh 12 96000
+	./selftest.sh 20 44100
+	./selftest.sh 20 48000
+	./selftest.sh 20 96000
 
 # The patch Kenny opens for P3: a Fundamental LFO's square as the clock into one probe
 # (swing-length-change, track 2) and a second probe on its own clock (straight-sixteenths,
