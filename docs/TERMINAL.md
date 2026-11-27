@@ -421,3 +421,37 @@ stand-ins with no board.
 
 ⚠ Not built here: **the saved beat as text** waits on the beat crate (issue 140); see "The beat"
 bullet above for what it needs. Not checked: anything by hand in foot or heard (Kenny's).
+
+### The saved beat as text (issue 143's second pull request, on the beat crate)
+
+Built once the beat crate (issue 140) was there: the line above is done. "The beat" at the top
+of this document (a version 4 snapshot, binary) is superseded as D136 item 8 rules it.
+
+- **The saved beat is text,** `docs/BEAT.md`'s form, at the same path (`rhythm.beat`).
+  `from_file` passes a file that starts with `PKIN` to the core as it is, and reads anything
+  else with `pib_read`; `to_file` writes with `pib_write`, with `own` 0, since the terminal
+  plays only the starter pack it carries and no player's own sample. Both run on the
+  terminal's thread; the audio thread still only saves into its buffer made beforehand and
+  loads what it is handed.
+- **An old binary `rhythm.beat`** (versions 1 to 5) is read, and the footer says
+  `rhythm.beat: an older binary beat, read; saved as text from now on`. At its next save (a
+  second after a change, or at quit, with or without a change) it is written as text holding
+  the same beat. Nothing is kept of the binary file.
+- **A file the crate refuses** (and a newer beat, or anything else not read) is left alone:
+  the footer says `rhythm.beat left alone: line 5, column 10: …`, the host starts empty and
+  never saves to it by itself, `:w` asks for `:w FILE`, and the whole line is said again on the
+  terminal after leaving, since the footer has 78 cells.
+- **A text beat with an `own` line** loads with the starter pack's sample on those keys, and
+  the footer says `key 9 used its writer's own sample; playing the starter pack's` (D34). The
+  next save has no `own` line.
+- **`:e FILE`** reads text or binary; **`:w FILE`** writes text.
+
+| Check | Result |
+|---|---|
+| `term/tests/beat.rs`, 5 tests | The worked example read, loaded, saved and written back to the same text; every version 4 snapshot in `fixtures/snapshots-v4.txt` read as `rhythm.beat`, written as text, read again to the same saved bytes and the same view; a refused row and a newer beat left alone, byte for byte, with the crate's line and column in the note; `:e` and `:w` on text, an `own` line told |
+| Planted faults, each built and caught by a named test | `own` written as every key (2 tests); a binary file given to `pib_read` (2); the crate's message dropped (2) |
+| The real binary, tap, in a headless tmux, `--audio none` | An old version 4 `rhythm.beat` opened with the note above; a beat written on patterns 1 and 2 and a chain of three; `:w`, `:q`: the file was 245 bytes of text, the old file's beat in pattern 1 with the new steps. Started again: no note; the pattern list, the chain and the status line read as before the quit; `:q` with no change left the text byte for byte the same. `:e` of the worked example (`pattern 1 1/4`, 124 bpm), `:w copy.beat` gave the worked example byte for byte. A refused text `rhythm.beat`: the line and column in the footer, a step changed, `:w`, `:q`: the file byte for byte as it was |
+
+⚠ For Kenny: a `rhythm.beat` edited by hand is written back in canonical form at the next
+save, at quit included, so its comments and spacing go (`docs/BEAT.md`: "written back
+canonical"); the note said for an old binary file is a stand-in's words.
