@@ -1412,13 +1412,16 @@ struct Rhythm : Module {
         freshWanted = true;
     }
 
-    // Rack calls these on its own thread while process() runs on the audio thread.
-    json_t *dataToJson() override {
-        json_t *root = json_object();
-        // §21: the audio thread saves at most four times a second. If the engine holds a move it
-        // has not saved, ask for a save and wait for it: the audio thread makes it on its next
-        // frame. 50 ms at most, so a stopped engine (or one never run) costs a patch save little;
-        // then the last save made is written, as before ABI 16. Never the audio thread's wait.
+    // ---- The beat in and out, on Rack's other threads. A patch's "snapshot" goes through these
+    // two, and so will the menu's beat file (docs/BEAT.md; issue 142): pib_read's bytes into
+    // queueLoad, currentSnapshot's into pib_write (beat/, issue 140). No reader here: D134. ----
+
+    // The beat as it is now, as snapshot bytes; empty if there is none yet. §21: the audio thread
+    // saves at most four times a second. If the engine holds a move it has not saved, ask for a
+    // save and wait for it: the audio thread makes it on its next frame. 50 ms at most, so a
+    // stopped engine (or one never run) costs little; then the last save made is given, as before
+    // ABI 16. Never the audio thread's wait.
+    std::vector<uint8_t> currentSnapshot() {
         if (unsaved.load(std::memory_order_acquire)) {
             uint32_t want = saveAsk.fetch_add(1, std::memory_order_acq_rel) + 1;
             for (int ms = 0; ms < 50 && int32_t(saveDone.load(std::memory_order_acquire) - want) < 0; ms++)
@@ -1426,10 +1429,27 @@ struct Rhythm : Module {
         }
         const Snap *s = saved.latest();
         // A load asked for and not yet taken by the audio thread is still the beat to keep.
-        if (s && s->loads >= loadsAsked)
-            json_object_set_new(root, "snapshot", json_string(string::toBase64(s->b, s->len).c_str()));
-        else if (!pendingLoad.empty())
-            json_object_set_new(root, "snapshot", json_string(string::toBase64(pendingLoad.data(), pendingLoad.size()).c_str()));
+        if (s && s->loads >= loadsAsked) return std::vector<uint8_t>(s->b, s->b + s->len);
+        return pendingLoad;
+    }
+    // A snapshot to load, of any version the core has written: the core checks which, and
+    // refuses the rest. Version 5 can be as short as PI_SNAPSHOT_SIZE_MIN, 276 (ABI 16), under
+    // version 1. The audio thread loads it between two frames (§8).
+    void queueLoad(const std::vector<uint8_t> &bytes) {
+        if (bytes.size() < PI_SNAPSHOT_SIZE_MIN) return;
+        Snap &in = inbox.write();
+        in.len = uint32_t(std::min<size_t>(bytes.size(), PI_SNAPSHOT_SIZE));
+        std::copy(bytes.begin(), bytes.begin() + in.len, in.b);
+        pendingLoad.assign(bytes.begin(), bytes.begin() + in.len);
+        loadsAsked++;
+        inbox.publish();
+    }
+
+    // Rack calls these on its own thread while process() runs on the audio thread.
+    json_t *dataToJson() override {
+        json_t *root = json_object();
+        std::vector<uint8_t> snap = currentSnapshot();
+        if (!snap.empty()) json_object_set_new(root, "snapshot", json_string(string::toBase64(snap.data(), snap.size()).c_str()));
         json_object_set_new(root, "return", json_integer(returnChosen.load()));
         json_object_set_new(root, "a", json_integer(aChosen.load()));
         json_object_set_new(root, "b", json_integer(bChosen.load()));
@@ -1475,16 +1495,7 @@ struct Rhythm : Module {
                 bytes = string::fromBase64(json_string_value(j) ? json_string_value(j) : "");
             } catch (const std::exception &) {
             }
-            // Any version the core has written; the core checks which, and refuses the rest.
-            // Version 5 can be as short as PI_SNAPSHOT_SIZE_MIN, 276 (ABI 16), under version 1.
-            if (bytes.size() >= PI_SNAPSHOT_SIZE_MIN) {
-                Snap &in = inbox.write();
-                in.len = uint32_t(std::min<size_t>(bytes.size(), PI_SNAPSHOT_SIZE));
-                std::copy(bytes.begin(), bytes.begin() + in.len, in.b);
-                pendingLoad.assign(bytes.begin(), bytes.begin() + in.len);
-                loadsAsked++;
-                inbox.publish();
-            }
+            queueLoad(bytes);
         }
     }
 };
@@ -1539,6 +1550,14 @@ struct Face {
     bool have = false;
     uint8_t lastFires[PI_TRACKS] = {};
     double coreUntil[PI_TRACKS] = {};
+    // §21's flicker counts from the moment pattern went down (held, or latched by the host), so
+    // the active pattern's key is lit for the first quarter second, as on the page.
+    bool patternWas = false;
+    double patternSince = 0;
+    void patternShown(bool shown, double now) {
+        if (shown && !patternWas) patternSince = now;
+        patternWas = shown;
+    }
 
     void take(Rhythm *m) {
         const View *nv = m ? m->viewOut.take() : nullptr;
@@ -1690,9 +1709,10 @@ struct RhythmKey : app::ParamWidget {
             if (!rm) r = face->shotRoutes;
 #endif
             // §21: while pattern is held or latched, the active pattern's key flickers on this
-            // thread's clock, and the frame, core and twill are not drawn (pi::keyLights).
+            // thread's clock, from when pattern went down, and the frame, core and twill are not
+            // drawn (pi::keyLights).
             double now = system::getTime();
-            bool flicker = pi::patternFlicker(now);
+            bool flicker = pi::patternFlicker(now - face->patternSince);
 #ifdef PI_FACE_SHOT
             if (!rm) flicker = face->shotFlicker;
 #endif
@@ -2118,6 +2138,7 @@ struct RhythmWidget : ModuleWidget {
     void step() override {
         Rhythm *m = getModule<Rhythm>();
         face.take(m);
+        face.patternShown(face.held(PI_KEY_PATTERN) || (m && (m->latched >> PI_KEY_PATTERN & 1)), system::getTime());
 #ifdef PI_FACE_SHOT
         if (!m && !face.have) face.shot();
 #endif

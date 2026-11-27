@@ -278,7 +278,7 @@ struct Lights {
 // draws them and pressed, and not the frame, the core or the twill (R90: holding pattern "stops
 // the normal playing views"), and the active pattern's field is lit and dark in turn, a quarter
 // of a second each, whether or not that pattern is used (§21, ⚠ open (empty flicker), its
-// default). `flickerLit` is that turn, from the drawing thread's clock (patternFlicker).
+// default). `flickerLit` is that turn, on the drawing thread's clock (patternFlicker).
 inline Lights keyLights(const uint8_t *v, int n, bool coreOn, bool fxLatched, Routes r, bool patternLatched = false,
                         bool flickerLit = true) {
     uint32_t held = viewU32(v, PI_VIEW_HELD), bit = 1u << n, heard = v[PI_VIEW_HEARD];
@@ -307,8 +307,8 @@ inline Lights keyLights(const uint8_t *v, int n, bool coreOn, bool fxLatched, Ro
     }
     return l;
 }
-// The flicker's turn at `seconds` on the drawing thread's clock: lit for a quarter of a second,
-// then dark for one (§21: "2 flickers"; ⚠ the rate is ours, not measured).
+// The flicker's turn `seconds` after pattern went down, on the drawing thread's clock: lit for a
+// quarter of a second, then dark for one (§21: "2 flickers"; ⚠ the rate is ours, not measured).
 inline bool patternFlicker(double seconds) { return seconds < 0 || uint64_t(seconds * 4) % 2 == 0; }
 
 // The display's patterns (§21, "The display"; ⚠ how each host draws it is a stand-in until
