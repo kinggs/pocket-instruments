@@ -34,11 +34,15 @@
 //
 // SPDX-License-Identifier: MIT
 const PAGE = 65536;
-const EVENTS = 4096, CAP = 256, AUDIO = 7168, CMDS = 9216, CMDS_MAX = (PAGE - CMDS) / 12;
-// The instrument's: the view (64 bytes) and a snapshot's room, between the mix (one channel,
-// 128 frames, so 512 bytes from AUDIO) and the commands. 1472 bytes since Session 21, for
-// snapshot version 4's 1464 (§20); the commands began at 8192, and the room was 448, until then.
-const VIEW = 7680, VIEW_SIZE = 64, SNAP = 7744, SNAP_ROOM = CMDS - SNAP;
+// Since ABI 16 (ENGINE.md §21, D133 item 1) two pages: the engine's room is 32 KiB, the view 88
+// bytes and a snapshot's room version 5's most, 22 100. Until then one page, the engine 4 KiB,
+// the events at 4096, the mix at 7168, the view (64) at 7680, the snapshot (1472) at 7744 and
+// the commands at 9216.
+const HOST = 2 * PAGE;
+const EVENTS = 32768, CAP = 256, AUDIO = 35840, CMDS = 58624, CMDS_MAX = Math.floor((HOST - CMDS) / 12);
+// The instrument's: the view and a snapshot's room, between the mix (one channel, 128 frames,
+// so 512 bytes from AUDIO) and the commands.
+const VIEW = 36352, VIEW_SIZE = 88, SNAP = 36480, SNAP_ROOM = CMDS - SNAP;
 const TRACE_MAX = 65536; // numbers kept since a mark: four an event
 
 class Engine extends AudioWorkletProcessor {
@@ -47,8 +51,8 @@ class Engine extends AudioWorkletProcessor {
     const o = options.processorOptions;
     const instance = new WebAssembly.Instance(new WebAssembly.Module(o.wasm), {});
     this.pi = instance.exports;
-    this.base = this.pi.memory.grow(1) * PAGE;
-    // The engine sits before the events: 4 KiB of room (core/src/tests/rules.rs holds pi_size to it).
+    this.base = this.pi.memory.grow(HOST / PAGE) * PAGE;
+    // The engine sits before the events: 32 KiB of room (core/src/tests/rules.rs holds pi_size to it).
     if (this.pi.pi_size() > EVENTS) throw new Error(`the engine is ${this.pi.pi_size()} bytes, more than the ${EVENTS} before the events`);
     this.e = this.pi.pi_init(this.base, this.pi.pi_size(), sampleRate, o.seed);
     // D50: `samples`, sixteen ArrayBuffers of 16-bit mono at 44.1 kHz (or null), one a track,

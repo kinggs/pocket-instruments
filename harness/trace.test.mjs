@@ -18,27 +18,28 @@ const skip = built || process.env.PI_REQUIRE_WASM ? false : "pi_core.wasm is not
 const RATES = [44100, 48000, 96000];
 const BLOCKS = [1, 128, 512];
 const SOURCES = [["table", 0], ["edges", 1]];
-const CMD = { clock: 1, reset: 2, source: 3, tempo: 4, play: 5, step: 16, prob: 17, swing: 18, length: 19, sound: 20, voice: 22, fx: 23, fxsound: 24, route: 25, keep: 26, key_down: 32, key_up: 33, param: 34 };
+const CMD = { clock: 1, reset: 2, source: 3, tempo: 4, play: 5, step: 16, prob: 17, swing: 18, length: 19, sound: 20, voice: 22, fx: 23, fxsound: 24, route: 25, keep: 26, pattern: 27, chain: 28, copy: 29, key_down: 32, key_up: 33, param: 34 };
 // Format 2: what a finger did. These land a frame after their step's boundary.
 const KEYS = new Set(["key_down", "key_up", "param"]);
-const EDITS = new Set(["step", "prob", "swing", "length", "fx", "fxsound", "keep"]);
+// Format 5's pattern, chain and copy are edits too: at step 0 they come from the snapshot.
+const EDITS = new Set(["step", "prob", "swing", "length", "fx", "fxsound", "keep", "pattern", "chain", "copy"]);
 const PAGE = 65536;
-// Where things sit in the one page the host adds (ENGINE.md §8).
-// The engine gets the first 4 KiB (core/src/tests/rules.rs holds pi_size to it). The snapshot
-// has 1536 bytes (version 4 is 1464: §20; it had 512 until then, for version 3's 408). The
-// audio has room for a 128-frame block at 17 channels (PI_AUDIO_BOTH); it had 768 floats, and
-// the commands began at 11264, until then. Session 21 moved the view, the events and the audio
-// up to make the snapshot's room.
-const SNAP = 4096, SNAP_SIZE = 1464, VIEW = 5632, EVENTS = 5760, CAP = 256, AUDIO = 9216, AUDIO_MAX = 128 * 50;
-const CMDS = AUDIO + 4 * AUDIO_MAX, CMDS_MAX = Math.floor((PAGE - CMDS) / 12);
+// Where things sit in the two pages the host adds (ENGINE.md §8). Since ABI 16 (§21; D133
+// item 1) the engine gets the first 32 KiB (core/src/tests/rules.rs holds pi_size to it), and
+// the snapshot room is version 5's most, 22 100 bytes; the view is 88. The audio has room for a
+// 128-frame block at 50 channels. Until ABI 16: one page, the engine 4 KiB, the snapshot 1 536
+// bytes (version 4's 1464), the view at 5632, the events at 5760 and the audio at 9216.
+const HOST = 2 * PAGE;
+const SNAP = 32768, SNAP_ROOM = 22100, VIEW = 55040, VIEW_SIZE = 88, EVENTS = 55296, CAP = 256, AUDIO = 58368, AUDIO_MAX = 128 * 50;
+const CMDS = AUDIO + 4 * AUDIO_MAX, CMDS_MAX = Math.floor((HOST - CMDS) / 12);
 
 function load() {
   const module = new WebAssembly.Module(readFileSync(WASM));
   const imports = WebAssembly.Module.imports(module);
   const instance = new WebAssembly.Instance(module, {});
   const pi = instance.exports;
-  // The host's memory: one page past whatever the module asked for.
-  const base = pi.memory.grow(1) * PAGE;
+  // The host's memory: two pages past whatever the module asked for (one until ABI 16).
+  const base = pi.memory.grow(HOST / PAGE) * PAGE;
   return { pi, base, imports, view: () => new DataView(pi.memory.buffer) };
 }
 
@@ -111,8 +112,17 @@ function schedule(fx, rate, source, fromSnapshot) {
 }
 
 // ENGINE.md §14's text line for the view block at `p`: what a format 2 fixture holds. For
-// format 3, §17's three fields on its end; for format 4, then §20's two.
+// format 3, §17's three fields on its end; for format 4, then §20's two; for format 5, §21's
+// patterns, the chain and the next chain a hex digit an entry.
 function viewText(v, p, format = 2) {
+  const nibbles = (at, len) => Array.from({ length: len }, (_, i) => ((v.getUint8(p + at + (i >> 1)) >> (4 * (i & 1))) & 15).toString(16)).join("");
+  return viewText4(v, p, format) + (format >= 5
+    ? ` pat=${v.getUint8(p + 64)} pos=${v.getUint8(p + 65)} chain=${nibbles(72, v.getUint8(p + 66))}` +
+      ` next=${v.getUint8(p + 67) ? nibbles(80, v.getUint8(p + 67)) : "-"} used=${v.getUint16(p + 68, true).toString(16).padStart(4, "0")}`
+    : "");
+}
+
+function viewText4(v, p, format) {
   const flags = v.getUint8(p + 24), flag = (bit) => (flags >> bit) & 1;
   const hex = (n, width) => n.toString(16).padStart(width, "0");
   const fires = Array.from({ length: 16 }, (_, t) => v.getUint8(p + 32 + t)).join(",");
@@ -164,7 +174,7 @@ function run(m, e, cmds, end, block, audio, views = [], label = "", channels = 1
     }
     start += n;
     for (; view < views.length && views[view][0] === start; view++) {
-      assert.equal(m.pi.pi_view(e, m.base + VIEW, 64), 64);
+      assert.equal(m.pi.pi_view(e, m.base + VIEW, VIEW_SIZE), VIEW_SIZE);
       const got = viewText(m.view(), m.base + VIEW, format);
       assert.equal(got, views[view][1], `${label}: the view at frame ${start}`);
       seen.push(got + "\n");
@@ -181,24 +191,46 @@ function snapshotOf(m, fx, rate) {
   const cmds = [[0, { type: CMD.tempo, a: 0, b: 0, value: fx.mbpm }]];
   for (const c of fx.commands) if (c.at === 0 && EDITS.has(c.cmd)) cmds.push([0, toCmd(c)]);
   run(m, e, cmds, 1, 1);
-  assert.equal(m.pi.pi_save(e, m.base + SNAP, SNAP_SIZE), SNAP_SIZE);
-  return new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).slice();
+  // §21: version 5, as long as pi_save says: 276 bytes and 1 364 a pattern written.
+  const n = m.pi.pi_save(e, m.base + SNAP, SNAP_ROOM);
+  assert.ok(n >= 276 && (n - 276) % 1364 === 0, `pi_save returned ${n}`);
+  return new Uint8Array(m.pi.memory.buffer, m.base + SNAP, n).slice();
 }
 
-// §20: the fixture's snapshot with every step that is on keeping its sound's own A and B.
-function keptSnapshotOf(m, fx, rate, snap) {
-  const e = engine(m, rate, fx.seed);
-  new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).set(snap);
-  assert.equal(m.pi.pi_load(e, m.base + SNAP, SNAP_SIZE), 0);
-  const u16 = (i) => snap[i] | (snap[i + 1] << 8);
-  const cmds = [];
-  for (let t = 0; t < 16; t++) {
-    const on = u16(24 + 2 * t), has = u16(404 + 2 * t), ab = ((u16(312 + 4 * t) << 16) | u16(314 + 4 * t)) >>> 0;
-    for (let st = 0; st < 16; st++) if ((on >> st) & 1 && !((has >> st) & 1)) cmds.push([0, { type: CMD.keep, a: t, b: st, value: ab }]);
+// The zip CRC-32, bit by bit (ENGINE.md §8).
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (const b of bytes) {
+    c ^= b;
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
   }
-  run(m, e, cmds, 1, 1);
-  assert.equal(m.pi.pi_save(e, m.base + SNAP, SNAP_SIZE), SNAP_SIZE);
-  return new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).slice();
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// §20: the fixture's snapshot with every step that is on keeping its sound's own A and B. Since
+// ABI 16 written into version 5's bytes, in each pattern written, as a KEEP there would write
+// them; then loaded and saved again, so the bytes are the core's (core/src/tests/fixtures.rs).
+function keptSnapshotOf(m, fx, rate, snap) {
+  const kept = snap.slice();
+  const u16 = (i) => kept[i] | (kept[i + 1] << 8);
+  let at = 272;
+  for (let p = 0; p < 16; p++) {
+    if (!((u16(92) >> p) & 1)) continue;
+    for (let t = 0; t < 16; t++) {
+      const on = u16(at + 2 * t), has = u16(at + 304 + 2 * t);
+      for (let st = 0; st < 16; st++) if ((on >> st) & 1 && !((has >> st) & 1)) kept.copyWithin(at + 336 + 4 * (16 * t + st), 24 + 4 * t, 28 + 4 * t);
+      kept[at + 304 + 2 * t] = (on | has) & 0xff;
+      kept[at + 305 + 2 * t] = (on | has) >> 8;
+    }
+    at += 1364;
+  }
+  new DataView(kept.buffer).setUint32(kept.length - 4, crc32(kept.subarray(0, kept.length - 4)), true);
+  const e = engine(m, rate, fx.seed);
+  new Uint8Array(m.pi.memory.buffer, m.base + SNAP, kept.length).set(kept);
+  assert.equal(m.pi.pi_load(e, m.base + SNAP, kept.length), 0);
+  assert.equal(m.pi.pi_save(e, m.base + SNAP, SNAP_ROOM), kept.length);
+  assert.deepEqual(new Uint8Array(m.pi.memory.buffer, m.base + SNAP, kept.length).slice(), kept, "the core saves the same bytes");
+  return kept;
 }
 
 const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -206,8 +238,8 @@ const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0"))
 test("the module imports nothing and its memory grows by a page for the host", { skip }, () => {
   const m = load();
   assert.deepEqual(m.imports, [], "no imports: no glue to write");
-  assert.equal(m.pi.pi_abi_version(), 15); // ABI 15: one edge a beat and the view's ext (D100)
-  assert.equal(m.pi.memory.buffer.byteLength, m.base + PAGE);
+  assert.equal(m.pi.pi_abi_version(), 16); // ABI 16: sixteen patterns, the view at 88, snapshot version 5 (§21)
+  assert.equal(m.pi.memory.buffer.byteLength, m.base + HOST);
   // Memory the module was not given is refused, not written.
   assert.equal(m.pi.pi_init(0, m.pi.pi_size(), 48000, 1), 0, "null");
   assert.equal(m.pi.pi_init(m.base + 1, m.pi.pi_size(), 48000, 1), 0, "misaligned");
@@ -221,9 +253,10 @@ test("every fixture gives its trace on both sources, at every rate and block siz
   for (const file of names) {
     const fx = JSON.parse(readFileSync(FIXTURES + file, "utf8"));
     const name = file.replace(/\.json$/, "");
-    assert.ok([1, 2, 3, 4].includes(fx.format));
-    assert.ok(fx.format >= 2 || !fx.views, "views are format 2's to 4's");
-    const format = fx.format; // format 3's views carry §17's fields, format 4's §20's too
+    assert.ok([1, 2, 3, 4, 5].includes(fx.format));
+    assert.ok(fx.format >= 2 || !fx.views, "views are format 2's to 5's");
+    assert.ok(!fx.beat, "a fixture with a beat file waits for the beat reader (D134)");
+    const format = fx.format; // format 3's views carry §17's fields, format 4's §20's too, format 5's §21's
     assert.equal(fx.ticks_per_step, 96);
     // A run's text is its trace, then its views: run() holds each view to its own line.
     const trace = fx.expect.map((l) => l + "\n").join("");
@@ -241,8 +274,8 @@ test("every fixture gives its trace on both sources, at every rate and block siz
         // Save, load into a fresh engine with another seed, same trace.
         const snap = snapshotOf(m, fx, rate);
         const e = engine(m, rate, fx.seed + 12345);
-        new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).set(snap);
-        assert.equal(m.pi.pi_load(e, m.base + SNAP, SNAP_SIZE), 0);
+        new Uint8Array(m.pi.memory.buffer, m.base + SNAP, snap.length).set(snap);
+        assert.equal(m.pi.pi_load(e, m.base + SNAP, snap.length), 0);
         const { cmds, end, views } = schedule(fx, rate, source, true);
         const got = run(m, e, cmds, end, 128, null, views, `${name} ${sourceName} ${rate} from a snapshot`, 1, format);
         assert.equal(got, wanted(views), `${name} ${sourceName} ${rate} from a snapshot`);
@@ -252,16 +285,16 @@ test("every fixture gives its trace on both sources, at every rate and block siz
         // is on keeping its sound's own A and B (core/src/tests/fixtures.rs says why).
         const kept = keptSnapshotOf(m, fx, rate, snap);
         const k = engine(m, rate, fx.seed + 12345);
-        new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE).set(kept);
-        assert.equal(m.pi.pi_load(k, m.base + SNAP, SNAP_SIZE), 0);
+        new Uint8Array(m.pi.memory.buffer, m.base + SNAP, kept.length).set(kept);
+        assert.equal(m.pi.pi_load(k, m.base + SNAP, kept.length), 0);
         const gotKept = run(m, k, cmds, end, 128, null, views, `${name} ${sourceName} ${rate} from a kept snapshot`, 1, format);
         assert.equal(gotKept, wanted(views), `${name} ${sourceName} ${rate} from a kept snapshot`);
         report += `# ${name} ${sourceName} ${rate} kept snapshot ${hex(kept)}\n${gotKept}`;
         runs++;
         // One flipped bit is refused.
-        const bad = new Uint8Array(m.pi.memory.buffer, m.base + SNAP, SNAP_SIZE);
+        const bad = new Uint8Array(m.pi.memory.buffer, m.base + SNAP, kept.length);
         bad[40] ^= 1;
-        assert.equal(m.pi.pi_load(e, m.base + SNAP, SNAP_SIZE), -4);
+        assert.equal(m.pi.pi_load(e, m.base + SNAP, kept.length), -4);
       }
     }
   }
