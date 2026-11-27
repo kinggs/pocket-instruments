@@ -3,7 +3,13 @@
 
 NATIVE := target/release/libpi_core.a
 WASM   := target/wasm32-unknown-unknown/release/pi_core.wasm
+# The beat file's reader and writer (docs/BEAT.md, D134): a crate beside the core, its own static
+# library and .wasm. The C ABI is beat/include/pi_beat.h.
+BEAT_NATIVE := target/release/libpi_beat.a
+BEAT_WASM   := target/wasm32-unknown-unknown/release/pi_beat.wasm
 REPORT := $(CURDIR)/target/report
+# The beat cases (core/src/tests/beat.rs writes them) and each host's results, compared.
+BEAT   := $(CURDIR)/target/beat
 # The weave's cells for fixtures/weave-views.txt, written by each harness and compared (§16).
 WEAVE  := $(CURDIR)/target/weave
 CXX    ?= c++
@@ -11,7 +17,7 @@ CXX    ?= c++
 include rack/math.mk
 RACK_ARCH := $(if $(filter x86_64,$(shell uname -m)),-march=nehalem,-march=armv8-a+fp+simd)
 
-.PHONY: build test check-toolchain check-p1 clean rack-lib race targets web p4 listen hear play bench pairs fuzz term term-test
+.PHONY: build test check-toolchain check-p1 check-beat clean rack-lib race targets web p4 listen hear play bench pairs fuzz term term-test
 
 # Every native library starts each function on a 64-byte line (Session 29, LEARNINGS.md).
 # Unpinned, where pi_process happened to land moved the bench by up to 3 ns a frame between
@@ -25,6 +31,8 @@ ALIGN := -C llvm-args=-align-all-functions=6
 build: check-toolchain
 	cargo rustc -p pi-core --release --locked --crate-type staticlib -- $(ALIGN)
 	cargo rustc -p pi-core --release --locked --target wasm32-unknown-unknown --crate-type cdylib
+	cargo rustc -p pi-beat --release --locked --crate-type staticlib
+	cargo rustc -p pi-beat --release --locked --target wasm32-unknown-unknown --crate-type cdylib
 
 # The static library for one Rack target, with Rack's own CPU flags (R16; the SDK's
 # compile.mk: -march=nehalem on x64, plain armv8-a on arm64, macOS 10.9 as the floor).
@@ -37,6 +45,8 @@ rack-lib: check-toolchain
 	@rustup target list --installed | grep -qx $(T) || rustup target add $(T)
 	RUSTFLAGS="$(RACK_RUSTFLAGS_$(firstword $(subst -, ,$(T))))" MACOSX_DEPLOYMENT_TARGET=10.9 \
 	  cargo rustc -p pi-core --release --locked --target $(T) --crate-type staticlib -- $(ALIGN)
+	RUSTFLAGS="$(RACK_RUSTFLAGS_$(firstword $(subst -, ,$(T))))" MACOSX_DEPLOYMENT_TARGET=10.9 \
+	  cargo rustc -p pi-beat --release --locked --target $(T) --crate-type staticlib
 
 # P5, the local half: the library for all four Rack targets from this machine, each checked
 # against R16 (harness/targets.sh). A staticlib needs no linker and no SDK, only rustup's
@@ -61,12 +71,20 @@ LAYOUTS := $(patsubst harness/render-%.json,%,$(shell grep -l '"layouts"' harnes
 # A scenario that names "loops" (render-loop.json, §19) is also rendered in the loop layouts,
 # 18 and 50 channels, which are read as well as written: each harness gives them the same inputs.
 LOOPS := $(patsubst harness/render-%.json,%,$(shell grep -l '"loops"' harness/render-*.json))
-test: build check-p1
-	PI_REPORT=$(REPORT)-rust.txt PI_WEAVE=$(WEAVE)-rust.txt cargo test -p pi-core --locked -q
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Werror -Icore/include harness/harness.cpp $(NATIVE) -o target/harness
+# `node --test beat/` is the agent's command (docs/BEAT.md, D140; issue 163): check on every
+# .beat, the refusals and the exit codes, the bank rendered from the committed and the built
+# .wasm alike, the worked example against the harness's render and trace, the grids worked by
+# hand, pack giving the bank back. About 4 seconds.
+test: build check-p1 check-beat
+	PI_REPORT=$(REPORT)-rust.txt PI_WEAVE=$(WEAVE)-rust.txt PI_BEAT=$(BEAT)-rust.txt cargo test -p pi-core --locked -q
+	cargo test -p pi-beat --locked -q
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Werror -Icore/include -Ibeat/include harness/harness.cpp $(NATIVE) $(BEAT_NATIVE) -o target/harness
 	target/harness fixtures $(REPORT)-cpp.txt
 	target/harness --weave fixtures/weave-views.txt $(WEAVE)-cpp.txt
-	PI_REQUIRE_WASM=1 PI_REPORT=$(REPORT)-node.txt PI_WEAVE=$(WEAVE)-node.txt PI_RENDER=$(CURDIR)/target/render-node node --test harness/
+	target/harness --beat $(BEAT)-cases.txt $(BEAT)-cpp.txt
+	PI_REQUIRE_WASM=1 PI_REPORT=$(REPORT)-node.txt PI_WEAVE=$(WEAVE)-node.txt PI_RENDER=$(CURDIR)/target/render-node \
+	  PI_BEAT=$(BEAT)-node.txt PI_BEAT_CASES=$(BEAT)-cases.txt node --test harness/
+	node --test beat/
 	$(CXX) -std=c++11 $(RACK_MATH) $(OUR_MATH) $(RACK_ARCH) -Wall -Wextra -Werror -Icore/include rack/test/jacks.cpp $(NATIVE) -o target/jacks
 	target/jacks
 	cmp $(REPORT)-rust.txt $(REPORT)-cpp.txt
@@ -75,11 +93,15 @@ test: build check-p1
 	cmp $(WEAVE)-rust.txt $(WEAVE)-cpp.txt
 	cmp $(WEAVE)-rust.txt $(WEAVE)-node.txt
 	@echo "The weave (ENGINE.md section 16): $$(grep -c '^#' $(WEAVE)-rust.txt) views, the same cells natively (Rust's tests, C++) and from the .wasm ($$(sha256sum < $(WEAVE)-rust.txt | cut -c1-16))."
+	cmp $(BEAT)-rust.txt $(BEAT)-cpp.txt
+	cmp $(BEAT)-rust.txt $(BEAT)-node.txt
+	@echo "The beat file (docs/BEAT.md): $$(wc -l < $(BEAT)-rust.txt) cases, the same results from the Rust crate, libpi_beat.a and pi_beat.wasm, the core the referee ($$(sha256sum < $(BEAT)-rust.txt | cut -c1-16))."
 	@for s in $(SCENARIOS); do target/harness --render harness/render-$$s.json target/render-cpp-$$s || exit 1; done
 	node harness/compare.mjs --same $(foreach n,$(SCENARIOS),$(foreach s,table edges,$(foreach r,44100 48000 96000,target/render-cpp-$(n)-$(s)-$(r).f32 target/render-node-$(n)-$(s)-$(r).f32))) \
 	  $(foreach n,$(LAYOUTS),$(foreach s,table edges,$(foreach r,44100 48000 96000,$(foreach c,16ch 17ch,target/render-cpp-$(n)-$(s)-$(r)-$(c).f32 target/render-node-$(n)-$(s)-$(r)-$(c).f32)))) \
 	  $(foreach n,$(LOOPS),$(foreach s,table edges,$(foreach r,44100 48000 96000,$(foreach c,18ch 50ch,target/render-cpp-$(n)-$(s)-$(r)-$(c).f32 target/render-node-$(n)-$(s)-$(r)-$(c).f32))))
 	@cmp -s $(WASM) web/pi_core.wasm || { echo "web/pi_core.wasm is not the .wasm just built: run 'make web' and commit it"; exit 1; }
+	@cmp -s $(BEAT_WASM) web/pi_beat.wasm || { echo "web/pi_beat.wasm is not the .wasm just built: run 'make web' and commit it"; exit 1; }
 	$(MAKE) --no-print-directory term-test
 	@if command -v clang++ >/dev/null; then $(MAKE) --no-print-directory race; else echo "P6's ThreadSanitizer run skipped: no clang++."; fi
 
@@ -188,6 +210,18 @@ check-p1:
 	if cargo tree -p pi-core --locked --edges normal --prefix none | tail -n +2 | grep -q .; then echo "P1: the core has a dependency"; exit 1; fi; \
 	echo "P1: pi_core.wasm is $$size bytes. The core's object needs only: $$wants"
 
+# The beat crate held to the core's rules (D134 item 2), on what was built: no allocator, no
+# standard library, no dependency, and its object asks for libc's memory routines and abort
+# alone. (That its .wasm imports nothing is checked in Node: harness/beat.test.mjs.)
+check-beat:
+	@size=$$(stat -c %s $(BEAT_WASM)); \
+	if ar t $(BEAT_NATIVE) | grep -qE '^(alloc|std)-'; then echo "beat: the static library holds alloc or std"; exit 1; fi; \
+	wants="$$(nm -A --undefined-only $(BEAT_NATIVE) 2>/dev/null | grep ':pi_beat-' | awk '{print $$NF}' | sort -u | tr '\n' ' ')"; \
+	for sym in $$wants; do case $$sym in memcpy|memset|memmove|memcmp|bcmp|abort) ;; \
+	  *) echo "beat: the beat crate's object needs $$sym"; exit 1;; esac; done; \
+	if cargo tree -p pi-beat --locked --edges normal --prefix none | tail -n +2 | grep -q .; then echo "beat: the beat crate has a dependency"; exit 1; fi; \
+	echo "beat: pi_beat.wasm is $$size bytes, libpi_beat.a $$(stat -c %s $(BEAT_NATIVE)). Its object needs only: $$wants"
+
 clean:
 	cargo clean
 
@@ -196,6 +230,7 @@ clean:
 # committed copy is not the one just built.
 web: build
 	cp $(WASM) web/pi_core.wasm
+	cp $(BEAT_WASM) web/pi_beat.wasm
 
 # P4, the desktop half: web/ in headless Chromium and Firefox, its worklet's traces held
 # against the Node report (web/desktop.mjs). Real time, about twenty seconds a browser, so
@@ -216,15 +251,17 @@ hear:
 # The phone page (web/rhythm.html) in the same two browsers: keys entered by pointer events,
 # the worklet's trace and views held to the format 2 fixtures, every drawing held to its
 # view, a reload, and P6's browser half (web/play.mjs says the bar). About twenty seconds a
-# browser. Needs `make test` first, for the Node report.
+# browser. Needs `make test` first, for the Node report. Then web/hit.mjs (issue 150): the page
+# at 390 by 844 in Chromium, every key, function key and slider pressed by position (D139).
 play:
 	node web/play.mjs $(REPORT)-node.txt
+	node web/hit.mjs
 
 # The terminal host (docs/TERMINAL.md, D123): its own crate and workspace in term/, linked to the
 # static library just built and checked. `make term` writes term/target/release/pocket-instruments (D125).
 # Needs ALSA's headers (libasound2-dev, alsa-lib) for cpal. TERM_FEATURES=pipewire adds cpal's
 # PipeWire host (needs libpipewire and clang).
-TERM_CARGO = PI_CORE_LIB=$(CURDIR)/$(NATIVE) cargo
+TERM_CARGO = PI_CORE_LIB=$(CURDIR)/$(NATIVE) PI_BEAT_LIB=$(CURDIR)/$(BEAT_NATIVE) cargo
 term: build
 	$(TERM_CARGO) build --release --locked --manifest-path term/Cargo.toml $(if $(TERM_FEATURES),--features $(TERM_FEATURES))
 

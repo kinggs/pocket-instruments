@@ -4,16 +4,28 @@ use crate::abi::*;
 use crate::bus::{Bus, OUTSIDE, is_sound_effect};
 use crate::clock::Clock;
 use crate::keys::Keys;
-use crate::seq::{FX_MAX, Pattern, Rng, SWING_MAX, STEPS, Seq, TRACKS};
+use crate::seq::{Bank, FX_MAX, PATTERNS, Rng, SWING_MAX, STEPS, Seq, TRACKS};
 use crate::voice::{LOOP, LOOP_SLIDERS};
 use crate::voice::Voices;
 
 /// A seed of 0 would leave xorshift stuck on 0.
 pub const SEED_FOR_ZERO: u32 = 0x9E37_79B9;
+/// §21's snapshot version 5: the name's and the credit's bytes (D134 item 4).
+pub const NAME: usize = 32;
+pub const CREDIT: usize = 128;
 
 pub struct Engine {
     pub(crate) clock: Clock,
-    pub(crate) pat: Pattern,
+    /// §21 (ABI 16): the sixteen patterns, the active one and the chain.
+    pub(crate) bank: Bank,
+    /// The beat's, not a pattern's (§21): the swing, and (§17) bit `t`, track `t` goes through
+    /// the effects, all sixteen at `pi_init`.
+    pub(crate) swing: u8,
+    pub(crate) fx_sounds: u16,
+    /// §21 (D134 item 4): the beat's name and credit, UTF-8 and zero-padded. Copied by a load
+    /// and written by a save; the core never reads them.
+    pub(crate) name: [u8; NAME],
+    pub(crate) credit: [u8; CREDIT],
     pub(crate) seq: Seq,
     pub(crate) rng: Rng,
     /// The seed the generator last started from: what a snapshot saves.
@@ -44,7 +56,11 @@ impl Engine {
         let seed = if seed == 0 { SEED_FOR_ZERO } else { seed };
         Engine {
             clock: Clock::new(),
-            pat: Pattern::new(),
+            bank: Bank::new(),
+            swing: 0,
+            fx_sounds: 0xFFFF,
+            name: [0; NAME],
+            credit: [0; CREDIT],
             seq: Seq::new(),
             rng: Rng::new(seed),
             seed,
@@ -92,7 +108,7 @@ impl Engine {
         }
         let thr = 625 * self.sample_rate as u64;
         let last = frames - 1;
-        let mut out = Out::new(events, self.fires, self.on_step);
+        let mut out = Out::new(events, self.fires, self.on_step, self.bank.active);
         let mut next = 0;
         // §18: what is heard changes only by a command or a tick (and by a load, between
         // calls), so it is read again only on a frame that has one. The same value as reading
@@ -109,14 +125,15 @@ impl Engine {
                     break;
                 }
                 self.apply(c, &mut out);
+                out.active = self.bank.active; // §21: stopped, a choice lands at once
                 next += 1;
                 stale = true;
             }
-            let Engine { clock, seq, pat, rng, generation, keys, .. } = self;
-            let write = keys.lane_write;
+            let Engine { clock, seq, bank, swing, fx_sounds, rng, generation, keys, .. } = self;
+            let (write, swing, fx_sounds) = (keys.lane_write, *swing, *fx_sounds);
             clock.frame(thr, &mut |k| {
                 out.ticks += 1;
-                if seq.tick(k, pat, rng, &mut out, write) {
+                if seq.tick(k, bank, swing, fx_sounds, rng, &mut out, write) {
                     *generation = generation.wrapping_add(1); // §17: the lane is in the snapshot ⚠
                 }
             });
@@ -140,7 +157,7 @@ impl Engine {
                     0
                 };
                 // Effect 1 slows the sounds in the effects while the core sounds it (D98 item 2).
-                let slowed = if effect == 1 { self.pat.fx_sounds } else { 0 };
+                let slowed = if effect == 1 { self.fx_sounds } else { 0 };
                 if slowed != self.bus.slowed {
                     self.voices.slow(slowed, &mut self.bus, self.sample_rate);
                 }
@@ -167,7 +184,7 @@ impl Engine {
                 self.bus.advance(effect, out.ticks, self.sample_rate);
                 if let Some(frame) = audio.get_mut(at..at + channels) {
                     // §13: the master volume, read on each frame, so a key changes it at once.
-                    self.voices.render(frame, self.keys.gain(), &mut self.bus, self.pat.fx_sounds);
+                    self.voices.render(frame, self.keys.gain(), &mut self.bus, self.fx_sounds);
                 }
             }
             out.fired = 0;
@@ -194,9 +211,11 @@ impl Engine {
     fn hits(&mut self, fired: u16, stepped: u16, col: &[u8; TRACKS], ins: Option<&[f32]>) {
         for t in 0..TRACKS {
             if fired >> t & 1 == 1 {
-                let s = col[t] as usize & 15;
-                let own = if stepped >> t & 1 == 1 && self.pat.keep[t] >> s & 1 == 1 {
-                    self.pat.kept[t][s]
+                // §21: the column's pattern is in its high four bits (`Out::trig`).
+                let (s, p) = (col[t] as usize & 15, (col[t] >> 4) as usize & 15);
+                let pat = &self.bank.pats[p];
+                let own = if stepped >> t & 1 == 1 && pat.keep[t] >> s & 1 == 1 {
+                    pat.kept[t][s]
                 } else {
                     self.voices.params[t]
                 };
@@ -222,11 +241,11 @@ impl Engine {
         let (a, b, v) = (c.a as usize, c.b as usize, c.value);
         let changed = match c.kind {
             CMD_CLOCK => {
-                let Engine { clock, seq, pat, rng, generation, keys, sample_rate, .. } = self;
-                let write = keys.lane_write;
+                let Engine { clock, seq, bank, swing, fx_sounds, rng, generation, keys, sample_rate, .. } = self;
+                let (write, swing, fx_sounds) = (keys.lane_write, *swing, *fx_sounds);
                 clock.edge(*sample_rate, &mut |k| {
                     out.ticks += 1;
-                    if seq.tick(k, pat, rng, out, write) {
+                    if seq.tick(k, bank, swing, fx_sounds, rng, out, write) {
                         *generation = generation.wrapping_add(1);
                     }
                 });
@@ -248,31 +267,34 @@ impl Engine {
                 self.seq.play(v != 0);
                 false
             }
+            // §21: every edit of a step or the lane, and the length, acts on the active pattern.
             CMD_STEP if a < TRACKS && b < STEPS => {
-                let old = self.pat.on[a];
+                let pat = self.bank.pat_mut();
+                let old = pat.on[a];
                 let bit = 1u16 << b;
-                self.pat.on[a] = if v != 0 { old | bit } else { old & !bit };
+                pat.on[a] = if v != 0 { old | bit } else { old & !bit };
                 // §20: off forgets what the step kept; on keeps nothing by itself.
-                let forgot = v == 0 && self.pat.forget(a, b);
-                self.pat.on[a] != old || forgot
+                let forgot = v == 0 && pat.forget(a, b);
+                pat.on[a] != old || forgot
             }
             // §20: that step keeps these A (high sixteen bits) and B (low) from now on.
             CMD_KEEP if a < TRACKS && b < STEPS => {
+                let pat = self.bank.pat_mut();
                 let ab = [(v >> 16) as u16, v as u16];
                 let bit = 1u16 << b;
-                let old = (self.pat.keep[a] & bit != 0, self.pat.kept[a][b]);
-                self.pat.keep[a] |= bit;
-                self.pat.kept[a][b] = ab;
+                let old = (pat.keep[a] & bit != 0, pat.kept[a][b]);
+                pat.keep[a] |= bit;
+                pat.kept[a][b] = ab;
                 old != (true, ab)
             }
             CMD_PROB if a < TRACKS && b < STEPS => {
                 let p = v.min(100) as u8;
-                let old = core::mem::replace(&mut self.pat.prob[a][b], p);
+                let old = core::mem::replace(&mut self.bank.pat_mut().prob[a][b], p);
                 old != p
             }
             CMD_SWING => {
                 let s = v.min(SWING_MAX) as u8;
-                let old = core::mem::replace(&mut self.pat.swing, s);
+                let old = core::mem::replace(&mut self.swing, s);
                 old != s
             }
             // A track's two sliders. In snapshot version 2 (§15), so a change moves the
@@ -299,15 +321,15 @@ impl Engine {
             }
             // §17: the lane's entry for a step. A value past 16 is ignored, as an index is.
             CMD_FX if a < STEPS && v <= FX_MAX as u32 => {
-                let old = core::mem::replace(&mut self.pat.fx[a], v as u8);
+                let old = core::mem::replace(&mut self.bank.pat_mut().fx[a], v as u8);
                 old != v as u8
             }
-            // §17: whether a sound goes through the effects.
+            // §17: whether a sound goes through the effects. The beat's (§21).
             CMD_FXSOUND if a < TRACKS => {
-                let old = self.pat.fx_sounds;
+                let old = self.fx_sounds;
                 let bit = 1u16 << a;
-                self.pat.fx_sounds = if v != 0 { old | bit } else { old & !bit };
-                self.pat.fx_sounds != old
+                self.fx_sounds = if v != 0 { old | bit } else { old & !bit };
+                self.fx_sounds != old
             }
             // §19: which inputs are taken, and (ABI 11) which effects are the host's and which
             // of those take the dry's place. The patch's, so nothing a snapshot holds changes.
@@ -317,9 +339,19 @@ impl Engine {
             }
             CMD_LENGTH => {
                 let l = v.clamp(1, STEPS as u32) as u8;
-                let old = core::mem::replace(&mut self.pat.length, l);
+                let old = core::mem::replace(&mut self.bank.pat_mut().length, l);
                 old != l
             }
+            // §21: a new chain of one pattern; stopped at once, playing at the end of the bar.
+            // Each moves the generation when the chain a snapshot saves changes.
+            CMD_PATTERN if v < PATTERNS as u32 => {
+                let playing = self.seq.playing();
+                self.bank.choose(v as u8, playing)
+            }
+            // §21: added to the next chain if one waits, else to the chain; ignored at sixteen.
+            CMD_CHAIN if v < PATTERNS as u32 => self.bank.add(v as u8),
+            // §21: the active pattern copied, whole and with its lane, to slot `v`.
+            CMD_COPY if v < PATTERNS as u32 => self.copy_to(v as usize),
             // §13: what a finger did. Each becomes edits through this same function, which
             // count their own changes, so nothing is counted here.
             CMD_KEY_DOWN => {
@@ -344,6 +376,16 @@ impl Engine {
 }
 
 impl Engine {
+    /// §21's `COPY`: everything the active pattern holds, its lane too (R90), into slot `n`.
+    /// The active pattern stays active. Says whether the slot's bytes changed. Out of line: a
+    /// copy is cold, and 1.3 KB moves.
+    #[inline(never)]
+    fn copy_to(&mut self, n: usize) -> bool {
+        let src = *self.bank.pat();
+        let old = core::mem::replace(&mut self.bank.pats[n & 15], src);
+        old != src
+    }
+
     /// §19's addition: a sound not yet hit shows its own A and B on the slider outputs, so
     /// they follow whatever sets them: `SOUND` (and so a slider), and a load.
     #[inline(never)]

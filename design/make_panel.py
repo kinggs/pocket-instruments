@@ -46,20 +46,33 @@ DISPLAY_BOX = (GLASS_IN - FRAME, 7.0, W - 2 * GLASS_IN + 2 * FRAME, 25.0)  # x, 
 
 # The keys, the sliders and the function keys keep their places among themselves, 6 mm lower
 # and centred: 7.62 mm right of where they were at 24 HP (half of three HP).
+# D139 (issue 150): larger keys and less empty space. The band starts at 44, under PLAY in, and
+# runs to 2.35 mm over the group names; the grid runs from the left margin and the function
+# keys to the right one. Until then: DX, DY = 7.62, 6.0; MID_Y, MID_H = 44.0, 48.0; GRID_X,
+# PITCH, KEY = 12.62, 12.0, 11.7 (keys 11.7 mm at a 12 mm pitch). DX and DY are kept for the
+# record; nothing below uses them.
 DX, DY = (W - 121.92) / 2, 6.0
-MID_Y, MID_H = 38.0 + DY, 48.0  # the band the grid, sliders and function keys share
+MID_Y, MID_H = 44.0, 56.0  # the band the grid, sliders and function keys share
 
-GRID_X, PITCH, KEY = 5.0 + DX, 12.0, 11.7  # 4 x 4 at 12 mm pitch
+GRID_X, PITCH, KEY = 5.0, 14.0, 13.6  # 4 x 4 at 14 mm pitch, 0.4 mm apart
 # The sliders were 7 mm apart, at 61.5 and 68.5, with the dividers at 56 and 74. Kenny
 # widened them to 10 mm (2026-11-19) for the guide's thumb room (R33). The space came from the
 # clearances beside the dividers, so the grid and the function keys did not move.
-DIVIDERS = (55.25 + DX, 74.75 + DX)
-SLIDERS = {"A": 60.0 + DX, "B": 70.0 + DX}  # centre lines
-SLIDER_TOP, SLIDER_BOTTOM = 38.0 + DY, 81.0 + DY
+# D139: 12 mm apart, each dragged in a box 8.0 wide (a cap 8 by 4.5), the dividers moved out.
+# Until then DIVIDERS (62.87, 82.37), SLIDERS 67.62 and 77.62, SLIDER_TOP and SLIDER_BOTTOM 44.0
+# and 87.0, LETTER_Y 90.2, a box 5.0 wide.
+DIVIDERS = (62.8, 85.2)
+SLIDERS = {"A": 68.0, "B": 80.0}  # centre lines
+SLIDER_BOX = 8.0  # a slider's box, as wide as its cap
+SLIDER_TOP, SLIDER_BOTTOM = 44.0, 95.5
 THREAD = 0.67
-LETTER_Y = 84.2 + DY  # centre of the A and B under the threads
+LETTER_Y = 98.7  # centre of the A and B under the threads
 
-FN_X, FN_W, FN_GAP = 77.0 + DX, 40.0, 0.6  # function keys: 10 mm pitch along the bottom row
+# D139: from x 87.16 to the right margin. Until then FN_X, FN_W = 84.62, 40.0.
+FN_X, FN_W, FN_GAP = 87.16, 45.0, 0.6
+# What the module draws on a key (rack/src/Rhythm.cpp), here only for --check: a key's numeral,
+# a function key's word up the key under its band (D139: 4.4, 3.2 and 1.9; were 3.8, 2.8, 1.67).
+NUMERAL_TYPE, FN_WORD_TYPE, FN_BAND = 4.4, 3.2, 1.9
 FN_TOP = ("sound", "pattern", "bpm")
 FN_BOTTOM = ("function", "fx", "play", "write")
 
@@ -155,10 +168,10 @@ SIDE = ("CLOCK", "RESET", "PLAY", "AUDIO")  # the jacks beside the display
 # until RETURN (D62), when it dropped to 3.0 mm to fit between RETURN's stitches and the
 # output plate. Since Session 18 it sits midway between RETURN's stitches and FX SEND's plate,
 # still 3.0 mm. `--check` prints the clearances.
-WORDMARK_SIZE = 3.0
-# Layout B: no room in the full row, so the wordmark sits centred in the band between the keys'
-# bottom (and the A and B under the threads) and the group names. ⚠ Its place is the build's:
-# the board did not draw it (design/DESIGN.md, "Layout B").
+# Layout B (issue 101) put it at 3.0 mm, centred in the band between the keys' bottom (and the
+# A and B under the threads) and the group names. D139 moved it up under the display, into the
+# band PLAY in already needs, at 5.0 mm (⚠ the designer's size, accepted in advance by Kenny).
+WORDMARK_SIZE = 5.0
 WORDMARK_Y = None  # worked out by wordmark()
 
 # Jack lettering was 2.17 mm. At Rack's 100% zoom (about 2.95 px per mm) that is under 5 px of
@@ -271,10 +284,10 @@ def extent(font, name):
 
 def wordmark(font):
     """The wordmark's (text, centre x, y, size, the band it sits in): centred on the panel,
-    midway between the lowest of the keys and the A and B, and the group names' tops."""
-    cap = font["OS/2"].sCapHeight * JACK_TYPE / font["head"].unitsPerEm
-    top = max(MID_Y + MID_H, LETTER_Y + 3.0 * 0.73 / 2)
-    bottom = GROUP_NAME_Y - cap / 2
+    midway between the display's frame and the keys (D139). Until D139 the band was the lowest
+    of the keys and the A and B to the group names' tops."""
+    top = DISPLAY_BOX[1] + DISPLAY_BOX[3]
+    bottom = MID_Y
     return "Pocket Instruments", W / 2, (top + bottom) / 2, WORDMARK_SIZE, (top, bottom)
 
 
@@ -363,13 +376,61 @@ def check(font):
         if screw < 0.5:
             ok = False
             print(f"{name}: {screw:.2f} mm from a screw  <-- too close")
+    # D139: the keys, the sliders and the function keys against the margins, the dividers and
+    # the group names; the words inside their keys. The rules are the ones above: 0.5 between
+    # shapes, 1.0 from lettering, nothing past the margin.
+    grid = [keys[f"key {n + 1}"] for n in range(16)]
+    fns = fn_keys()
+    left = min(cx - w / 2 for cx, _, w, _ in grid)
+    right = max(x + w for _, x, _, w, _ in fns)
+    good = left >= MARGIN - 1e-6 and W - right >= MARGIN - 1e-6
+    ok = ok and good
+    print(f"the keys: {left:.2f} mm from the left edge, the function keys {W - right:.2f} mm from the right (the margin is {MARGIN})" + ("" if good else "  <-- past the margin"))
+    lowest = max(max(cy + h / 2 for _, cy, _, h in grid), max(y + h for _, _, y, _, h in fns), SLIDER_BOTTOM)
+    names_top = GROUP_NAME_Y - cap / 2
+    good = names_top - lowest >= 1.0
+    ok = ok and good
+    print(f"the keys to the group names: {names_top - lowest:.2f} mm" + ("" if good else "  <-- too close"))
+    ab_cap = cap_of(font, 3.0)
+    under, over = LETTER_Y - ab_cap / 2 - SLIDER_BOTTOM, names_top - (LETTER_Y + ab_cap / 2)
+    good = under >= 0.5 and over >= 1.0
+    ok = ok and good
+    print(f"the A and B: {under:.2f} mm under the sliders' boxes, {over:.2f} mm over the group names" + ("" if good else "  <-- too close"))
+    grid_right = max(cx + w / 2 for cx, _, w, _ in grid)
+    fn_left = min(x for _, x, _, _, _ in fns)
+    boxes = {name: (x - SLIDER_BOX / 2, x + SLIDER_BOX / 2) for name, x in SLIDERS.items()}
+    gaps = {
+        "the grid to the first divider": DIVIDERS[0] - 0.25 - grid_right,
+        "the first divider to slider A's box": boxes["A"][0] - (DIVIDERS[0] + 0.25),
+        "slider A's box to slider B's": boxes["B"][0] - boxes["A"][1],
+        "slider B's box to the second divider": DIVIDERS[1] - 0.25 - boxes["B"][1],
+        "the second divider to the function keys": fn_left - (DIVIDERS[1] + 0.25),
+    }
+    for what, gap in gaps.items():
+        good = gap >= 0.5
+        ok = ok and good
+        print(f"{what}: {gap:.2f} mm" + ("" if good else "  <-- too close"))
+    longest = max(fns, key=lambda f: advance(font, f[0], FN_WORD_TYPE))
+    for label, x, y, w, h in fns:
+        long, tall = advance(font, label, FN_WORD_TYPE), cap_of(font, FN_WORD_TYPE)
+        good = (h - FN_BAND) - long >= 2.0 and w - tall >= 2.0
+        ok = ok and good
+        if not good:
+            print(f"{label}: its word ({long:.2f} by {tall:.2f} mm) is not inside its key under the band ({w:.2f} by {h - FN_BAND:.2f})  <-- too close")
+    k_w = min(w for _, _, w, _ in grid)
+    num = advance(font, "16", NUMERAL_TYPE)
+    good = k_w - num >= 2.0
+    ok = ok and good
+    print(f"the words inside their keys: the longest, {longest[0]}, {advance(font, longest[0], FN_WORD_TYPE):.2f} mm up a key "
+          f"{longest[4] - FN_BAND:.2f} long under its band; 16 is {num:.2f} mm wide on a key of {k_w:.2f}" + ("" if good else "  <-- too close"))
     text, x, y, size, (top, bottom) = wordmark(font)
     w = advance(font, text, size)
     c = cap_of(font, size)
-    good = (y - c / 2) - top >= 1.0 and bottom - (y + c / 2) >= 1.0 and x - w / 2 >= MARGIN
+    play_right = jack_box(font, "PLAY")[1]
+    good = (y - c / 2) - top >= 1.0 and bottom - (y + c / 2) >= 1.0 and x - w / 2 >= MARGIN and x - w / 2 - play_right >= 1.0
     ok = ok and good
-    print(f"wordmark {size} mm at y {y:.2f}: {(y - c / 2) - top:.2f} mm under the keys, {bottom - (y + c / 2):.2f} mm over the group names"
-          + ("" if good else "  <-- too close"))
+    print(f"wordmark {size} mm at y {y:.2f}: {(y - c / 2) - top:.2f} mm under the display's frame, {bottom - (y + c / 2):.2f} mm over the keys; "
+          f"{w:.2f} mm wide, from x {x - w / 2:.2f} to {x + w / 2:.2f}, {x - w / 2 - play_right:.2f} mm right of PLAY in" + ("" if good else "  <-- too close"))
     # The display's inside, as the module draws it (not the panel's, but laid out from its width).
     glass = dw - 2 * FRAME
     weave = glass - 2 * DISPLAY_PAD - RIGHT_COL - WEAVE_GAP
@@ -396,7 +457,7 @@ def positions():
         r, c = divmod(n, 4)
         row(f"key {n + 1}", GRID_X + PITCH / 2 + c * PITCH, MID_Y + PITCH / 2 + r * PITCH, KEY, KEY)
     for name, x in SLIDERS.items():
-        row(f"slider {name} (travel)", x, (SLIDER_TOP + SLIDER_BOTTOM) / 2, 5.0, SLIDER_BOTTOM - SLIDER_TOP)
+        row(f"slider {name} (travel)", x, (SLIDER_TOP + SLIDER_BOTTOM) / 2, SLIDER_BOX, SLIDER_BOTTOM - SLIDER_TOP)
     for label, x, y, w, h in fn_keys():
         row(label, x + w / 2, y + h / 2, w, h)
     for name, (x, y, out, multi, _) in JACKS.items():

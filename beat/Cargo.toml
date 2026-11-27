@@ -1,0 +1,24 @@
+[package]
+name = "pi-beat"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Pocket Instruments: the beat file (docs/BEAT.md), read into snapshot version 5 and written back. no_std, no allocator, a C ABI."
+publish = false
+
+# No dependencies, on purpose, as the core (D134 item 2). The snapshot's offsets come from
+# core/src/snapshot_layout.rs by `include!`, not by a dependency.
+
+[lib]
+name = "pi_beat"
+# An rlib, so the core's tests can read a beat file (core/Cargo.toml's dev-dependency). The
+# Makefile asks for a staticlib (Rack, the terminal host, the C++ harness) and a cdylib (the
+# .wasm) with `cargo rustc --crate-type`, as it does for the core.
+crate-type = ["rlib"]
+doctest = false
+
+[features]
+# A static library and a .wasm need a panic handler; a crate linked into a program with the
+# standard library must not bring one. The core's tests take this crate without it.
+default = ["panic-handler"]
+panic-handler = []

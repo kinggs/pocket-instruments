@@ -452,6 +452,30 @@ now also plays each fixture from a "kept snapshot" (each step that is on keeping
 sound's own values, as keys save it; `fixtures/README.md`), and the page's bytes are such a
 label in the Node report. `make play` passed in Chromium and Firefox with it.
 
+**Since issue 169 (2026-11-27, ABI 16): the model widened to the specification, and bpm put
+back.** Since sixteen patterns the check failed now and then: "0 torn, N rounds where the
+snapshot was not the model's" (three sightings, one in CI). Reproduced on purpose with the
+harness as #153 left it (bpm pressed only as a used hold), on 28 of 32 cores busy: 9 of 20
+runs failed under ThreadSanitizer, 7 of 30 without it. Main's harness on main's core (ABI 15,
+bpm pressed freely) failed 0 of 20 under the same load. Every bad round, in every failing run,
+differed from the model in the tempo (bytes 16 to 18) and the CRC alone, and every one held a
+bpm press and release. **The cause is the harness's model, not the core and not a host:** D130
+makes a release of bpm that nothing used step the preset only under half a second of the
+engine's frames, and the model counted one frame a message, while the audio thread runs
+blocks whether or not a message waits. A second thread slowed by 22 KB snapshots, or by load,
+lets more than half a second of frames pass between bpm's press and its release; the engine
+then holds and the model presses. (#153's change only made it rarer: read from the code,
+a grid key already down does not use bpm ⚠; the hold reading accounts for every bad round.) The model was **narrower than the specification**: it allowed only
+the press, and ENGINE.md §13 (D130) and §8 (a snapshot holds what the audio thread had taken)
+allow the press or the hold, by time. Now the model keeps both at each bpm release and the
+round passes if the snapshot is either; the one that matched goes on. It allows nothing D130
+does not. Bpm is pressed freely again: tapped alone, held over other messages, held over a
+slider. After it: 0 of 40 runs failed under ThreadSanitizer with 28 cores busy, 0 of 30
+without it (the old harness's failure rates make 0 of 40 by chance under one in a billion),
+and `make race`'s six planted faults are all still caught. A run now also says how many
+rounds needed the hold: three in a typical unloaded run. The failing rounds' differing bytes
+and messages are summarised on issue 169.
+
 **To finish it:** listen on a phone while editing: play a beat, enter steps, move sliders,
 for a few minutes, and hear no dropout. Kenny's, with P8's first sitting. (To repeat the Rack row:
 `node rack/check-patch.mjs ~/.local/share/Rack2/autosave/patch.json target/report-node.txt`

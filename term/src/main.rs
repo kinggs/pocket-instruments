@@ -3,10 +3,11 @@
 //! SPDX-License-Identifier: MIT
 use pi_term::audio::{self, Shared};
 use pi_term::ffi::*;
-use pi_term::host::{Action, Host, Mode};
+use pi_term::host::{Action, Host, Mode, Overlay};
 use pi_term::input::{Input, KITTY_FLAGS, Reader};
 use pi_term::menu::{self, Choice, Intro, Menu};
 use pi_term::settings::{self, Settings};
+use pi_term::bank::{self, Bank};
 use pi_term::{beat, screen};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -199,17 +200,37 @@ fn main() {
 /// Rhythm, until it is left. Lines for the terminal after it is put back go in `report`.
 fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>) -> Result<Left, String> {
     let beat_path: Option<PathBuf> = s.beat.clone().or_else(beat::default_path);
-    let loaded = beat_path.as_ref().and_then(|p| beat::read(p).ok());
+    // D142 (proposed): with no file at the beat's path, a new player, so the bank's first beat.
+    let bank_ = Bank::compiled();
+    let opened = Some(beat::open_or_default(beat_path.as_deref(), &bank_));
     let shared = Shared::new();
-    let mut load_note = None;
+    let mut load_note = opened.as_ref().and_then(|o| o.note.clone());
+    let mut refused = false;
     let (output, sound) = audio::start(s.audio.0, 1, shared.clone(), |e| {
-        if let Some(b) = &loaded {
+        if let Some(b) = opened.as_ref().and_then(|o| o.snapshot.as_ref()) {
             let r = e.load(b);
             if r != PI_OK {
-                load_note = Some(format!("the beat file was refused ({r}); starting empty"));
+                refused = true;
             }
         }
     })?;
+    if refused {
+        if let Some(p) = &beat_path {
+            load_note = Some(beat::left_alone(p, "the engine refused it"));
+        }
+    }
+    // The file the beat is saved to by itself: not one that is there and was not read, which is
+    // left alone (docs/TERMINAL.md, "The beat"). `:w FILE` still saves anywhere asked.
+    let autosave: Option<PathBuf> = beat_path.clone().filter(|_| !refused && opened.as_ref().is_none_or(|o| o.writable));
+    // The footer has 78 cells and a refusal's line and column can run past them: the whole
+    // line is said again on the terminal after leaving.
+    if autosave.is_none() {
+        if let (Some(p), Some(n)) = (&beat_path, &load_note) {
+            report.push(format!("{n} ({})", p.display()));
+        }
+    } else if let Some(n) = load_note.as_ref().filter(|n| n.starts_with("started empty")) {
+        report.push(n.clone()); // the bank's default did not open: the whole line, after leaving
+    }
 
     let mut host = Host::new(t.mode);
     // A test aid, not an option: Hyprland's `send_key_state` moves focus to the window and back
@@ -237,15 +258,9 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
     let mut left: Option<Left> = None;
 
     let save_now = |shared: &Shared, path: &PathBuf| -> Result<(), String> {
-        shared.want_save.store(true, Ordering::Release);
-        let until = Instant::now() + Duration::from_millis(500);
-        while Instant::now() < until {
-            if let Some(b) = shared.saved.lock().unwrap().take() {
-                return beat::write(path, &b).map_err(|e| format!("could not write {}: {e}", path.display()));
-            }
-            std::thread::sleep(Duration::from_millis(2));
-        }
-        Err("the engine did not answer the save".into())
+        let b = bank::snapshot_now(shared)?;
+        let bytes = beat::to_file(&b)?;
+        beat::write(path, &bytes).map_err(|e| format!("could not write {}: {e}", path.display()))
     };
 
     while left.is_none() {
@@ -267,37 +282,57 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
                 Action::QuitAll => left = Some(Left::Quit),
                 Action::Say(m) => message = Some((m, Instant::now() + Duration::from_secs(4))),
                 Action::Save(file) => {
-                    let path = file.map(PathBuf::from).or_else(|| beat_path.clone());
+                    let path = file.map(PathBuf::from).or_else(|| autosave.clone());
                     let said = match path {
                         Some(p) => match save_now(&shared, &p) {
                             Ok(()) => format!("saved {}", p.display()),
                             Err(e) => e,
                         },
+                        None if beat_path.is_some() => "the beat file was not read, so it is left alone: save with :w FILE".into(),
                         None => "nowhere to save: give a file, :w FILE".into(),
                     };
                     message = Some((said, Instant::now() + Duration::from_secs(4)));
                 }
                 Action::Open(file) => {
-                    let said = match std::fs::read(&file) {
-                        Ok(bytes) => {
-                            *shared.to_load.lock().unwrap() = Some((bytes, None));
-                            let until = Instant::now() + Duration::from_millis(500);
-                            let mut r = None;
-                            while Instant::now() < until && r.is_none() {
-                                std::thread::sleep(Duration::from_millis(2));
-                                r = shared.to_load.lock().unwrap().as_ref().and_then(|(_, r)| *r);
-                            }
-                            *shared.to_load.lock().unwrap() = None;
-                            match r {
-                                Some(PI_OK) => format!("opened {file}"),
+                    let said = match std::fs::read(&file).map_err(|e| e.to_string()).and_then(|b| beat::from_file(&b)) {
+                        Ok(beat::Read { snapshot: bytes, own }) => {
+                            match bank::load(&shared, bytes) {
+                                Some(PI_OK) => beat::own_note(own).unwrap_or_else(|| format!("opened {file}")),
                                 Some(code) => format!("{file} is not a beat this engine reads ({code})"),
                                 None => "the engine did not answer".into(),
                             }
                         }
-                        Err(e) => format!("could not read {file}: {e}"),
+                        Err(e) => format!("{file} not opened: {e}"),
                     };
                     host.hand = [None, None];
                     message = Some((said, Instant::now() + Duration::from_secs(4)));
+                }
+                // The bank (docs/BANK.md; D141, D142, proposed): `:bank` lists it on the display;
+                // `:bank <n>` and `:new` load through the same load `:e` uses, after the beat
+                // here is kept in rhythm.previous.beat (`:e` opens it again).
+                Action::Bank(None) => host.overlay = Overlay::Bank(bank_.menu()),
+                Action::Bank(Some(_)) | Action::New => {
+                    let got = match &a {
+                        Action::Bank(Some(n)) => bank_.read(*n).map(|(file, r)| (bank::name_of(&r.snapshot), file, r.snapshot)),
+                        _ => beat::from_file(bank::EMPTY).map(|r| ("the empty beat".to_string(), String::new(), r.snapshot)),
+                    };
+                    let said = match (got, &beat_path) {
+                        (Err(why), _) => format!("not loaded: {why}"),
+                        (Ok(_), None) => "not loaded: there is nowhere to keep the beat here (no beat file)".into(),
+                        (Ok((name, file, snap)), Some(p)) => {
+                            let prev = bank::previous_path(p);
+                            match bank::replace(&shared, &prev, snap) {
+                                Ok(()) => {
+                                    host.hand = [None, None];
+                                    let what = if name.is_empty() { file } else { name };
+                                    let kept = prev.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                                    format!("{what}; the last beat kept: :e {kept}")
+                                }
+                                Err(e) => e,
+                            }
+                        }
+                    };
+                    message = Some((said, Instant::now() + Duration::from_secs(6)));
                 }
             }
         }
@@ -309,7 +344,7 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
         }
         if save_due.is_some_and(|t| Instant::now() >= t) {
             save_due = None;
-            if let Some(p) = &beat_path {
+            if let Some(p) = &autosave {
                 if let Err(e) = save_now(&shared, p) {
                     message = Some((e, Instant::now() + Duration::from_secs(4)));
                 }
@@ -323,7 +358,8 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
         if message.as_ref().is_some_and(|(_, t)| Instant::now() >= *t) {
             message = None;
         }
-        let scene = screen::Scene { view: &view, weave: &woven, cores: lit, host: &host, message: message.as_ref().map(|(m, _)| m.as_str()) };
+        let flicker = screen::flicker_lit(now_ms, s.reduced.0);
+        let scene = screen::Scene { view: &view, weave: &woven, cores: lit, flicker, host: &host, message: message.as_ref().map(|(m, _)| m.as_str()) };
         let (w, h) = crossterm::terminal::size().map(|(w, h)| (w as usize, h as usize)).unwrap_or((80, 24));
         let grid = if w >= 80 && h >= 24 && !s.pocket {
             screen::main_screen(&scene)
@@ -343,7 +379,7 @@ fn rhythm(t: &mut Term, s: &Settings, from_menu: bool, report: &mut Vec<String>)
         shared.push(c);
     }
     std::thread::sleep(Duration::from_millis(60));
-    if let Some(p) = &beat_path {
+    if let Some(p) = &autosave {
         if let Err(e) = save_now(&shared, p) {
             report.push(e);
         }

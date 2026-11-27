@@ -487,7 +487,7 @@ fn drive(seed: u64, tour: &Tour, counts: &mut Counts) {
                 counts.slowed_some += 1;
             }
             if (layout == 1 || layout == 17) && running {
-                if e.pat.fx_sounds == 0xffff {
+                if e.fx_sounds == 0xffff {
                     counts.mix_all += 1;
                 } else {
                     counts.mix_some += 1;

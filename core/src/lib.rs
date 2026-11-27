@@ -15,6 +15,10 @@ mod engine;
 mod keys;
 mod seq;
 mod snapshot;
+// §21's offsets, shared with `beat/` by `include!` (D134 item 2). The core writes the hat cut
+// by zeroing, so not every name is used here.
+#[allow(dead_code)]
+mod snapshot_layout;
 mod voice;
 mod weave;
 
