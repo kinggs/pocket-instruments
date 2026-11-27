@@ -480,6 +480,9 @@ int main(int argc, char **argv) {
     std::string out;
     for (auto &path : files) {
         Json fx = read_fixture(path.string());
+        // A fixture with a beat file (issue 140) starts from the beat, not from edits a host
+        // enters: nothing here to race, and no snapshot run in the Node report to match.
+        if (fx.find("beat")) continue;
         if (fx.n("seed") != 1) die("race.cpp starts its engine from seed 1, as every fixture so far does");
         Snap snap = other.enter(fx);
         out += path.stem().string() + " ";

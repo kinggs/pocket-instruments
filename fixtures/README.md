@@ -745,6 +745,13 @@ snapshot from the ABI 15 core, committed first, never regenerated.
 
 ### `beat-four-and-a-fill`
 
+**Built (issue 140, 2026-11-27):** moved up from `designed/` unchanged, in a commit of its own,
+and passed at its first run in Rust, C++, Node and the terminal host (the beat read by each
+host's beat reader: the crate, `libpi_beat.a`, `pi_beat.wasm`). Each harness's engine starts
+from another seed (the fixture's plus 12 345), so the beat's own seed is what plays; no tempo is
+sent. The report holds the beat's bytes once (`# beat-four-and-a-fill beat <hex>`), then its 18
+runs. The Rhythm module's self-test leaves it out (`rack/rhythm.jq`): it reads no beat file.
+
 `docs/BEAT.md`'s worked example. The beat is loaded before frame 0, then the play edit at 0:
 tick 0 is pattern 1's step 0, the chain at its first pattern.
 

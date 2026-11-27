@@ -8,24 +8,20 @@ use crate::crc::crc32;
 use crate::engine::{CREDIT, Engine, NAME};
 use crate::keys::VOLUME_MAX;
 use crate::seq::{FX_MAX, PATTERNS, Pattern, STEPS, SWING_MAX, TRACKS};
+// §21's offsets live in one file of constants, which `beat/` includes too (D134 item 2).
+use crate::snapshot_layout::*;
 use crate::voice::PARAM_DEFAULT;
 
-/// §21: version 5 is 276 bytes and a block for each pattern written; sixteen is the most.
-pub const SIZE_MIN: usize = 276;
-pub const BLOCK: usize = 1364;
-pub const SIZE: usize = SIZE_MIN + PATTERNS * BLOCK;
+// §21: version 5 is 276 bytes and a block for each pattern written; sixteen is the most
+// (`SIZE_MIN`, `BLOCK` and `SIZE`, from the shared file).
 /// Versions 4 (§20), 3 (§17), 2 (§15) and 1 (§8), which it still loads.
 pub const SIZE_V4: usize = 1464;
 pub const SIZE_V3: usize = 408;
 pub const SIZE_V2: usize = 388;
 pub const SIZE_V1: usize = 316;
-const MAGIC: [u8; 4] = *b"PKIN";
-const VERSION: u16 = 5;
-const KIND_RHYTHM: u16 = 1;
-const HEADER: usize = 12;
-/// Version 5: where the patterns' blocks begin, after the name (112) and the credit (144).
-const BLOCKS_AT: usize = 272;
-const _: () = assert!(BLOCKS_AT + 4 == SIZE_MIN && 112 + NAME == 144 && 144 + CREDIT == BLOCKS_AT);
+// The shared table is the engine's own shape: the same counts, the same name and credit.
+const _: () = assert!(TRACKS_V5 == TRACKS && STEPS_V5 == STEPS && PATTERNS_V5 == PATTERNS);
+const _: () = assert!(NAME_LEN == NAME && CREDIT_LEN == CREDIT);
 const _: () = assert!(SIZE == 22_100);
 
 /// The payload size field counts what is between the header and the CRC: 300, 372, 392, 1448,
@@ -81,30 +77,30 @@ pub fn save(e: &Engine, b: &mut [u8]) -> usize {
         return 0;
     };
     b.fill(0);
-    put(b, 0, &MAGIC);
-    put(b, 4, &VERSION.to_le_bytes());
-    put(b, 6, &KIND_RHYTHM.to_le_bytes());
-    put(b, 8, &payload(size).to_le_bytes());
-    put(b, 12, &e.seed.to_le_bytes());
-    put(b, 16, &e.clock.mbpm.to_le_bytes());
-    b[20] = e.swing;
-    b[21] = e.keys.volume;
-    b[22] = e.keys.sel;
-    // 23: the hat cut, 0 until D47 has a setting.
+    put(b, AT_MAGIC, &MAGIC);
+    put(b, AT_VERSION, &VERSION.to_le_bytes());
+    put(b, AT_KIND, &KIND_RHYTHM.to_le_bytes());
+    put(b, AT_PAYLOAD, &payload(size).to_le_bytes());
+    put(b, AT_SEED, &e.seed.to_le_bytes());
+    put(b, AT_TEMPO, &e.clock.mbpm.to_le_bytes());
+    b[AT_SWING] = e.swing;
+    b[AT_VOLUME] = e.keys.volume;
+    b[AT_CHOSEN] = e.keys.sel;
+    // AT_HAT_CUT: the hat cut, 0 until D47 has a setting.
     for t in 0..TRACKS {
-        put(b, 24 + 4 * t, &e.voices.params[t][0].to_le_bytes());
-        put(b, 26 + 4 * t, &e.voices.params[t][1].to_le_bytes());
+        put(b, AT_SLIDERS + 4 * t, &e.voices.params[t][0].to_le_bytes());
+        put(b, AT_SLIDERS + 2 + 4 * t, &e.voices.params[t][1].to_le_bytes());
     }
-    put(b, 88, &e.voices.sampled.to_le_bytes());
-    put(b, 90, &e.fx_sounds.to_le_bytes());
-    put(b, 92, &w.to_le_bytes());
+    put(b, AT_SAMPLED, &e.voices.sampled.to_le_bytes());
+    put(b, AT_FX_SOUNDS, &e.fx_sounds.to_le_bytes());
+    put(b, AT_WRITTEN, &w.to_le_bytes());
     // The chain saved is the one that will play: the next chain if one waits (§21).
     let (chain, len) = e.bank.shown();
-    b[94] = len;
-    put(b, 96, &chain[..(len as usize).min(PATTERNS)]); // zero past its length
-    put(b, 112, &e.name);
-    put(b, 144, &e.credit);
-    let mut at = BLOCKS_AT;
+    b[AT_CHAIN_LEN] = len;
+    put(b, AT_CHAIN, &chain[..(len as usize).min(PATTERNS)]); // zero past its length
+    put(b, AT_NAME, &e.name);
+    put(b, AT_CREDIT, &e.credit);
+    let mut at = AT_BLOCKS;
     for (p, pat) in e.bank.pats.iter().enumerate() {
         if w >> p & 1 == 1 {
             put_block(&mut b[at..at + BLOCK], pat);
@@ -120,19 +116,19 @@ pub fn save(e: &Engine, b: &mut [u8]) -> usize {
 /// the lane, keeps, the values (zero where nothing is kept), the length, three zero.
 fn put_block(b: &mut [u8], pat: &Pattern) {
     for t in 0..TRACKS {
-        put(b, 2 * t, &pat.on[t].to_le_bytes());
-        put(b, 32 + STEPS * t, &pat.prob[t]);
-        put(b, 304 + 2 * t, &pat.keep[t].to_le_bytes());
+        put(b, B_STEPS + 2 * t, &pat.on[t].to_le_bytes());
+        put(b, B_PROB + STEPS * t, &pat.prob[t]);
+        put(b, B_KEEPS + 2 * t, &pat.keep[t].to_le_bytes());
         for s in 0..STEPS {
             if pat.keep[t] >> s & 1 == 1 {
-                let at = 336 + 4 * (STEPS * t + s);
+                let at = B_VALUES + 4 * (STEPS * t + s);
                 put(b, at, &pat.kept[t][s][0].to_le_bytes());
                 put(b, at + 2, &pat.kept[t][s][1].to_le_bytes());
             }
         }
     }
-    put(b, 288, &pat.fx);
-    b[1360] = pat.length;
+    put(b, B_LANE, &pat.fx);
+    b[B_LENGTH] = pat.length;
 }
 
 /// Where a pattern's parts are in a snapshot: the steps, the probabilities, the lane (version 3
@@ -145,7 +141,7 @@ struct At {
     keep: Option<(usize, usize)>,
     length: usize,
 }
-const AT_V5: At = At { on: 0, prob: 32, fx: Some(288), keep: Some((304, 336)), length: 1360 };
+const AT_V5: At = At { on: B_STEPS, prob: B_PROB, fx: Some(B_LANE), keep: Some((B_KEEPS, B_VALUES)), length: B_LENGTH };
 const AT_V4: At = At { on: 24, prob: 56, fx: Some(384), keep: Some((404, 436)), length: 20 };
 
 /// A pattern read back, clamped as a command would be. What the version does not hold stays as
@@ -185,21 +181,21 @@ pub fn load(e: &mut Engine, buf: &[u8]) -> i32 {
     if buf.len() < HEADER {
         return ERR_SIZE;
     }
-    if buf[..4] != MAGIC {
+    if buf[AT_MAGIC..AT_MAGIC + 4] != MAGIC {
         return ERR_MAGIC;
     }
-    let version = u16_at(buf, 4);
+    let version = u16_at(buf, AT_VERSION);
     let Some(least) = least_of_version(version) else {
         return ERR_VERSION;
     };
     if buf.len() < least {
         return ERR_SIZE;
     }
-    if u16_at(buf, 6) != KIND_RHYTHM {
+    if u16_at(buf, AT_KIND) != KIND_RHYTHM {
         return ERR_MAGIC;
     }
-    let size = if version == 5 { SIZE_MIN + BLOCK * u16_at(buf, 92).count_ones() as usize } else { least };
-    if u32_at(buf, 8) != payload(size) {
+    let size = if version == VERSION { SIZE_MIN + BLOCK * u16_at(buf, AT_WRITTEN).count_ones() as usize } else { least };
+    if u32_at(buf, AT_PAYLOAD) != payload(size) {
         return ERR_SIZE;
     }
     if buf.len() < size {
@@ -210,8 +206,8 @@ pub fn load(e: &mut Engine, buf: &[u8]) -> i32 {
         return ERR_CRC;
     }
 
-    e.reseed(u32_at(b, 12));
-    e.clock.mbpm = u32_at(b, 16).clamp(MBPM_MIN, MBPM_MAX);
+    e.reseed(u32_at(b, AT_SEED));
+    e.clock.mbpm = u32_at(b, AT_TEMPO).clamp(MBPM_MIN, MBPM_MAX);
     let bank = &mut e.bank;
     for pat in &mut bank.pats {
         pat.clear();
@@ -220,7 +216,7 @@ pub fn load(e: &mut Engine, buf: &[u8]) -> i32 {
     (bank.next, bank.next_len) = ([0; PATTERNS], 0);
     e.name = [0; NAME];
     e.credit = [0; CREDIT];
-    if version == 5 {
+    if version == VERSION {
         load_v5(e, b);
     } else {
         load_old(e, b, version);
@@ -236,26 +232,26 @@ pub fn load(e: &mut Engine, buf: &[u8]) -> i32 {
 /// §21: version 5. The patterns not written stay cleared; `pos` 0, no next chain, the active
 /// pattern the chain's first.
 fn load_v5(e: &mut Engine, b: &[u8]) {
-    e.swing = b[20].min(SWING_MAX as u8);
+    e.swing = b[AT_SWING].min(SWING_MAX as u8);
     // The view's volume row is (1 << volume) - 1: past 16 it would overflow (§14).
-    e.keys.volume = b[21].clamp(1, VOLUME_MAX);
-    e.keys.sel = b[22].min(TRACKS as u8 - 1);
-    // 23, the hat cut: nothing to set while no core writes anything but 0 (§15).
+    e.keys.volume = b[AT_VOLUME].clamp(1, VOLUME_MAX);
+    e.keys.sel = b[AT_CHOSEN].min(TRACKS as u8 - 1);
+    // AT_HAT_CUT, the hat cut: nothing to set while no core writes anything but 0 (§15).
     for t in 0..TRACKS {
-        e.voices.params[t] = [u16_at(b, 24 + 4 * t), u16_at(b, 26 + 4 * t)];
+        e.voices.params[t] = [u16_at(b, AT_SLIDERS + 4 * t), u16_at(b, AT_SLIDERS + 2 + 4 * t)];
     }
-    e.voices.sampled = u16_at(b, 88);
-    e.fx_sounds = u16_at(b, 90);
-    let w = u16_at(b, 92);
+    e.voices.sampled = u16_at(b, AT_SAMPLED);
+    e.fx_sounds = u16_at(b, AT_FX_SOUNDS);
+    let w = u16_at(b, AT_WRITTEN);
     let bank = &mut e.bank;
-    bank.chain_len = b[94].clamp(1, PATTERNS as u8);
+    bank.chain_len = b[AT_CHAIN_LEN].clamp(1, PATTERNS as u8);
     for i in 0..bank.chain_len as usize {
-        bank.chain[i] = b[96 + i].min(PATTERNS as u8 - 1);
+        bank.chain[i] = b[AT_CHAIN + i].min(PATTERNS as u8 - 1);
     }
     bank.active = bank.chain[0];
-    e.name.copy_from_slice(&b[112..112 + NAME]);
-    e.credit.copy_from_slice(&b[144..144 + CREDIT]);
-    let mut at = BLOCKS_AT;
+    e.name.copy_from_slice(&b[AT_NAME..AT_NAME + NAME]);
+    e.credit.copy_from_slice(&b[AT_CREDIT..AT_CREDIT + CREDIT]);
+    let mut at = AT_BLOCKS;
     for p in 0..PATTERNS {
         if w >> p & 1 == 1 {
             get_pattern(&b[at..at + BLOCK], &AT_V5, &mut bank.pats[p]);
