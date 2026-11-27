@@ -179,20 +179,93 @@ fn hold_esc_lets_every_latch_go_and_focus_lost_lets_every_key_go() {
 // ---- the one-key shortcuts (D119 item 3, D122 item 2) ----
 
 #[test]
-fn the_sliders_move_4096_from_where_the_hand_left_them() {
+fn the_sliders_move_1024_from_where_the_hand_left_them() {
+    // D126: a 64th of the travel a press (D122's was 4096, a 16th); a held key repeats.
     let mut t = T::new(Mode::Hold);
     let a = u16_at(&t.host.view, PI_VIEW_A) as u32;
-    assert_eq!(t.press('t'), vec![Cmd::new(PI_CMD_PARAM, 0, 0, a + 4096)]);
-    assert_eq!(t.bytes(&kitty_bytes('t', false, Kind::Repeat)), vec![Cmd::new(PI_CMD_PARAM, 0, 0, a + 8192)], "a held key repeats");
+    assert_eq!(t.press('t'), vec![Cmd::new(PI_CMD_PARAM, 0, 0, a + 1024)]);
+    assert_eq!(t.bytes(&kitty_bytes('t', false, Kind::Repeat)), vec![Cmd::new(PI_CMD_PARAM, 0, 0, a + 2048)], "a held key repeats");
     assert_eq!(t.release('t'), vec![]);
-    assert_eq!(t.press('g'), vec![Cmd::new(PI_CMD_PARAM, 0, 0, a + 4096)]);
+    assert_eq!(t.press('g'), vec![Cmd::new(PI_CMD_PARAM, 0, 0, a + 1024)]);
     let b = u16_at(&t.host.view, PI_VIEW_B) as u32;
-    assert_eq!(t.press('y'), vec![Cmd::new(PI_CMD_PARAM, 1, 0, b + 4096)]);
+    assert_eq!(t.press('y'), vec![Cmd::new(PI_CMD_PARAM, 1, 0, b + 1024)]);
     assert_eq!(t.press('h'), vec![Cmd::new(PI_CMD_PARAM, 1, 0, b)]);
-    for _ in 0..20 {
+    for _ in 0..70 {
         t.press('t');
     }
     assert_eq!(t.host.hand[0], Some(65535), "held to the travel");
+}
+
+/// The host and a real engine: what the keys send is played, and the view comes back.
+struct Live {
+    t: T,
+    e: Engine,
+}
+
+impl Live {
+    fn new() -> Live {
+        let mut e = Engine::new(48000, 1);
+        let mut ev = [Event::default(); 8];
+        e.process(1, &[], &mut ev, None, PI_AUDIO_NONE);
+        let mut t = T::new(Mode::Hold);
+        t.host.view = e.view();
+        Live { t, e }
+    }
+    fn send(&mut self, bytes: &[u8]) {
+        let cmds = self.t.bytes(bytes);
+        let mut ev = [Event::default(); 8];
+        self.e.process(1, &cmds, &mut ev, None, PI_AUDIO_NONE);
+        self.t.host.view = self.e.view();
+    }
+    fn swing(&self) -> u8 {
+        self.t.host.view[PI_VIEW_SWING]
+    }
+    fn bpm(&self) -> u32 {
+        u32_at(&self.t.host.view, PI_VIEW_TEMPO) / 1000
+    }
+}
+
+#[test]
+fn with_bpm_held_a_slider_key_is_one_swing_or_one_bpm_and_letting_go_keeps_it() {
+    // D126: bpm held, t g one swing step, y h one bpm, exact through the engine's own reading
+    // of the slider (ENGINE.md §13). Still a slider move, so bpm is used: letting it go does
+    // not step the tempo to a preset.
+    let mut l = Live::new();
+    assert_eq!((l.swing(), l.bpm()), (0, 120));
+    l.send(&kitty_bytes('9', false, Kind::Press));
+    l.send(&kitty_bytes('t', false, Kind::Press));
+    assert_eq!(l.swing(), 1, "t: one swing step");
+    l.send(&kitty_bytes('t', false, Kind::Repeat));
+    l.send(&kitty_bytes('t', false, Kind::Repeat));
+    assert_eq!(l.swing(), 3, "held, it repeats");
+    l.send(&kitty_bytes('g', false, Kind::Press));
+    assert_eq!(l.swing(), 2, "g: one back");
+    l.send(&kitty_bytes('y', false, Kind::Press));
+    assert_eq!(l.bpm(), 121, "y: one bpm");
+    l.send(&kitty_bytes('h', false, Kind::Press));
+    l.send(&kitty_bytes('h', false, Kind::Press));
+    assert_eq!(l.bpm(), 119, "h: one back each");
+    l.send(&kitty_bytes('9', false, Kind::Release));
+    assert_eq!((l.swing(), l.bpm()), (2, 119), "letting bpm go keeps both: no preset");
+    // Every whole step across both ranges reads back exactly.
+    let mut l = Live::new();
+    l.send(&kitty_bytes('9', false, Kind::Press));
+    for s in 1..=48u8 {
+        l.send(&kitty_bytes('t', false, Kind::Repeat));
+        assert_eq!(l.swing(), s);
+    }
+    l.send(&kitty_bytes('t', false, Kind::Repeat));
+    assert_eq!(l.swing(), 48, "held to 48");
+    for b in (60..120u32).rev() {
+        l.send(&kitty_bytes('h', false, Kind::Repeat));
+        assert_eq!(l.bpm(), b);
+    }
+    for b in 61..=240u32 {
+        l.send(&kitty_bytes('y', false, Kind::Repeat));
+        assert_eq!(l.bpm(), b);
+    }
+    l.send(&kitty_bytes('y', false, Kind::Repeat));
+    assert_eq!(l.bpm(), 240, "held to 240");
 }
 
 #[test]

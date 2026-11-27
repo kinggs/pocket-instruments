@@ -58,8 +58,9 @@ pub fn latching(k: u8) -> bool {
     matches!(k, PI_KEY_SOUND | PI_KEY_PATTERN | PI_KEY_BPM | PI_KEY_FUNCTION | PI_KEY_FX)
 }
 
-/// D122 item 2: one press of a shortcut, the defaults to tune in use.
-pub const SLIDER_STEP: i32 = 4096;
+/// One press of a shortcut: D122 item 2's defaults, tuned in use by D126. A slider moves a
+/// 64th of its travel; a held key repeats at the terminal's rate for a long move.
+pub const SLIDER_STEP: i32 = 1024;
 pub const TEMPO_STEP: i32 = 1000;
 pub const TEMPO_MIN: i32 = 60_000;
 pub const TEMPO_MAX: i32 = 240_000;
@@ -231,6 +232,32 @@ impl Host {
         self.slide(which, from + d);
     }
 
+    /// With bpm held a slider is the swing (A) or the tempo (B), and one press is one step of
+    /// either (D126): the slider value that reads back as the next whole step (`ENGINE.md` §13,
+    /// `PARAM` with bpm held). It stays a slider move, so bpm counts as used and letting it go
+    /// keeps the tempo instead of stepping to a preset.
+    fn bpm_slide(&mut self, which: usize, d: i32) {
+        let v = if which == 0 {
+            let s = (self.view[PI_VIEW_SWING] as i32 + d).clamp(0, PI_SWING_MAX as i32);
+            (s * 65535 + 24) / 48
+        } else {
+            let bpm = (u32_at(&self.view, PI_VIEW_TEMPO) / 1000) as i32;
+            let b = (bpm + d).clamp(TEMPO_MIN / 1000, TEMPO_MAX / 1000);
+            ((b - 60) * 65535 + 90) / 180
+        };
+        self.slide(which, v);
+    }
+
+    /// A slider key: one step of the slider, or with bpm held one of the swing or tempo.
+    fn slider_key(&mut self, which: usize, up: bool) {
+        let d = if up { 1 } else { -1 };
+        if self.held_in_view(PI_KEY_BPM) {
+            self.bpm_slide(which, d);
+        } else {
+            self.nudge(which, d * SLIDER_STEP);
+        }
+    }
+
     fn tempo(&mut self, d: i32) {
         let t = u32_at(&self.view, PI_VIEW_TEMPO) as i32;
         self.send(Cmd::new(PI_CMD_TEMPO, 0, 0, (t + d).clamp(TEMPO_MIN, TEMPO_MAX) as u32));
@@ -345,10 +372,10 @@ impl Host {
         let again = e.kind != Kind::Release; // a held key repeats, as on the page and in Rack
         let press = e.kind == Kind::Press;
         match (c, e.shift) {
-            ('t', _) => again.then(|| self.nudge(0, SLIDER_STEP)),
-            ('g', _) => again.then(|| self.nudge(0, -SLIDER_STEP)),
-            ('y', _) => again.then(|| self.nudge(1, SLIDER_STEP)),
-            ('h', _) => again.then(|| self.nudge(1, -SLIDER_STEP)),
+            ('t', _) => again.then(|| self.slider_key(0, true)),
+            ('g', _) => again.then(|| self.slider_key(0, false)),
+            ('y', _) => again.then(|| self.slider_key(1, true)),
+            ('h', _) => again.then(|| self.slider_key(1, false)),
             (' ', _) => press.then(|| {
                 self.press(PI_KEY_PLAY, KBD);
                 self.release(PI_KEY_PLAY, KBD);

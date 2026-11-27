@@ -650,7 +650,8 @@ under 16 px.
   (`&` on a US layout), not as Shift and `7`.
 - ~~The step a slider moves for one press of `t`, `g`, `y` or `h` is not drawn.~~ The steps
   are D122 item 2's defaults, to be tuned in use: a slider 4096, the tempo 1 bpm, the swing
-  1, the volume 1.
+  1, the volume 1. In the terminal (D126) a slider moves 1024, and with bpm held one swing
+  step or one bpm.
 
 ## Loom in a terminal (D115, D117; proposed 2026-11-26; the host designed in D123, not built)
 
