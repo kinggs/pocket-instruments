@@ -108,6 +108,13 @@
 //   - a version 4 snapshot (straight-sixteenths', fixtures/snapshots-v4.txt) in the page's
 //     storage loads (result 0) as pattern 1, the chain pattern 1 alone; the play key plays
 //     straight-sixteenths' two bars line for line; saved again it is version 5, 1 640 bytes.
+//   - the bank (issue 164; D141, D142, proposed): with nothing stored, a person's page (the
+//     checks' "first") opens on the bank's first beat, pib_read of the file bank.txt's first
+//     line names, byte for byte, and it plays beat-amen-break's views and trace; a beat from the
+//     Beats list replaces it and keeps it, once, in the storage's second key; Your last beat
+//     brings it back; Empty is pi_init's beat; a beat stored wins over the default; a bank whose
+//     first beat does not read leaves the page empty and says why; and no other phase opens on
+//     the bank (D142 item 5: under ?auto the page starts empty).
 // Each line fails once on a planted fault (PLAN.md, Session 12's Handover).
 //
 // SPDX-License-Identifier: MIT
@@ -142,6 +149,13 @@ const server = createServer((req, res) => {
     });
     return;
   }
+  // Issue 164: a bank whose first beat does not read, for the page's "badbank" check.
+  const BADBANK = { "/play-badbank/bank.txt": "amen-break.beat\n", "/play-badbank/amen-break.beat": "pocket-instruments beat 1\ntempo 999\n" };
+  const bad = BADBANK[req.url.split("?")[0]];
+  if (bad) {
+    res.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store" }).end(bad);
+    return;
+  }
   const path = normalize(join(root, decodeURIComponent(req.url.split("?")[0])));
   if (!path.startsWith(root) || !existsSync(path) || !TYPES[extname(path)]) {
     res.writeHead(404).end();
@@ -167,7 +181,7 @@ function judge(phases) {
   const bad = [];
   const p = Object.fromEntries(phases.map((r) => [r.phase, r]));
   for (const r of phases) for (const f of r.failed) bad.push(`phase ${r.phase}: ${f}`);
-  for (const name of ["1", "reload", "bpm", "latch", "keep", "punch", "shuffle", "written", "fxlatch", "keys", "still", "pchoose", "pchain", "pcopy", "pchange", "pshift", "old", "beat"]) if (!p[name]) bad.push(`phase ${name} never reported`);
+  for (const name of ["1", "reload", "bpm", "latch", "keep", "punch", "shuffle", "written", "fxlatch", "keys", "still", "pchoose", "pchain", "pcopy", "pchange", "pshift", "old", "beat", "first", "kept", "badbank"]) if (!p[name]) bad.push(`phase ${name} never reported`);
   // Each phase reports under its own name: p.reload.reload, p.bpm.bpm. (A first draft read
   // p.bpm.last, and undefined equalled undefined: the bpm line passed with nothing checked.)
   const one = p["1"] || {}, reload = p.reload?.reload || {}, bpm = p.bpm?.bpm || {};
@@ -334,6 +348,27 @@ function judge(phases) {
     const at = (B.trace || []).findIndex((l, i) => l !== B.wantTrace?.[i]);
     bad.push(`beat-four-and-a-fill's trace: ${B.trace?.length} lines, not ${B.wantTrace?.length}; first difference at line ${at + 1}: "${B.trace?.[at]}" for "${B.wantTrace?.[at]}"`);
   }
+  // The bank and the beat a new player opens on (issue 164; D141, D142, proposed).
+  const F = p.first?.first || {}, KP = p.kept?.kept || {}, BB = p.badbank?.badbank || {};
+  const bankChecks = {
+    "a first start opens on the bank's first beat, pib_read of the file, byte for byte": F.loaded === 0 && F.defaultIsFile === true && F.engineIsFile === true && /^A new beat: /.test(F.said || ""),
+    "beat-amen-break is the bank's first beat (bank.txt's first line moved: the fixture must follow it)": F.fixtureIsDefault === true,
+    "the Beats list shows every beat in bank.txt": F.shown > 1 && F.lastHidden === true,
+    "a beat from the list replaces the beat and keeps the one replaced, in the storage too": F.secondLoaded === true && F.keptIsDefault === true && F.keptStored === true && F.lastShown === true,
+    "Your last beat brings the replaced beat back": F.backLoaded === true && F.backKeptIsSecond === true,
+    "Empty gives pi_init's beat, and keeps the one it replaced": F.emptyLoaded === true && F.emptyView?.used === 0 && F.emptyView?.chain === 1 && F.emptyKeptIsDefault === true,
+    "under ?auto the page keeps no beat of its own, the default included": F.stored === null,
+    "a beat stored wins over the default": KP.loaded === 0 && KP.isMine === true && KP.defaultOpened === false && !/new beat/.test(KP.said || ""),
+    "a bank whose first beat does not read: empty, and why": /^Started empty: the bank's first beat did not open: amen-break\.beat: line 2/.test(BB.said || "") && BB.loaded === null && BB.isEmpty === true && BB.firstDisabled === true,
+  };
+  for (const [name, ok] of Object.entries(bankChecks)) if (!ok) bad.push(`${name}: ${JSON.stringify({ first: { ...F, trace: undefined, wantTrace: undefined, views: undefined, wantViews: undefined }, kept: KP, badbank: BB })}`);
+  if (!F.wantViews?.length || F.views?.join("\n") !== F.wantViews.join("\n"))
+    bad.push(`the default's views (beat-amen-break):\n${(F.wantViews || []).map((w, i) => `     got  ${F.views?.[i]}\n     want ${w}`).join("\n")}`);
+  if (!F.wantTrace?.length || F.trace?.join("\n") !== F.wantTrace.join("\n")) {
+    const at = (F.trace || []).findIndex((l, i) => l !== F.wantTrace?.[i]);
+    bad.push(`the default's trace (beat-amen-break): ${F.trace?.length} lines, not ${F.wantTrace?.length}; first difference at line ${at + 1}: "${F.trace?.[at]}" for "${F.wantTrace?.[at]}"`);
+  }
+  for (const r of phases) if (r.defaultOpened !== (r.phase === "first")) bad.push(`phase ${r.phase}: opened on the bank's first beat: ${r.defaultOpened} (D142 item 5: only a person's first start does)`);
   const p6 = one.p6 || {};
   const label = p6.hex && new RegExp(`^# straight-sixteenths .* snapshot ${p6.hex}$`, "m").test(report);
   if (!p6.playing) bad.push("P6: it was not playing while the keys went in");

@@ -32,6 +32,11 @@
 //           empty pattern and playing on a used one, with no frame, core or twill drawn while
 //           pattern is held; the display's waiting pattern and chain place; the save throttle.
 //   old     a version 4 snapshot in the page's storage loads and plays as it did.
+//   beat    the beat file: Open and Save (issue 141).
+//   first, kept, badbank   (issue 164; D141, D142, proposed) a person's first start, nothing
+//           stored: the bank's first beat, byte for byte, playing beat-amen-break; the Beats
+//           list, Your last beat and Empty. A beat stored wins. A broken bank: empty, and why.
+//           Every other phase must not open on the bank (D142 item 5).
 // And in every phase, every drawing's lights while pattern is held or latched (§21: field
 // but the active key, stitch, bar and pressed as the view says; no frame, core or twill) and
 // the display's pattern line; and every drawing's weave: the cells read back off the canvas by their
@@ -1172,7 +1177,130 @@ async function phaseBeat() {
   B.own = await said((t) => (t.startsWith("Opened") && t !== B.opened) || t.includes("not opened"), "the own notice");
 }
 
-const PREP = { old: async () => { localStorage.setItem("pocket-instruments/rhythm/beat", await oldBeat()); } };
+// The bank and the beat a new player opens on (docs/BANK.md; D141, D142, proposed; issue 164).
+// Three page loads, each as a person's (the page's `person`: the default is never loaded under any
+// other ?auto). "first": nothing stored, so the page opens on the bank's first beat, which must be
+// pib_read of the file bank.txt's first line names, byte for byte, worked out here by this file's
+// own pi_beat.wasm; it plays beat-amen-break's views and trace (if bank.txt's first line moves,
+// that fixture must name its beat: the check says so); then the Beats list: a beat from it
+// replaces the beat and keeps the one replaced, Your last beat brings that back, Empty gives
+// pi_init's beat (this file's own pi_core.wasm saves it). "kept": a beat stored, and it wins.
+// "badbank": a bank whose first beat does not read: the page starts empty and says why.
+const STORE_KEY = "pocket-instruments/rhythm/beat", PREVIOUS_KEY = "pocket-instruments/rhythm/previous";
+async function readBeat(text) {
+  const pib = (await WebAssembly.instantiate(await (await fetch("pi_beat.wasm")).arrayBuffer(), {})).instance.exports;
+  const base = pib.memory.grow(2) * 65536;
+  new Uint8Array(pib.memory.buffer, base, text.length).set(text);
+  const n = pib.pib_read(base, text.length, base + 98304, 22100, 0, base + 98304 + 22100, 192);
+  if (n < 0) throw new Error(`pib_read refused a file the check reads (${n})`);
+  return new Uint8Array(pib.memory.buffer).slice(base + 98304, base + 98304 + n);
+}
+async function bankFirst() {
+  const first = (await (await fetch("../beats/bank.txt", { cache: "no-store" })).text()).split("\n")[0].trim();
+  return { first, snap: await readBeat(new Uint8Array(await (await fetch(`../beats/${first}`, { cache: "no-store" })).arrayBuffer())) };
+}
+function initSave() { // pi_init's beat, seed 1 as the page's, saved by this file's own core
+  const base = mine.memory.grow(2) * 65536;
+  const e = mine.pi_init(base, mine.pi_size(), 48000, 1);
+  const n = mine.pi_save(e, base + 65536, 65536);
+  return new Uint8Array(mine.memory.buffer).slice(base + 65536, base + 65536 + n);
+}
+const same = (a, b) => !!a && !!b && a.length === b.length && a.every((x, i) => x === b[i]);
+async function savedNow() {
+  const saved = next("snapshot");
+  r.post({ save: true });
+  return new Uint8Array((await saved).snapshot);
+}
+async function waitBeat(want, what) {
+  for (let i = 0; i < 300; i++) { if (same(await savedNow(), want)) return true; await sleep(20); }
+  throw new Error(`timed out waiting for ${what}`);
+}
+async function phaseFirst() {
+  await r.ready;
+  await r.ctx.resume();
+  const F = (out.first = {});
+  const { first, snap } = await bankFirst();
+  for (let i = 0; i < 800 && r.latest.loaded === null; i++) await sleep(10);
+  F.loaded = r.latest.loaded;
+  F.first = first;
+  F.defaultIsFile = same(r.defaultSnap, snap);
+  F.engineIsFile = same(await savedNow(), snap);
+  F.said = await said((t) => t !== "", "the first start's words");
+  // It plays beat-amen-break, from the beat the page opened on.
+  const fx = await (await fetch("../fixtures/beat-amen-break.json")).json();
+  F.fixtureIsDefault = fx.beat === `../beats/${first}`;
+  await settle();
+  const t = runSteps();
+  r.post({ mark: true });
+  r.send([2, 0, 0, 0], [5, 0, 0, 1]);
+  await t.at(fx.steps);
+  t.stop();
+  r.post({ trace: true });
+  const tr = traceLines((await next("trace")).trace);
+  r.send([5, 0, 0, 0]);
+  await settle((x) => !(x[24] & 1), "stopped");
+  const at0 = tr.length ? +tr[0].split(" ")[0] : 0;
+  F.trace = tr.map((l) => l.replace(/^\d+/, (n) => String(+n - at0))).filter((l) => +l.split(" ")[0] < fx.steps * fx.ticks_per_step);
+  F.wantTrace = fx.expect;
+  F.views = fx.views.map((x) => `${x.at} ${t.views[x.at] ? viewText(t.views[x.at], 5) : "no view"}`);
+  F.wantViews = fx.views.map((x) => `${x.at} ${x.view}`);
+  // The Beats list.
+  for (let i = 0; i < 500 && r.bankShown === null; i++) await sleep(10);
+  F.shown = r.bankShown;
+  F.lastHidden = document.getElementById("beatLast").hidden;
+  const two = document.querySelector('#beats button[data-bank="2"]');
+  const second = await readBeat(new Uint8Array(await (await fetch(`../beats/${(await (await fetch("../beats/bank.txt")).text()).split("\n")[1].trim()}`)).arrayBuffer()));
+  two.click();
+  F.secondLoaded = await waitBeat(second, "the bank's second beat");
+  F.secondSaid = await said((t) => t.endsWith("Your last beat is kept."), "the bank's words");
+  F.keptIsDefault = same(r.previous(), snap);
+  let kept = null;
+  try { kept = localStorage.getItem(PREVIOUS_KEY); } catch {}
+  F.keptStored = !!kept && same(Uint8Array.from(atob(kept), (c) => c.charCodeAt(0)), snap);
+  F.lastShown = !document.getElementById("beatLast").hidden;
+  document.getElementById("beatLast").click();
+  F.backLoaded = await waitBeat(snap, "the last beat back");
+  F.backKeptIsSecond = same(r.previous(), second);
+  document.getElementById("beatEmpty").click();
+  F.emptyLoaded = await waitBeat(initSave(), "pi_init's beat");
+  const v = await settle();
+  F.emptyView = { used: u16(v, 68), chain: v[66] };
+  F.emptyKeptIsDefault = same(r.previous(), snap);
+  let stored = null;
+  try { stored = localStorage.getItem(STORE_KEY); } catch {}
+  F.stored = stored; // nothing: under ?auto the page keeps no beat of its own
+}
+async function phaseKept() {
+  await r.ready;
+  await r.ctx.resume();
+  const K = (out.kept = {});
+  const mineBeat = await readBeat(new Uint8Array(await (await fetch("../fixtures/beat-four-and-a-fill.beat")).arrayBuffer()));
+  for (let i = 0; i < 800 && r.latest.loaded === null; i++) await sleep(10);
+  K.loaded = r.latest.loaded;
+  K.isMine = same(await savedNow(), mineBeat);
+  K.defaultOpened = r.defaultSnap !== null;
+  await sleep(300);
+  K.said = document.getElementById("beatMsg").textContent;
+}
+async function phaseBadBank() {
+  await r.ready;
+  await r.ctx.resume();
+  const B = (out.badbank = {});
+  B.said = await said((t) => t !== "", "the broken bank's words");
+  await sleep(300);
+  B.loaded = r.latest.loaded;
+  B.isEmpty = same(await savedNow(), initSave());
+  for (let i = 0; i < 500 && r.bankShown === null; i++) await sleep(10);
+  B.firstDisabled = document.querySelector('#beats button[data-bank="1"]')?.disabled === true;
+}
+
+const PREP = { old: async () => { localStorage.setItem("pocket-instruments/rhythm/beat", await oldBeat()); },
+  first: async () => { localStorage.removeItem(STORE_KEY); localStorage.removeItem(PREVIOUS_KEY); },
+  kept: async () => {
+    const b = await readBeat(new Uint8Array(await (await fetch("../fixtures/beat-four-and-a-fill.beat")).arrayBuffer()));
+    localStorage.setItem(STORE_KEY, btoa(String.fromCharCode(...b)));
+  },
+  "badbank&bank=/play-badbank/": async () => { localStorage.removeItem(STORE_KEY); localStorage.removeItem(PREVIOUS_KEY); } };
 
 // D78 by a mouse, fx + key by the computer keys, and D69's switch. What each gesture sent is
 // read from the page's own messages (rhythm.onPost), as "type a b value".
@@ -1296,7 +1424,8 @@ const PHASES = { 1: [phase1, "reload"], reload: [phaseReload, "bpm"], bpm: [phas
   keep: [phaseKeep, "punch"], punch: [phasePunch, "shuffle"], shuffle: [phaseShuffle, "written"], written: [phaseWritten, "fxlatch"], fxlatch: [phaseFxLatch, "keys"], keys: [phaseKeys, "still"], still: [phaseStill, "pchoose"],
   pchoose: [phasePatterns("patterns-choose-and-play", "pchoose"), "pchain"], pchain: [phasePatterns("patterns-chain", "pchain"), "pcopy"],
   pcopy: [phasePatterns("patterns-copy-and-clear", "pcopy"), "pchange"], pchange: [phasePatterns("patterns-change-playing", "pchange"), "pshift"],
-  pshift: [phaseShift, "old"], old: [phaseOld, "beat"], beat: [phaseBeat, null] };
+  pshift: [phaseShift, "old"], old: [phaseOld, "beat"], beat: [phaseBeat, "first"],
+  first: [phaseFirst, "kept"], kept: [phaseKept, "badbank&bank=/play-badbank/"], badbank: [phaseBadBank, null] };
 const [run, then] = PHASES[phase] || [async () => { throw new Error(`no phase ${phase}`); }, null];
 try {
   await run();
@@ -1304,6 +1433,7 @@ try {
 } catch (e) {
   out.failed.push(String(e));
 }
+out.defaultOpened = r.defaultSnap !== null; // D142 item 5: under ?auto, only "first" opens on the bank
 out.done = !then || out.failed.length > 0;
 await fetch("/result", { method: "POST", body: JSON.stringify(out) });
 if (!out.done) {

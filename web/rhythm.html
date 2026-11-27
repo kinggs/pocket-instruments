@@ -149,6 +149,7 @@
   .sheet p { margin: 8px 0; color: var(--lilac); font-size: 16px; line-height: 1.5; }
   .sheet a { color: var(--ecru); }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .beats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; } /* the bank's list (issue 164): a stand-in ⚠ */
   .sheet button { min-height: 64px; padding: 6px 10px; background: var(--tile); text-align: left; font-size: 16px; }
   /* A row a sound: its name plays it; its switch sets code or sample and plays the result. */
   .sounds { display: flex; flex-direction: column; gap: 6px; }
@@ -275,6 +276,11 @@
     <div class="two"><button id="beatYes">Open it</button><button id="beatNo">Keep this one</button></div>
   </div>
   <p id="beatMsg" role="status"></p>
+  <!-- The bank (docs/BANK.md; D141, D142, proposed for Kenny; issue 164). ⚠ A stand-in until
+       Kenny rules a look: a list of words, built from beats/bank.txt when the page starts. -->
+  <p>Or start from one of ours, or from nothing. A beat from here replaces the one that is here,
+  which is kept, once, as <b>Your last beat</b>.</p>
+  <div class="beats" id="beats"></div>
 
   <h2>Playing it</h2>
   <p>Hold <b>sound</b> and tap a key to choose a sound. <b>write</b> turns the keys into the
@@ -344,9 +350,16 @@ const CODES = {
   Digit7: 16, Digit8: 17, Digit9: 18, KeyU: 19, KeyI: 20, KeyO: 21, KeyP: 22,
 };
 const STORE = "pocket-instruments/rhythm/beat"; // the snapshot, base64
+const PREVIOUS = "pocket-instruments/rhythm/previous"; // the beat a load from the bank replaced, once (D141)
 const SEED = 1;                                  // keys cannot set a probability, so no draw depends on it
 const params = new URLSearchParams(location.search);
 const auto = params.get("auto");                 // web/play.mjs's checks; see the end
+// Under ?auto the default is never loaded (D142 item 5), but for the checks of a person's first
+// start: "first" (nothing stored), "kept" (a beat stored) and "badbank" (a broken bank).
+const person = !auto || auto === "first" || auto === "kept" || auto === "badbank";
+// The bank: beats/ beside the page (pages.yml publishes it). `bank` names another folder under
+// ?auto only, for the broken bank's check (web/play.mjs serves one).
+const BANK = (auto && params.get("bank")) || "../beats/";
 const $ = (id) => document.getElementById(id);
 
 // --- The face, built once. Every light on it is set by draw(), from a view. ---
@@ -421,8 +434,9 @@ const b64 = {
   from: (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0)).buffer,
 };
 function kept() {
-  // Under ?auto only the reload check, and the old beat's (a version 4 snapshot), read what was kept.
-  if (auto && auto !== "reload" && auto !== "old") return null;
+  // Under ?auto only the reload check, the old beat's (a version 4 snapshot) and the first start's
+  // read what was kept.
+  if (auto && auto !== "reload" && auto !== "old" && !person) return null;
   try { const s = localStorage.getItem(STORE); return s ? b64.from(s) : null; } catch { return null; }
 }
 
@@ -449,9 +463,14 @@ async function start() {
         try { if (!auto || auto === "reload" || auto === "1") localStorage.setItem(STORE, b64.to(d.snapshot)); } catch {}
       }
     }
-    listeners.forEach((f) => f(d));
+    listeners.slice().forEach((f) => f(d)); // a copy: a listener that takes itself out must not make the next one miss this message (issue 164)
   };
   for (const msg of early.splice(0)) node.port.postMessage(msg);
+  // D142 (proposed): a person's page with no beat stored (or storage it cannot read) is a new
+  // player's, and opens on the bank's first beat, read now by the beat reader and loaded as an
+  // opened file is. A stored beat, of any version, refused or not, always wins.
+  if (snapshot === null && person) await openDefault();
+  bankList(); // the Beats list, not waited for
 }
 
 // Sound starts on the first touch (and that touch is a press: its message is queued for the
@@ -929,25 +948,115 @@ $("beatFile").addEventListener("change", async () => {
   beatSay("");
 });
 $("beatNo").addEventListener("click", () => { pendingBeat = null; $("beatAsk").hidden = true; beatSay("Kept the beat that is here."); });
+// A snapshot loaded by the page's ordinary load, and what is said once the engine has taken it:
+// `ok(name)` or the refusal. Open and the Beats list both load through it.
+function loadSnap(snap, label, ok) {
+  return new Promise((res) => {
+    listeners.push(function f(d) {
+      if (!d.snapshot || d.result === null || d.result === undefined) return;
+      listeners.splice(listeners.indexOf(f), 1);
+      beatSay(d.result === 0 ? ok(beatName(snap)) : `${label} was not opened: the engine refused it (${d.result}).`);
+      res(d.result);
+    });
+    post({ load: snap.slice().buffer }, 1);
+  });
+}
 $("beatYes").addEventListener("click", () => {
   const b = pendingBeat;
   if (!b) return;
   pendingBeat = null;
   $("beatAsk").hidden = true;
   wake();
-  listeners.push(function f(d) {
-    if (!d.snapshot || d.result === null || d.result === undefined) return;
-    listeners.splice(listeners.indexOf(f), 1);
-    const name = beatName(b.snap);
-    beatSay(d.result === 0 ? [`Opened ${name || b.file}.`, ownWords(b.own)].filter(Boolean).join(" ") : `${b.file} was not opened: the engine refused it (${d.result}).`);
-  });
-  post({ load: b.snap.slice().buffer }, 1);
+  loadSnap(b.snap, b.file, (name) => [`Opened ${name || b.file}.`, ownWords(b.own)].filter(Boolean).join(" "));
 });
+
+// --- The bank (docs/BANK.md; D141, D142, proposed for Kenny to rule; issue 164): beats/ beside
+// the page, in bank.txt's order. bank.txt's first line is the beat a new player opens on; nothing
+// here names which. Each beat is fetched and read by beatRead (pib_read) when it is wanted, as an
+// opened file is; there is no copy of any beat in the page. ---
+const EMPTY = new TextEncoder().encode("pocket-instruments beat 1\n"); // pi_init's beat: every line at its default (BEAT.md)
+async function bankFiles() {
+  const r = await fetch(`${BANK}bank.txt`, { cache: "no-store" });
+  if (!r.ok) throw new Error(`the bank's list could not be fetched (${r.status})`);
+  return (await r.text()).split("\n").map((l) => l.trim()).filter(Boolean);
+}
+// The bank's n-th beat (from 1): { file, snap, name }, or { file, msg }.
+async function bankBeat(n) {
+  let file = "";
+  try {
+    const files = await bankFiles();
+    if (!files.length) return { file, msg: "the bank lists no beat" };
+    file = files[n - 1];
+    if (!file) return { file, msg: `the bank has beats 1 to ${files.length}, not ${n}` };
+    const r = await fetch(`${BANK}${file}`, { cache: "no-store" });
+    if (!r.ok) return { file, msg: `${file} could not be fetched (${r.status})` };
+    const got = await beatRead(new Uint8Array(await r.arrayBuffer()));
+    if (got.code !== undefined) return { file, msg: `${file}: ${got.msg}` };
+    return { file, snap: got.snap, name: beatName(got.snap) || file };
+  } catch (e) {
+    return { file, msg: String(e.message || e) };
+  }
+}
+async function openDefault() {
+  const b = await bankBeat(1);
+  if (!b.snap) return beatSay(`Started empty: the bank's first beat did not open: ${b.msg}`);
+  rhythm.defaultSnap = b.snap; // what the checks hold the opened beat to
+  await loadSnap(b.snap, b.file, (name) => `A new beat: ${name}, from the bank below. Empty is there too.`);
+}
+// What the Beats list's last load replaced, kept once (D141 item 6): in the storage under a second
+// key, and here, so it is there in a page that cannot keep it.
+let lastBeat = null;
+function previous() {
+  if (lastBeat) return lastBeat;
+  if (!person && auto) return null;
+  try { const s = localStorage.getItem(PREVIOUS); return s ? new Uint8Array(b64.from(s)) : null; } catch { return null; }
+}
+// A load from the list: the beat here kept first, then `snap` loaded.
+async function replaceWith(snap, label, ok) {
+  wake();
+  if (!node) return beatSay("The engine has not started yet.");
+  const here = await freshSnapshot();
+  lastBeat = here;
+  try { if (!auto || person) localStorage.setItem(PREVIOUS, b64.to(here)); } catch {}
+  const r = await loadSnap(snap, label, ok);
+  showLast();
+  return r;
+}
+function showLast() { const b = $("beatLast"); if (b) b.hidden = !previous(); }
+async function bankList() {
+  const box = $("beats");
+  const add = (text, f) => { const b = document.createElement("button"); b.textContent = text; b.addEventListener("click", f); box.appendChild(b); return b; };
+  box.textContent = "";
+  add("Your last beat", async () => {
+    const p = previous();
+    if (p) await replaceWith(p, "Your last beat", (name) => `Your last beat${name ? `, ${name},` : ""} is back; the one it replaced is kept in its place.`);
+  }).id = "beatLast";
+  showLast();
+  let files = [];
+  try { files = await bankFiles(); } catch (e) { beatSay(String(e.message || e)); }
+  for (let n = 1; n <= files.length; n++) {
+    const b = await bankBeat(n);
+    const btn = add(b.snap ? b.name : `${files[n - 1]} (${b.msg})`, async () => {
+      const again = await bankBeat(n); // read when wanted: the file as it is now
+      if (!again.snap) return beatSay(`Not loaded, and nothing changed: ${again.msg}`);
+      await replaceWith(again.snap, again.file, (name) => `${name || again.file}, from the bank. Your last beat is kept.`);
+    });
+    btn.dataset.bank = n;
+    btn.disabled = !b.snap;
+  }
+  add("Empty", async () => {
+    const got = await beatRead(EMPTY);
+    await replaceWith(got.snap, "Empty", () => "Empty: every pattern clear. Your last beat is kept.");
+  }).id = "beatEmpty";
+  rhythm.bankShown = files.length;
+}
 
 // What the checks reach (web/play.mjs). The page itself uses none of it.
 const rhythm = {
   ctx, keys, fkeys, ticks, sliders, sounds, latched, latest, listeners, slide, send, drawn: null, afterDraw: null, onPost: null, onSave: null, // onSave(file, text): what a save gives
   cloth, paints: 0,                    // the weave's canvas, and how often it has been painted
+  defaultSnap: null, bankShown: null,  // issue 164: the default the page opened on; how many beats the list shows
+  previous: () => previous(),
   reduced: () => still.matches,        // a check may ask for reduced motion without the browser's setting
   get sent() { return sent; },
   post: (msg) => post(msg, msg.load || msg.mark ? 1 : 0),
