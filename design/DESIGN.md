@@ -158,6 +158,15 @@ the dash 15 by 4 px. `make play` reads each back off the page in every drawing.
 `design/page-helper.png`: taken by `node web/shot.mjs design`, for Kenny's eye. ⚠ The
 numeral sits on the core where both are lit (dark on the core), as the board draws it.
 
+**Built on the page: pattern held (issue 141, 2026-11-27; `ENGINE.md` §21).** While pattern is
+held or latched the keys are the patterns: the field lit on a used pattern, the stitch on the
+chain shown (the next chain while one waits), the ochre bar on the active pattern, and no
+frame, core or twill; the active pattern's key flickers, its field lit and dark a quarter of a
+second each. The display's line under the weave, `pattern 2 2/2 → 3`, is a stand-in ⚠ (no
+board yet). `design/page-pattern-held.png` (the flicker caught lit) and `-dark.png`, each with
+its `-grey` twin: the flickering key is told by lightness, the chain by the stitch's shape, the
+active pattern by the bar's, so no state rests on hue.
+
 **Built in Rack (issue 101, 2026-11-26).** `rack/src/Rhythm.cpp` draws the same lights from the
 same bytes through `pi::keyLights` (`rack/src/jacks.hpp`), with all six source marks: the
 dash, and the rings and the disc from the `ROUTE` masks the module sends. On an 11.7 mm key

@@ -3460,3 +3460,15 @@ engine in real time. Stopped, with nothing moving, `Rhythm::process` is within t
 runs before and after. ⚠ Readings built on: only pattern keeps its latch on a Shifted grid key
 (D135 item 1 names it alone); a request that finds the engine stopped writes the last save made.
 The beat file's open and save wait on the `beat/` crate (issue 140).
+
+**Built on the page (issue 141, 2026-11-27).** `web/rhythm.html` sends the keys and holds no
+rule of its own (D51). While held bit 17 is set or the page holds pattern latched it draws
+field, stitch, bar and pressed from the view and no frame, core or twill, and flickers the
+active pattern's key from the moment pattern went down, a quarter of a second lit, then dark,
+used or not (both ⚠ open lines at their defaults). The display's stand-in line says `pattern
+3`, `2/4` while a chain of more than one runs and `→ 5` while one waits. D135 by a mouse and
+the keys: Shift on a grid key keeps pattern's latch, Shift latches write. The worklet already
+held the 32 KiB room, the 88-byte view and a snapshot of whatever length `pi_save` returns,
+and saved at most once a quarter second (§8): `make play` measured a drag of 150 changes in
+about 1.5 s saving 8 times, the last holding the drag's last value. The beat file's open and
+save wait on the `beat/` crate (issue 140). Since built on the page too, the same day (`docs/BEAT.md`, "Built on the page").

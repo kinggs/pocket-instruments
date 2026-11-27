@@ -25,7 +25,16 @@
 //   keys    the one-key shortcuts and the keys helper (D116, D119 items 3 and 6).
 //   still   the weave (Session 14, ENGINE.md §16): two sounds a step played as it is, then
 //           with reduced motion asked for, then stopped.
-// And in every phase, every drawing's weave: the cells read back off the canvas by their
+//   pchoose, pchain, pcopy, pchange   (issue 141, ENGINE.md §21) the four patterns-* fixtures
+//           (format 5), each in a fresh page, played by touch: their views and traces.
+//   pshift  D135 by a mouse and by the computer keys (Shift on a grid key keeps a latched
+//           pattern; Shift latches write for a copy), clear and esc; the flicker, stopped on an
+//           empty pattern and playing on a used one, with no frame, core or twill drawn while
+//           pattern is held; the display's waiting pattern and chain place; the save throttle.
+//   old     a version 4 snapshot in the page's storage loads and plays as it did.
+// And in every phase, every drawing's lights while pattern is held or latched (§21: field
+// but the active key, stitch, bar and pressed as the view says; no frame, core or twill) and
+// the display's pattern line; and every drawing's weave: the cells read back off the canvas by their
 // colour and held to pi_weave for the view they were drawn from, from this file's own
 // instance of the .wasm.
 //
@@ -37,6 +46,13 @@ const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 const u16 = (v, i) => v[i] | (v[i + 1] << 8);
 const u32 = (v, i) => (v[i] | (v[i + 1] << 8) | (v[i + 2] << 16) | (v[i + 3] << 24)) >>> 0;
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+// ENGINE.md §21: pattern is down while the view's held bit 17 is set or the page holds it latched.
+const patternDown = (v) => !!((u32(v, 8) >> 17) & 1) || r.latched.has(17);
+// What every drawing showed while pattern was down: [time, the active key's field drawn, the
+// active pattern, whether it is used]; and how often a frame, a core, a twill would have shown
+// and did not, and the display's chain place and waiting pattern were drawn.
+let flicks = [];
+out.pheld = { framesHidden: 0, playing: 0, coresHidden: 0, twillsHidden: 0, chainShown: 0, nextShown: 0 };
 
 // ENGINE.md §14, "As text"; format 3 adds §17's three fields, format 4 §20's two.
 function viewText(v, format = 2) {
@@ -46,8 +62,12 @@ function viewText(v, format = 2) {
     `held=${u32(v, 8).toString(16).padStart(6, "0")} field=${h4(u16(v, 12))} stitch=${h4(u16(v, 14))} bar=${h4(u16(v, 16))} ` +
     `sampled=${h4(u16(v, 18))} a=${u16(v, 20)} b=${u16(v, 22)} fires=${[...v.slice(32, 48)].join(",")}` +
     (format >= 3 ? ` fx=${v[55]} fxsteps=${h4(u16(v, 56))} fxsounds=${h4(u16(v, 58))}` : "") +
-    (format >= 4 ? ` ea=${u16(v, 60)} eb=${u16(v, 62)}` : "");
+    (format >= 4 ? ` ea=${u16(v, 60)} eb=${u16(v, 62)}` : "") +
+    (format >= 5 ? ` pat=${v[64]} pos=${v[65]} chain=${nibbles(v, 72, v[66]) || "-"} next=${nibbles(v, 80, v[67]) || "-"} used=${h4(u16(v, 68))}` : "");
 }
+// ENGINE.md §21, format 5: a chain's entries, one hex digit each; entry 2i in the low four bits
+// of byte at + i, 2i + 1 in the high four.
+const nibbles = (v, at, n) => Array.from({ length: n }, (_, i) => ((v[at + (i >> 1)] >> (4 * (i & 1))) & 15).toString(16)).join("");
 
 // The weave (ENGINE.md §16). Every drawing's canvas is read back, a pixel a cell, turned to
 // palette numbers by colour (design/DESIGN.md's tokens, written out here), and held to
@@ -125,11 +145,25 @@ r.afterDraw = (v) => {
     if (el.classList.contains("latch")) latch |= 1 << (16 + i);
   });
   const f = v[24];
+  // ENGINE.md §21: while pattern is held (bit 17) or latched, no frame; the active pattern's
+  // key (byte 64) flickers, so its field is not held to the view here: it is recorded, and
+  // flicker() judges its rhythm. Every other key's field is the view's.
+  const pdown = patternDown(v), active = v[64], fieldMask = pdown ? ~(1 << active) & 0xffff : 0xffff;
   const want = {
-    field: u16(v, 12), stitch: u16(v, 14), bar: u16(v, 16), held: u32(v, 8),
-    frames: f & 1 && f & 8 ? String(v[25]) : "", latch: (f & 1 ? 1 << 21 : 0) | (f & 2 ? 1 << 22 : 0),
+    field: u16(v, 12) & fieldMask, stitch: u16(v, 14), bar: u16(v, 16), held: u32(v, 8),
+    frames: f & 1 && f & 8 && !pdown ? String(v[25]) : "", latch: (f & 1 ? 1 << 21 : 0) | (f & 2 ? 1 << 22 : 0),
   };
-  const got = { field, stitch, bar, held, frames: frames.join(), latch };
+  const got = { field: field & fieldMask, stitch, bar, held, frames: frames.join(), latch };
+  if (pdown) {
+    flicks.push([performance.now(), (field >> active) & 1, active, (u16(v, 68) >> active) & 1]);
+    if (f & 1 && f & 8) out.pheld.framesHidden++;
+    if (f & 1) out.pheld.playing++;
+  }
+  // §21, "The display": which pattern plays, the chain's place, the one waiting, as text.
+  want.patline = `pattern ${active + 1}` + (v[66] > 1 ? ` ${v[65] + 1}/${v[66]}` : "") + (v[67] ? ` → ${(v[80] & 15) + 1}` : "");
+  got.patline = document.getElementById("patline").textContent;
+  if (v[66] > 1) out.pheld.chainShown++;
+  if (v[67]) out.pheld.nextShown++;
   // D81: the effect block says byte 55, and is absent at 0; the lane's ticks are bytes 56 and
   // 57. D69: the sheet's "through fx" switches are bytes 58 and 59. Read off the face.
   const mark = document.getElementById("fxmark");
@@ -175,14 +209,20 @@ function lights(v) {
   const now = performance.now(), held = u32(v, 8), heard = v[55], through = u16(v, 58), sampled = u16(v, 18);
   const span = Math.max(40, Math.min(120, 7500000 / Math.max(1, u32(v, 4))));
   const soundDown = !!((held >> 16) & 1) || r.latched.has(16);
-  const C = out.core, bad = (s) => { if (C.bad.length < 5) C.bad.push(`${s} (${viewText(v, 4)})`); };
+  const C = out.core, bad = (s) => { if (C.bad.length < 5) C.bad.push(`${s} (${viewText(v, 5)})`); };
+  // §21: while pattern is held or latched, no core and no twill (R90: "it stops the normal
+  // playing views"). Counted where one would otherwise show, so the phase proves it was seen.
+  const pdown = patternDown(v);
   r.keys.forEach((el, n) => {
     const f = v[32 + n];
     if (seenFires[n] !== null && f !== seenFires[n]) firedAt[n] = now;
     seenFires[n] = f;
     const co = el.querySelector(".co"), left = firedAt[n] + span - now, lit = shown(co);
     const fern = lit && getComputedStyle(co).backgroundColor === FERN;
-    if (Math.abs(left) > 15) {
+    if (pdown) {
+      if (lit) bad(`key ${n + 1}: a core drawn while pattern is down`);
+      else if (left > 15) out.pheld.coresHidden++;
+    } else if (Math.abs(left) > 15) {
       if (lit !== left > 0) bad(`key ${n + 1}: core ${lit ? "drawn" : "not drawn"}, ${Math.round(left)} ms of core left`);
       else if (lit && fern !== !!(heard && (through >> n) & 1)) bad(`key ${n + 1}: core ${fern ? "fern" : "white"}, heard ${heard}, through ${through.toString(16)}`);
     }
@@ -190,7 +230,8 @@ function lights(v) {
     const face = getComputedStyle(el).backgroundColor;
     if ((face === WHITE) !== !!((held >> n) & 1)) bad(`key ${n + 1}: face ${face}, held ${(held >> n) & 1}`);
     const tw = shown(el.querySelector(".tw"));
-    if (tw !== (heard === n + 1)) bad(`key ${n + 1}: twill ${tw}, heard ${heard}`);
+    if (tw !== (heard === n + 1 && !pdown)) bad(`key ${n + 1}: twill ${tw}, heard ${heard}, pattern down ${pdown}`);
+    if (pdown && heard === n + 1) out.pheld.twillsHidden++;
     if (tw) C.twill++;
     const dash = shown(el.querySelector(".mk"));
     if (dash !== (soundDown && !!((sampled >> n) & 1))) bad(`key ${n + 1}: dash ${dash}, sound down ${soundDown}, sampled ${sampled.toString(16)}`);
@@ -757,6 +798,382 @@ async function phaseWritten() {
   await settle((v) => !(v[24] & 1), "stopped");
 }
 
+// The four patterns-* fixtures (format 5, ENGINE.md §21), each in a page of its own (a fresh
+// engine, as a fixture's), played by touch: every key press a pointer on the drawn key, a
+// slider by the page's slide(), an edit as the page sends it. Stopped, a run step's commands go
+// in and the view that holds them all is read. Playing, a key lands within its run step, a few
+// milliseconds after the view says the step began (nothing in these fixtures depends on which
+// frame: a choice or a chain waits for the wrap); a stop is sent during the run step before
+// its own, as fx-shuffle's edits are, so that no extra step is emitted; a view is the last of
+// its run step. The trace is taken for each stretch of play and its ticks counted from that
+// stretch's first event, as the fixture's from the same moment (the page cannot aim at a frame,
+// and while stopped its clock runs on for as long as the page takes).
+const pedit = (c) => edit(c) || { pattern: [27, 0, 0, c.value], chain: [28, 0, 0, c.value], copy: [29, 0, 0, c.value] }[c.cmd];
+async function playFixture(name) {
+  await r.ready;
+  await r.ctx.resume();
+  const fx = await (await fetch(`../fixtures/${name}.json`)).json();
+  if (fx.format !== 5 || fx.mbpm !== 120000 || fx.seed !== 1) throw new Error(`${name} is not the format 5 fixture this phase was written for`);
+  const F = { want: fx.views.map((x) => `${x.at} ${x.view}`), got: [], wantTrace: [], trace: [] };
+  const viewAt = new Map(fx.views.map((x) => [x.at, x.view]));
+  const ids = {};
+  const send = (c) => {
+    if (c.cmd === "key_down") hold(keyEl(c.key), (ids[c.key] = pid++));
+    else if (c.cmd === "key_up") lift(keyEl(c.key), ids[c.key]);
+    else if (c.cmd === "param") r.slide(c.slider, c.value);
+    else {
+      const e = pedit(c);
+      if (!e) throw new Error(`a command the page cannot send: ${c.cmd}`);
+      r.send(e);
+    }
+  };
+  const isPlay = (c, v) => c.cmd === "play" && c.value === v;
+  await settle();
+  let t = null, base = 0, stretches = []; // [first run step, last run step + 1] of each stretch of play
+  // A stretch of play ends at run step `end` (its last view and event are before it): its
+  // views, and its trace from the mark.
+  const endStretch = async (end, wait) => {
+    if (wait) await t.at(end - base);
+    t.stop();
+    for (const [at] of viewAt) if (at >= base && at < end) F.got[at] = `${at} ${t.views[at - base] ? viewText(t.views[at - base], 5) : "no view"}`;
+    r.post({ trace: true });
+    const tr = traceLines((await next("trace")).trace);
+    const first = tr.length ? +tr[0].split(" ")[0] : 0;
+    F.trace.push(...tr.map((l) => l.replace(/^\d+/, (n) => String(+n - first))).filter((l) => +l.split(" ")[0] < (end - base) * fx.ticks_per_step));
+    stretches.push([base, end]);
+    t = null;
+  };
+  for (let at = 0; at < fx.steps; at++) {
+    const cmds = fx.commands.filter((c) => c.at === at);
+    if (!t) {
+      // Stopped: a play edit starts a stretch (marked just before it, in the same queue).
+      for (const c of cmds) {
+        if (isPlay(c, 1)) { t = runSteps(); base = at; r.post({ mark: true }); }
+        send(c);
+      }
+      if (!t && viewAt.has(at)) F.got[at] = `${at} ${viewText(await settle(), 5)}`;
+      continue;
+    }
+    if (!cmds.length) continue;
+    if (cmds.some((c) => isPlay(c, 0))) {
+      // A stop: sent during run step at − 1, so the stretch ends there.
+      await t.at(at - 1 - base);
+      for (const c of cmds) send(c);
+      await settle((v) => !(v[24] & 1), "stopped");
+      await endStretch(at, false);
+      if (viewAt.has(at)) F.got[at] = `${at} ${viewText(await settle(), 5)}`;
+      continue;
+    }
+    await t.at(at - base);
+    for (const c of cmds) send(c);
+  }
+  if (t) await endStretch(fx.steps, true);
+  r.send([5, 0, 0, 0]);
+  await settle((v) => !(v[24] & 1), "stopped");
+  // The fixture's expect, cut the same way: each stretch's events, counted from its first.
+  for (const [a, b] of stretches) {
+    const tr = fx.expect.filter((l) => { const k = +l.split(" ")[0]; return k >= a * fx.ticks_per_step && k < b * fx.ticks_per_step; });
+    const first = tr.length ? +tr[0].split(" ")[0] : 0;
+    F.wantTrace.push(...tr.map((l) => l.replace(/^\d+/, (n) => String(+n - first))));
+  }
+  F.got = F.got.filter((x) => x !== undefined);
+  return F;
+}
+const phasePatterns = (name, key) => async () => { out[key] = await playFixture(name); };
+
+// The flicker (§21): the drawings recorded while pattern was down, from `since`, cut into runs
+// of the active key's field lit or dark. Each run between the first and the last lasts from its
+// first drawing to the next run's first: a quarter of a second, give or take a frame.
+function flicker(since, until = Infinity) {
+  const s = flicks.filter(([t]) => t >= since && t <= until), runs = [];
+  for (const [t, lit, active, used] of s) {
+    if (!runs.length || runs.at(-1).lit !== lit || runs.at(-1).active !== active) runs.push({ t, lit, active, used });
+  }
+  const inner = runs.slice(1, -1).map((x, i) => Math.round(runs[i + 2].t - x.t));
+  return { drawings: s.length, first: runs[0]?.lit, active: [...new Set(runs.map((x) => x.active))], used: [...new Set(runs.map((x) => x.used))], inner };
+}
+
+// D135 by a mouse and by the computer keys, the lights while pattern is down, playing and
+// stopped, and the save throttle (§21, "Saving while playing"). What each gesture sent is read
+// from the page's own messages, and what it did from the view.
+async function phaseShift() {
+  await r.ready;
+  await r.ctx.resume();
+  const D = (out.pshift = {});
+  let log = [];
+  r.onPost = (m) => { if (m.cmds) log.push(...m.cmds.map((c) => c.join(" "))); };
+  const take = () => { const l = log; log = []; return l; };
+  const lit = (i) => r.fkeys[i].classList.contains("latched");
+  const chainOf = (v) => nibbles(v, 72, v[66]);
+  let v = await settle();
+  take();
+  // 1. Chain by a mouse: Shift+click pattern; Shift+click key 2 and key 3 keep it latched; a
+  // plain click on key 1 ends it: the chain 2 3 1 (stopped, it is the chain at once).
+  shiftClick(r.fkeys[1]);
+  v = await settle((x) => u32(x, 8) === 1 << 17, "pattern latched");
+  shiftClick(r.keys[1]);
+  v = await settle((x) => chainOf(x) === "1", "Shift+click key 2 chose pattern 2");
+  await frames2();
+  D.mouse = { afterFirst: { held: u32(v, 8), lit: lit(1), latched: [...r.latched] } };
+  shiftClick(r.keys[2]);
+  v = await settle((x) => chainOf(x) === "12", "Shift+click key 3 chained pattern 3");
+  await frames2();
+  D.mouse.afterSecond = { held: u32(v, 8), lit: lit(1) };
+  click(r.keys[0]);
+  v = await settle((x) => chainOf(x) === "120" && u32(x, 8) === 0, "a plain click on key 1 ended the chain");
+  await frames2();
+  D.mouse.end = { chain: chainOf(v), pat: v[64], held: u32(v, 8), lit: lit(1), latched: [...r.latched], sent: take() };
+  // 2. The same by the computer keys: Shift+8, Shift+3 (key 3), then 4 (key 4) plain.
+  key("keydown", "Digit8", { shiftKey: true }); key("keyup", "Digit8", { shiftKey: true });
+  await settle((x) => u32(x, 8) === 1 << 17, "Shift+8 latched pattern");
+  key("keydown", "Digit3", { shiftKey: true }); key("keyup", "Digit3", { shiftKey: true });
+  v = await settle((x) => chainOf(x) === "2", "Shift+3 chose pattern 3");
+  D.keys = { afterFirst: { held: u32(v, 8), latched: [...r.latched] } };
+  key("keydown", "Digit4"); key("keyup", "Digit4");
+  v = await settle((x) => chainOf(x) === "23" && u32(x, 8) === 0, "4 chained pattern 4 and ended it");
+  await frames2();
+  D.keys.end = { chain: chainOf(v), held: u32(v, 8), latched: [...r.latched] };
+  // 3. Copy by a mouse: a step in the active pattern (3) by an edit, write off. Shift+click
+  // write (write mode flips on, write held), Shift+click pattern, click key 6: pattern 3 copied
+  // to slot 6, write mode back to off, both latches gone.
+  r.send([16, 0, 0, 1]);
+  v = await settle((x) => u16(x, 68) === 1 << 2 && !(x[24] & 2), "a step in pattern 3, write off");
+  take();
+  shiftClick(r.fkeys[6]);
+  v = await settle((x) => u32(x, 8) === 1 << 22, "write latched");
+  await frames2();
+  D.copy = { writeLatched: { held: u32(v, 8), write: (v[24] >> 1) & 1, lit: lit(6) } };
+  shiftClick(r.fkeys[1]);
+  await settle((x) => u32(x, 8) === (1 << 22 | 1 << 17), "write and pattern latched");
+  click(r.keys[5]);
+  v = await settle((x) => u32(x, 8) === 0, "the copy let both go");
+  await frames2();
+  D.copy.end = { used: u16(v, 68), pat: v[64], write: (v[24] >> 1) & 1, latched: [...r.latched], lit: [lit(1), lit(6)], sent: take() };
+  // 4. Copy by the computer keys, pattern first: Shift+8, Shift+p, e (key 7): slot 7.
+  key("keydown", "Digit8", { shiftKey: true }); key("keyup", "Digit8", { shiftKey: true });
+  key("keydown", "KeyP", { shiftKey: true }); key("keyup", "KeyP", { shiftKey: true });
+  await settle((x) => u32(x, 8) === (1 << 22 | 1 << 17), "Shift+8 and Shift+p latched");
+  key("keydown", "KeyE"); key("keyup", "KeyE");
+  v = await settle((x) => u32(x, 8) === 0, "e copied and let go");
+  await frames2();
+  D.copyKeys = { used: u16(v, 68), pat: v[64], write: (v[24] >> 1) & 1, latched: [...r.latched] };
+  // 5. Clear by a mouse: Shift+click function, click pattern: the active pattern (3) only.
+  shiftClick(r.fkeys[3]);
+  click(r.fkeys[1]);
+  v = await settle((x) => u32(x, 8) === 0 && !(u16(x, 68) & 1 << 2), "function and pattern cleared pattern 3");
+  D.clear = { used: u16(v, 68), pat: v[64] };
+  // 6. esc lets a latched pattern go.
+  shiftClick(r.fkeys[1]);
+  await settle((x) => u32(x, 8) === 1 << 17, "pattern latched");
+  key("keydown", "Escape", { key: "Escape" });
+  v = await settle((x) => u32(x, 8) === 0, "esc let pattern go");
+  await frames2();
+  D.esc = { held: u32(v, 8), latched: [...r.latched] };
+  // 7. The flicker, stopped: pattern 3 is active and empty (⚠ open (empty flicker): it flickers).
+  // Latched by Shift+click, about 1.4 s, then let go: the field is the view's again.
+  let since = performance.now();
+  shiftClick(r.fkeys[1]);
+  await sleep(1400);
+  shiftClick(r.fkeys[1]);
+  v = await settle((x) => u32(x, 8) === 0, "pattern let go");
+  await frames2();
+  D.flickerEmpty = flicker(since);
+  D.afterFlicker = { on: r.keys[v[64]].classList.contains("on"), field: (u16(v, 12) >> v[64]) & 1 };
+  // 8. Playing, pattern held by touch: choose pattern 6 (the copy, used), sound 1 on every
+  // step and an effect on every step of its lane, so a frame, cores and a twill would all show.
+  // Held about 1.6 s: none of them is drawn, and key 6 flickers.
+  const ph = pid++;
+  hold(r.fkeys[1], ph); tap(r.keys[5], pid++); lift(r.fkeys[1], ph);
+  await settle((x) => x[64] === 5, "pattern 6 chosen");
+  r.send(...Array.from({ length: 16 }, (_, s) => [16, 0, s, 1]), ...Array.from({ length: 16 }, (_, s) => [23, s, 0, 3]));
+  tap(r.fkeys[5], pid++);
+  await settle((x) => x[24] & 1 && x[24] & 8 && x[55] === 3, "playing, effect 3 heard");
+  const before = { ...out.pheld };
+  since = performance.now();
+  const hp = pid++;
+  hold(r.fkeys[1], hp);
+  await settle((x) => u32(x, 8) === 1 << 17, "pattern held while playing");
+  await sleep(1600);
+  const until = performance.now();
+  lift(r.fkeys[1], hp);
+  await settle((x) => u32(x, 8) === 0, "pattern let go");
+  D.flickerPlaying = flicker(since, until);
+  D.hidden = Object.fromEntries(Object.keys(before).map((k) => [k, out.pheld[k] - before[k]]));
+  // 9. A chain shown and a next chain waiting on the display while playing: pattern held,
+  // keys 7 and 6: "→ 7" until the end of the bar, then "1/2", "2/2".
+  const hc = pid++;
+  hold(r.fkeys[1], hc); tap(r.keys[6], pid++); tap(r.keys[5], pid++); lift(r.fkeys[1], hc);
+  v = await settle((x) => x[67] === 2, "a next chain waiting");
+  await frames2(); // the page draws the view on its next frame
+  D.waiting = document.getElementById("patline").textContent;
+  v = await settle((x) => x[66] === 2 && x[67] === 0, "the chain landed", 6000);
+  await frames2();
+  D.landed = document.getElementById("patline").textContent;
+  tap(r.fkeys[5], pid++);
+  await settle((x) => !(x[24] & 1), "stopped");
+  // 10. The save throttle (§21: at most four saves a second, and the last move always saved).
+  // A real drag on slider A: about 150 pointer moves over 1.5 s, each a PARAM. The snapshots
+  // the worklet posts are counted, with their arrival times, and the last must hold the drag's
+  // last value (the sliders' A at byte 24 of version 5).
+  take();
+  const snaps = [];
+  const watch = (d) => { if (d.snapshot) snaps.push([performance.now(), new DataView(d.snapshot).getUint16(24, true)]); };
+  r.listeners.push(watch);
+  const el = r.sliders[0], box = el.querySelector(".tr").getBoundingClientRect();
+  const pm = (type, y) => el.dispatchEvent(new PointerEvent(type, { pointerId: 7, bubbles: true, cancelable: true, isPrimary: true, pointerType: "touch", clientX: box.left + 3, clientY: y }));
+  const y0 = box.top + box.height / 2;
+  await sleep(400); // a quarter second clear of the last save
+  pm("pointerdown", y0);
+  const began = performance.now();
+  for (let i = 1; i <= 150; i++) { pm("pointermove", y0 - i * 0.4); await sleep(10); }
+  pm("pointerup", y0);
+  const params = take().filter((c) => c.startsWith("34 0 "));
+  const last = +params.at(-1).split(" ")[3];
+  const dragMs = performance.now() - began;
+  await settle((x) => u16(x, 20) === last, "the drag's last value in the view");
+  await sleep(600);
+  r.listeners.splice(r.listeners.indexOf(watch), 1);
+  const during = snaps.filter(([t]) => t >= began);
+  D.throttle = {
+    params: params.length, dragMs: Math.round(dragMs), saves: during.length, last, lastSaved: during.at(-1)?.[1],
+    gaps: during.slice(1).map(([t], i) => Math.round(t - during[i][0])),
+  };
+  r.onPost = null;
+}
+
+// A beat saved before ABI 16 (§21: "a beat saved before this plays as it did"): the page's
+// storage holds a version 4 snapshot, base64, as the ABI 15 page kept it: straight-sixteenths'
+// from fixtures/snapshots-v4.txt, written by the ABI 15 core before version 5 was built. Put
+// there before this page loaded (PREP below). The page loads it (result 0); the play key plays
+// two bars of straight-sixteenths' trace, line for line; it is pattern 1, the chain pattern 1
+// alone; and the page then saves it as version 5, one pattern written (1 640 bytes).
+const OLD_NAME = "straight-sixteenths";
+async function oldBeat() {
+  const line = (await (await fetch("../fixtures/snapshots-v4.txt")).text()).split("\n").find((l) => l.startsWith(`${OLD_NAME} `));
+  const bytes = Uint8Array.from(line.split(" ")[1].match(/../g), (h) => parseInt(h, 16));
+  return btoa(String.fromCharCode(...bytes));
+}
+async function phaseOld() {
+  await r.ready;
+  await r.ctx.resume();
+  const O = (out.old = {});
+  for (let i = 0; i < 800 && r.latest.loaded === null; i++) await sleep(10);
+  O.loaded = r.latest.loaded;
+  let kept = null;
+  try { kept = localStorage.getItem("pocket-instruments/rhythm/beat"); } catch {}
+  O.keptVersion = kept ? new DataView(Uint8Array.from(atob(kept), (c) => c.charCodeAt(0)).buffer).getUint16(4, true) : null;
+  O.keptSize = kept ? atob(kept).length : null;
+  let v = await settle();
+  O.view = { pat: v[64], chain: nibbles(v, 72, v[66]), used: u16(v, 68), len: v[28] };
+  r.post({ mark: true });
+  tap(r.fkeys[5], pid++); // play: RESET then PLAY 1 (§13), so ticks start at 0
+  await settle((x) => x[24] & 1 && u32(x, 0) >= 32 * 96 + 48, "two bars played", 15000);
+  r.post({ trace: true });
+  O.trace = traceLines((await next("trace")).trace).filter((l) => +l.split(" ")[0] < 32 * 96);
+  tap(r.fkeys[5], pid++);
+  await settle((x) => !(x[24] & 1), "stopped");
+  const saved = next("snapshot");
+  r.post({ save: true });
+  const s = new DataView((await saved).snapshot);
+  O.saved = { version: s.getUint16(4, true), size: s.byteLength, written: s.getUint16(92, true) };
+}
+// The beat file (docs/BEAT.md; issue 141's last box), through the page's own buttons and its
+// file input (a file put there as a picker would). The crate's messages are worked out here
+// by this file's own instance of pi_beat.wasm, sharing nothing with the page's. A refused file
+// and a newer one change nothing and show the crate's message; "Keep this one" changes
+// nothing; the worked example opened plays its fixture's views and trace (a reset first: the
+// fixture's swing is by the grid step's parity, as fx-shuffle's); saved, it is the file byte for
+// byte; a file with `own 9` says so on opening.
+const enc = new TextEncoder();
+async function myBeat() {
+  const pib = (await WebAssembly.instantiate(await (await fetch("pi_beat.wasm")).arrayBuffer(), {})).instance.exports;
+  const base = pib.memory.grow(2) * 65536, m = base + 98304 + 22100;
+  return (text) => {
+    new Uint8Array(pib.memory.buffer, base, text.length).set(text);
+    const n = pib.pib_read(base, text.length, base + 98304, 22100, m + 192, m, 192);
+    const mem = new Uint8Array(pib.memory.buffer);
+    return n < 0 ? new TextDecoder().decode(mem.subarray(m, mem.indexOf(0, m))) : null;
+  };
+}
+function pick(name, bytes) {
+  const dt = new DataTransfer();
+  dt.items.add(new File([bytes], name, { type: "text/plain" }));
+  const input = document.getElementById("beatFile");
+  input.files = dt.files;
+  input.dispatchEvent(new Event("change"));
+}
+const beatMsg = () => document.getElementById("beatMsg").textContent;
+async function said(pred, what) {
+  for (let i = 0; i < 500; i++) { if (pred(beatMsg())) return beatMsg(); await sleep(10); }
+  throw new Error(`timed out waiting for ${what}: "${beatMsg()}"`);
+}
+async function asked() {
+  for (let i = 0; i < 500 && document.getElementById("beatAsk").hidden; i++) await sleep(10);
+  return !document.getElementById("beatAsk").hidden;
+}
+async function phaseBeat() {
+  await r.ready;
+  await r.ctx.resume();
+  const B = (out.beat = {});
+  const refuse = await myBeat();
+  const file = new Uint8Array(await (await fetch("../fixtures/beat-four-and-a-fill.beat")).arrayBuffer());
+  const fx = await (await fetch("../fixtures/beat-four-and-a-fill.json")).json();
+  const before = viewText(await settle(), 5);
+  // A refused file, and a newer one: the crate's message, and nothing changed.
+  for (const [key, name, text] of [["bad", "bad.beat", "pocket-instruments beat 1\ntempo 999\n"], ["newer", "newer.beat", "pocket-instruments beat 2\n"]]) {
+    const msg = refuse(enc.encode(text));
+    document.getElementById("beatMsg").textContent = "";
+    pick(name, enc.encode(text));
+    B[key] = { want: `${name} was not opened: ${msg}`, got: await said((t) => t !== "", `the message for ${name}`), ask: !document.getElementById("beatAsk").hidden };
+    await sleep(300);
+    B[key].unchanged = viewText(await settle(), 5) === before && r.latest.loaded === null;
+  }
+  // Asked, and kept: nothing changes.
+  pick("beat-four-and-a-fill.beat", file);
+  B.ask = { shown: await asked(), text: document.getElementById("beatAskText").textContent };
+  document.getElementById("beatNo").click();
+  B.kept = { said: await said((t) => t.startsWith("Kept"), "kept"), hidden: document.getElementById("beatAsk").hidden };
+  await sleep(300);
+  B.kept.unchanged = viewText(await settle(), 5) === before && r.latest.loaded === null;
+  // Opened.
+  pick("beat-four-and-a-fill.beat", file);
+  await asked();
+  document.getElementById("beatYes").click();
+  B.opened = await said((t) => t.startsWith("Opened") || t.includes("not opened"), "opened");
+  B.loaded = r.latest.loaded;
+  await settle((x) => u32(x, 4) === 124000, "the beat's tempo");
+  // Saved: the file again, byte for byte.
+  let saved = null;
+  r.onSave = (name, text) => { saved = { name, text }; };
+  document.getElementById("beatSave").click();
+  B.saveSaid = await said((t) => t.startsWith("Saved"), "saved");
+  B.saved = { name: saved?.name, same: !!saved && saved.text.length === file.length && saved.text.every((x, i) => x === file[i]), length: saved?.text.length, want: file.length };
+  if (saved && !B.saved.same) B.saved.text = new TextDecoder().decode(saved.text);
+  // Played: the fixture's views and trace.
+  const t = runSteps();
+  r.post({ mark: true });
+  r.send([2, 0, 0, 0], [5, 0, 0, 1]);
+  await t.at(fx.steps);
+  t.stop();
+  r.post({ trace: true });
+  const tr = traceLines((await next("trace")).trace);
+  r.send([5, 0, 0, 0]);
+  await settle((x) => !(x[24] & 1), "stopped");
+  const first = tr.length ? +tr[0].split(" ")[0] : 0;
+  B.trace = tr.map((l) => l.replace(/^\d+/, (n) => String(+n - first))).filter((l) => +l.split(" ")[0] < fx.steps * fx.ticks_per_step);
+  B.wantTrace = fx.expect;
+  B.views = fx.views.map((x) => `${x.at} ${t.views[x.at] ? viewText(t.views[x.at], 5) : "no view"}`);
+  B.wantViews = fx.views.map((x) => `${x.at} ${x.view}`);
+  // `own 9`: the starter pack's sample on key 9, and the page says so.
+  const ownText = new TextDecoder().decode(file).replace("sound 9 sample dry\n", "sound 9 sample dry\nown 9\n");
+  pick("own.beat", enc.encode(ownText));
+  await asked();
+  document.getElementById("beatYes").click();
+  B.own = await said((t) => (t.startsWith("Opened") && t !== B.opened) || t.includes("not opened"), "the own notice");
+}
+
+const PREP = { old: async () => { localStorage.setItem("pocket-instruments/rhythm/beat", await oldBeat()); } };
+
 // D78 by a mouse, fx + key by the computer keys, and D69's switch. What each gesture sent is
 // read from the page's own messages (rhythm.onPost), as "type a b value".
 async function phaseFxLatch() {
@@ -876,7 +1293,10 @@ async function phaseStill() {
 }
 
 const PHASES = { 1: [phase1, "reload"], reload: [phaseReload, "bpm"], bpm: [phaseBpm, "latch"], latch: [phaseLatch, "keep"],
-  keep: [phaseKeep, "punch"], punch: [phasePunch, "shuffle"], shuffle: [phaseShuffle, "written"], written: [phaseWritten, "fxlatch"], fxlatch: [phaseFxLatch, "keys"], keys: [phaseKeys, "still"], still: [phaseStill, null] };
+  keep: [phaseKeep, "punch"], punch: [phasePunch, "shuffle"], shuffle: [phaseShuffle, "written"], written: [phaseWritten, "fxlatch"], fxlatch: [phaseFxLatch, "keys"], keys: [phaseKeys, "still"], still: [phaseStill, "pchoose"],
+  pchoose: [phasePatterns("patterns-choose-and-play", "pchoose"), "pchain"], pchain: [phasePatterns("patterns-chain", "pchain"), "pcopy"],
+  pcopy: [phasePatterns("patterns-copy-and-clear", "pcopy"), "pchange"], pchange: [phasePatterns("patterns-change-playing", "pchange"), "pshift"],
+  pshift: [phaseShift, "old"], old: [phaseOld, "beat"], beat: [phaseBeat, null] };
 const [run, then] = PHASES[phase] || [async () => { throw new Error(`no phase ${phase}`); }, null];
 try {
   await run();
@@ -886,4 +1306,7 @@ try {
 }
 out.done = !then || out.failed.length > 0;
 await fetch("/result", { method: "POST", body: JSON.stringify(out) });
-if (!out.done) location.search = `?auto=${then}`;
+if (!out.done) {
+  try { await PREP[then]?.(); } catch (e) { console.error(e); }
+  location.search = `?auto=${then}`;
+}
