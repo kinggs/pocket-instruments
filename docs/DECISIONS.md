@@ -2847,13 +2847,49 @@ Not chosen (issue 122): one binary an instrument (more names to clear and to pac
 straight into Rhythm until a second instrument (Kenny asked for the menu now); a settings
 screen; a TOML library for four keys.
 
+### D126 — In the terminal, finer slider steps, and with bpm held one press is one swing step or one bpm
+**2026-11-27 · decided (Kenny, after playing the terminal host) · tunes D122 item 2's defaults for the terminal, as D122 allows without a design pass · the terminal host only; the page and Rack keep D122's steps ⚠ · the engine does not change**
+
+Kenny: "I can *not* figure out how to use the BPM Plus sliders to change my BPM or Swing.
+Actually, I found it. Keys are just hard. So new thing: Please make the increments lower. I can
+rather hold it in to start a fast repeat (much like in a normal terminal?)."
+
+1. **`t g y h` move a slider a 64th of its travel a press** (1024), not D122's 16th (4096). A
+   held key repeats at the terminal's rate, as it already did, so a long move is a hold.
+2. **With bpm held, one press is one step of what the slider is:** `t g` one swing step of 48
+   on slider A, `y h` one whole bpm on slider B (60 to 240). The host sends the slider value
+   that the engine reads back as that step (`ENGINE.md` §13, `PARAM` with bpm held). It stays a
+   slider move, so bpm counts as used and letting bpm go keeps the tempo; a tempo command
+   instead would leave bpm unused, and its release would step the tempo to a preset.
+3. Unchanged: `, .` one bpm, `< >` one swing step, `- =` one of 16 volume.
+
+Not chosen: the same change on the page and in Rack now. Kenny asked of the terminal; whether
+they follow is Kenny's ⚠.
+
+### D127 — Kenny accepts the intro page, the two quits and the name: pocket-instruments everywhere
+**2026-11-27 · decided (Kenny, after trying issue 122's build) · accepts D125 items 3 and 7 and D123 item 5 · chooses the family's name (O3's decision; its register search stays open) · nothing published**
+
+1. **The intro page's look is accepted, for now** (D125 item 7). Kenny: "Happy with Intro look
+   for now."
+2. **`:q` and Ctrl+Q are accepted as built** (D125 item 3, and D116 item 2's `:` and Ctrl+Q,
+   D123 item 5). Kenny: "Both quit commands worked."
+3. **The family's name is Pocket Instruments, written `pocket-instruments` wherever a name is
+   one word.** Kenny: "It is pocket-instruments, right? Happy with that. Same name everywhere
+   (VCV collection name, repository name, github name, package name, etc.)." It is already the
+   repository, the command and its package (D125), the data and config folders, and the Rack
+   plugin's name and brand. ⚠ The name is chosen, not cleared: R83 found it free as a package
+   name, but no trade mark register has been searched (issue 45, O3, O6), and R7's US mark
+   POCKET OPERATOR disclaims "POCKET". The search belongs before anything is published.
+4. **The Rack plugin's slug** is `PocketInstruments` today, and a slug cannot change once the
+   VCV Library has it (D110 item 1). Whether it becomes `pocket-instruments` is O37.
+
 ## Open
 
 | ID | Question | Needs |
 |---|---|---|
 | O1 | ~~What do the front-face drawings of the design patents actually claim?~~ | Answered 2026-11-18: R4, R5, R6. Led to D20 |
 | O2 | Will the VCV Library build or accept a plugin with Rust in it? | Watch Phona (R16a, R16b: not submitted yet, 2026-11-19). **Asked 2026-11-19:** the owner emailed support@vcvrack.com with four questions (can the Library build a Rust part; would prebuilt static libraries do; is macOS 10.12 a problem; is self-hosting the route) and P3's results. ~~No reply yet~~ **Answered 2026-11-23: R46.** The Library will not build it; it takes binary packages from an identity-verified author, by email. 10.12 is fine. Left: whether to ask VCV for the submission details (the owner's) |
-| O3 | Is the name "Pocket Instruments" free, and is it too close to POCKET OPERATOR? | A register search; a decision on a family name |
+| O3 | Is the name "Pocket Instruments" free, and is it too close to POCKET OPERATOR? | A register search; a decision on a family name. **The name chosen 2026-11-27: D127 item 3.** The register search stays open (issue 45) |
 | O4 | ~~How does swing behave on an external clock?~~ | Answered 2026-11-19: D24 |
 | O5 | ~~Saved state: one readable format shared by both hosts, or a versioned binary snapshot each host wraps?~~ | Answered 2026-11-19: D25 |
 | O6 | EU and UK registered designs and marks | A search of EUIPO and UKIPO |
@@ -2887,3 +2923,4 @@ screen; a TOML library for four keys.
 | O34 | ~~Layout B (D114): 24 HP or 27 HP? By arithmetic from `design/make_panel.py`'s own clearances one row of ten fits at 24 HP, but the display narrows to about 88 mm and the weave cannot keep its 78 cells without a change in the core (§16). At 27 HP the display is about 103 mm, the weave keeps 78 cells and the groups stand about 7 mm apart. The tempo's column narrows to about 20 mm either way. ⚠ Nothing was run through `make_panel.py --check`~~ | **Answered 2026-11-26: D119 item 1.** Was: The owner. Recommended by the design session: 27 HP. `design/DESIGN.md`, "Layout B" |
 | O35 | ~~Layout B's labels: a group's name over a short word (SOUNDS: TRIG, OUT, IN; SLIDER A: OUT, IN; SLIDER B: OUT, IN; FX: GATES, SEND, RETURN). That renames TRIGGERS, VOICES and RETURN on the panel. Keep the names there are, or take these? Port numbers do not change either way~~ | **Answered 2026-11-26: D119 item 2.** Was: The owner |
 | O36 | ~~The new single-key shortcuts (D116 item 2: `t g y h`, `space`, `, .`, `< >`, `- =`, `m`, `?`, `esc`; in the terminal `:` and Ctrl+Q): each as proposed?~~ | **Answered 2026-11-26: D119 item 3.** Was: The owner, one by one. ⚠ First check each against what Rack and a browser already do with it |
+| O37 | The Rack plugin's slug: `PocketInstruments` as now, or `pocket-instruments` as the name is written everywhere else (D127 item 4)? Once the VCV Library has it, it cannot change. Changing it means patches saved with the old slug no longer find the module; none is published | Kenny |
