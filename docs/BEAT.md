@@ -293,3 +293,21 @@ finds its offsets.
   10. `pib_write` refuses any snapshot the core would not write (a field outside its range, a
       cleared pattern written, bytes after a chain's length, a value kept where nothing is):
       so whatever it writes reads back to the same bytes.
+
+## Built on the page (issue 141, 2026-11-27)
+
+`web/rhythm.html`'s sheet has a **Beat** section with two buttons, **Open a beat** and **Save the beat**. Its look is a stand-in ⚠ until Kenny rules one. `pi_beat.wasm` runs on the page's main thread and loads on the first open or save. The worklet never sees text.
+
+- **Open:** the browser's file picker, with no filter on the file's type ⚠, because a phone knows no type for `.beat`. The page reads the text before anything is loaded.
+  - A refused file changes nothing. The page shows the crate's message after the file's name.
+  - A good file is not loaded until the player answers "Open it" or "Keep this one". ⚠ This file says nothing on it: the page always asks, even when the beat here is empty.
+  - Once opened, the page says the beat's name. For each key in `own` it adds, for example, "Key 9 used its writer's own sample; playing the starter pack's."
+- **Save:** the page asks the worklet for a fresh snapshot and writes it with `pib_write`, `own` 0, because the page loads no sample of the player's own. It is given as a download named for the beat (`four-and-a-fill.beat`, or `rhythm.beat` when the beat has no name). ⚠ A download, not the share sheet: the plainest way that works on both a phone and a desktop.
+- **`make play` proves, in Chromium and Firefox:**
+  - a refused file and a newer one show the crate's message and change nothing;
+  - "Keep this one" changes nothing;
+  - the worked example, opened, plays `beat-four-and-a-fill`'s views and trace;
+  - saved again, it is the file byte for byte;
+  - `own 9` is said on opening.
+
+  Four planted faults each failed a named check.
