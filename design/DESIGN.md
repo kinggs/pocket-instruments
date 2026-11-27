@@ -652,7 +652,11 @@ under 16 px.
   are D122 item 2's defaults, to be tuned in use: a slider 4096, the tempo 1 bpm, the swing
   1, the volume 1.
 
-## Loom in a terminal (D115, D117; proposed 2026-11-26; no terminal host exists)
+## Loom in a terminal (D115, D117; proposed 2026-11-26; the host designed in D123, not built)
+
+**Designed (D123, issue 8):** `docs/TERMINAL.md` says what each light is in cells on both
+screens, the no-colour levels and where the build departs from the boards below. Where this
+section and that document differ, that document is the later reading.
 
 A terminal host is part of the showpiece (D111 item 3, ruled by D118 item 3; issue 8) and
 is not designed or built. These are its
