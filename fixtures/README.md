@@ -622,7 +622,7 @@ new, native and `.wasm` the same bytes. Adding it, and effect 13 before it, move
 else: the report's 330 runs from before the session and all 420 earlier render files are the
 same bytes. The report has 360 runs since `fx-shuffle` moved up.
 
-## `keys-bpm-hold` (designed for D130, 2026-11-27; in `designed/` until the build)
+## `keys-bpm-hold` (designed for D130, 2026-11-27; built the same day, moved up unchanged)
 
 Worked by hand from `ENGINE.md` §13's changed `KEY_UP` before any code: a release of bpm that
 nothing used steps the preset only after fewer than `R / 2` frames. Stopped at 120 bpm, so
