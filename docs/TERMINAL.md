@@ -362,3 +362,96 @@ follow D125 item 3.
 and the text was rewrapped. Rhythm's opening line drops the sound's name when it would not fit.
 
 ⚠ Not checked: the look of the intro (Kenny's; no canvas board); `:q` and Ctrl+Q by hand.
+
+## Built (issue 143, 2026-11-27): patterns in the terminal
+
+Patterns as `ENGINE.md` §21, D135 and `docs/WORKFLOW.md`'s two terminal columns build them, on
+the core's ABI 16. The host holds no rule of patterns of its own (D51): the core chooses,
+chains, copies and clears from the keys. Where this section and the design above differ (the
+display's line for pattern, "The beat"'s one pattern), this section is what was built.
+
+- **The keys** (`src/host.rs`): D135's three rules and nothing else. Shift on a grid key keeps
+  a latched pattern latched when that press ends; Shift latches write (its press still flips
+  write mode; it lets go after the next grid key like the other latches); in tap mode a tap on
+  `p` while pattern is latched holds write down until the next grid key ends.
+
+  | Do | Hold | Tap |
+  |---|---|---|
+  | Choose *n* | hold `8`, press *n* | `8`, then *n* |
+  | Chain *a b c* | hold `8`, press *a b c*; or Shift+`8`, Shift+*a*, Shift+*b*, *c* | `8`, then Shift+*a*, Shift+*b*, *c* (`!` `@` `#` `$` for Shift with `1` to `4` on a US layout ⚠) |
+  | Copy to *n* | hold `p` and `8`, press *n*; or Shift+`8`, Shift+`p`, *n* | `8`, `p`, *n* |
+  | Clear the active pattern | hold `u`, press `8` | `u`, `8` (then esc, or a grid key, lets both go) |
+
+- **The grid while pattern is held or latched** (`src/screen.rs`): field, stitch, bar and
+  pressed from the view; no frame, core or twill; the active pattern's field a quarter second
+  lit and a quarter dark (`FLICKER_MS`), used or not. With no colour the flicker is reverse,
+  then nothing; the bar under it bold.
+- **The status line:** `pattern 3`, `2/4` while a chain of more than one runs, `→ 5` while one
+  waits; on the pocket size too, dropping the place and then the next where they do not fit.
+- **The display, pattern held:** the sixteen by their keys, each named `pattern n` with its
+  marks as words under it (`used`, `chain`, `next`), the playing one's key in ochre and its name
+  underlined; a line above says the chain and the next. The pocket size says the pattern, the
+  chain and the next in the marks' row. Function held names the pattern its clear empties.
+- **The beat** (`src/beat.rs`): every read and write goes through one pair, `from_file` and
+  `to_file`, where the beat crate's `pib_read` and `pib_write` go when issue 140 lands; the host
+  has no reader of the text. Until then the beat is written as the core saves it (version 5,
+  binary), and an old binary `rhythm.beat` (versions 1 to 4) loads by its magic into pattern 1.
+  **A file that is there and is not read** (text, anything else, or one `pi_load` refuses) is
+  left alone, as "The beat" above says: the host starts empty, says so in one line, never saves
+  to it by itself, and `:w FILE` saves elsewhere. Before this build a refused file was written
+  over at the next save.
+
+| Check | Result |
+|---|---|
+| `term/tests/fixtures.rs` | The four `patterns-*` fixtures named and played through the host's reader, map and latches with the rest: 510 runs, the same report as Rust's, C++'s and Node's (`cmp` in `make test`) |
+| `term/tests/keys.rs`, 25 tests | Choose, chain, copy, clear and a change landing on the next bar's first step, in hold and in tap, into a real engine and read back from the view's bytes 64 to 87; Shift on a grid key keeping pattern in the protocol and in plain bytes; a tap on `p` with pattern latched holding write until the next grid key; Shift+`p` latching write in both modes |
+| `term/tests/screens.rs`, 23 tests | No frame, core or twill while pattern is held; used lit, the next chain stitched, the active barred and flickering (lit, then dark), an empty active pattern too; the same with the host's latch alone; the status line at 80 by 24 and 48 by 10; the list of sixteen; the footer in each mode; every one in colour and read back with no colour |
+| `term/tests/beat.rs`, 4 tests | Every version 4 snapshot in `fixtures/snapshots-v4.txt` read from `rhythm.beat`, written back, read again to the same saved bytes; a missing file written; a text beat, a file that is not a beat and a folder left alone, the text byte for byte; `:e` and `:w` through the same pair |
+| Planted faults, each built and caught by a named test | Shift's keep dropped (3 tests); the tap on `p` not holding write (2); Shift not latching write (1); the frame drawn while pattern is held (2); no flicker (1); the twill drawn (1); a file not read made writable (1) |
+| Tap, the real binary in a headless tmux, `--audio none` | An old version 4 `rhythm.beat` read; a beat on patterns 1 and 2; `8 ! @ 3` chained 1 2 3 (`pattern 1 1/3`); `8 p 4` copied pattern 1 to 4 (the list said `used`); playing with `8` latched, pattern 2's key dark then lit a quarter second later; `2` while playing showed `→ 2` and landed at the bar; the file written back as version 5, patterns 1, 2 and 4 in it |
+| Hold, the real binary in a pseudo-terminal that answers the protocol's query and sends foot's press and release bytes (not foot: no window was opened) | `hold keys: this terminal reports key-up`; Shift+`8`, Shift+`1`, Shift+`2`, `3` saved the chain 1 2 3; `p` and `8` held over `4`, and Shift+`8`, Shift+`p`, `w`, copied pattern 1 to 4 and to 6; Ctrl+Q exited 0 |
+| A file not read, the real binary | A text `rhythm.beat` and a version 4 one with a broken CRC: a step changed, `:w`, `:q`; both files byte for byte as they were |
+| Pictures | `design/term/term-pattern-held.ans`, `-held-no-color`, `-pocket`, `-chain` (`cat` one in foot) |
+
+⚠ Readings, each for Kenny: with `--reduced-motion` the active pattern's key stays lit rather
+than flickering (the option's "nothing flashes"); a second tap on `p` while write is so held
+lets it go, and a second Shift+`p` lets a latched write go (the design is silent on a second
+press); the pattern on the pocket size's status line, and the display's list for pattern, are
+stand-ins with no board.
+
+⚠ Not built here: **the saved beat as text** waits on the beat crate (issue 140); see "The beat"
+bullet above for what it needs. Not checked: anything by hand in foot or heard (Kenny's).
+
+### The saved beat as text (issue 143's second pull request, on the beat crate)
+
+Built once the beat crate (issue 140) was there: the line above is done. "The beat" at the top
+of this document (a version 4 snapshot, binary) is superseded as D136 item 8 rules it.
+
+- **The saved beat is text,** `docs/BEAT.md`'s form, at the same path (`rhythm.beat`).
+  `from_file` passes a file that starts with `PKIN` to the core as it is, and reads anything
+  else with `pib_read`; `to_file` writes with `pib_write`, with `own` 0, since the terminal
+  plays only the starter pack it carries and no player's own sample. Both run on the
+  terminal's thread; the audio thread still only saves into its buffer made beforehand and
+  loads what it is handed.
+- **An old binary `rhythm.beat`** (versions 1 to 5) is read, and the footer says
+  `rhythm.beat: an older binary beat, read; saved as text from now on`. At its next save (a
+  second after a change, or at quit, with or without a change) it is written as text holding
+  the same beat. Nothing is kept of the binary file.
+- **A file the crate refuses** (and a newer beat, or anything else not read) is left alone:
+  the footer says `rhythm.beat left alone: line 5, column 10: …`, the host starts empty and
+  never saves to it by itself, `:w` asks for `:w FILE`, and the whole line is said again on the
+  terminal after leaving, since the footer has 78 cells.
+- **A text beat with an `own` line** loads with the starter pack's sample on those keys, and
+  the footer says `key 9 used its writer's own sample; playing the starter pack's` (D34). The
+  next save has no `own` line.
+- **`:e FILE`** reads text or binary; **`:w FILE`** writes text.
+
+| Check | Result |
+|---|---|
+| `term/tests/beat.rs`, 5 tests | The worked example read, loaded, saved and written back to the same text; every version 4 snapshot in `fixtures/snapshots-v4.txt` read as `rhythm.beat`, written as text, read again to the same saved bytes and the same view; a refused row and a newer beat left alone, byte for byte, with the crate's line and column in the note; `:e` and `:w` on text, an `own` line told |
+| Planted faults, each built and caught by a named test | `own` written as every key (2 tests); a binary file given to `pib_read` (2); the crate's message dropped (2) |
+| The real binary, tap, in a headless tmux, `--audio none` | An old version 4 `rhythm.beat` opened with the note above; a beat written on patterns 1 and 2 and a chain of three; `:w`, `:q`: the file was 245 bytes of text, the old file's beat in pattern 1 with the new steps. Started again: no note; the pattern list, the chain and the status line read as before the quit; `:q` with no change left the text byte for byte the same. `:e` of the worked example (`pattern 1 1/4`, 124 bpm), `:w copy.beat` gave the worked example byte for byte. A refused text `rhythm.beat`: the line and column in the footer, a step changed, `:w`, `:q`: the file byte for byte as it was |
+
+⚠ For Kenny: a `rhythm.beat` edited by hand is written back in canonical form at the next
+save, at quit included, so its comments and spacing go (`docs/BEAT.md`: "written back
+canonical"); the note said for an old binary file is a stand-in's words.

@@ -3,7 +3,10 @@
 //! Hold is the page's logic line for line (`web/rhythm.html`: `press`, `release`, `latch`,
 //! `unlatch`, `letGo`, `shortcut`). Tap is D117 item 4 and D119 item 5. The host only says
 //! what a finger did (`KEY_DOWN`, `KEY_UP`, `PARAM`, and the page's own edits for the one-key
-//! shortcuts); the core decides the rest.
+//! shortcuts); the core decides the rest. Patterns (D135; `docs/WORKFLOW.md`, "Patterns, on every
+//! way of playing") add three host rules and nothing else: Shift on a grid key keeps a latched
+//! pattern latched; Shift latches write; in tap mode a tap on `p` while pattern is latched holds
+//! write down until the next grid key ends. Choose, chain, copy and clear are the core's (§21).
 //!
 //! SPDX-License-Identifier: MIT
 use crate::ffi::*;
@@ -58,6 +61,12 @@ pub fn latching(k: u8) -> bool {
     matches!(k, PI_KEY_SOUND | PI_KEY_PATTERN | PI_KEY_BPM | PI_KEY_FUNCTION | PI_KEY_FX)
 }
 
+/// The keys Shift latches since D135 item 2: the five, and write (a modifier for copy). Its
+/// latch still flips write mode on the press, as write always does; a copy puts it back (§21).
+pub fn shift_latching(k: u8) -> bool {
+    latching(k) || k == PI_KEY_WRITE
+}
+
 /// One press of a shortcut: D122 item 2's defaults, tuned in use by D126. A slider moves a
 /// 64th of its travel; a held key repeats at the terminal's rate for a long move.
 pub const SLIDER_STEP: i32 = 1024;
@@ -69,6 +78,9 @@ pub struct Host {
     pub mode: Mode,
     holders: [u8; PI_KEYS],
     latched: u32,
+    /// Grid keys that went down with Shift: when such a press ends, a latched pattern stays
+    /// latched (D135 item 1), so a chain can be built one key at a time.
+    shifted: u16,
     /// Where the hand left each slider (§20): None until it moves one.
     pub hand: [Option<u16>; 2],
     pub view: [u8; PI_VIEW_SIZE],
@@ -83,6 +95,7 @@ impl Host {
             mode,
             holders: [0; PI_KEYS],
             latched: 0,
+            shifted: 0,
             hand: [None, None],
             view: [0; PI_VIEW_SIZE],
             overlay: Overlay::None,
@@ -148,10 +161,15 @@ impl Host {
             self.release(PI_KEY_FX, LATCH);
         }
         // D60: any other press that ends finishes the gesture, and every latched key lets go.
-        // But fx: its latch stays until it is latched again (D78, D113).
+        // But fx: its latch stays until it is latched again (D78, D113). And pattern, when the
+        // grid key that ends went down with Shift (D135 item 1).
         if who != LATCH {
+            let keep = k < 16 && self.shifted >> k & 1 != 0;
+            if k < 16 {
+                self.shifted &= !(1 << k);
+            }
             for j in 0..PI_KEYS as u8 {
-                if j != PI_KEY_FX && self.is_latched(j) {
+                if j != PI_KEY_FX && self.is_latched(j) && !(keep && j == PI_KEY_PATTERN) {
                     self.unlatch(j);
                 }
             }
@@ -313,10 +331,13 @@ impl Host {
             Mode::Hold => match e.kind {
                 Kind::Repeat => {}
                 Kind::Press => {
-                    // D113: Shift and a key latches the five.
-                    if e.shift && latching(k) {
+                    // D113: Shift and a key latches the five; D135 item 2: and write.
+                    if e.shift && shift_latching(k) {
                         self.toggle_latch(k);
                     } else {
+                        if e.shift && k < 16 {
+                            self.shifted |= 1 << k;
+                        }
                         self.press(k, KBD);
                     }
                 }
@@ -326,14 +347,21 @@ impl Host {
                 if e.kind != Kind::Press {
                     return; // herdr's releases are not real (R80); repeats are not presses
                 }
-                self.tap(k);
+                self.tap(k, e.shift);
             }
         }
     }
 
-    /// Tap mode (D117 item 4, D119 item 5).
-    fn tap(&mut self, k: u8) {
+    /// Tap mode (D117 item 4, D119 item 5; D135 for patterns).
+    fn tap(&mut self, k: u8, shift: bool) {
         if latching(k) {
+            return self.toggle_latch(k);
+        }
+        // D135 item 3: with pattern latched a tap on `p` holds write down until the next grid
+        // key ends (a latch of write). Shift latches it too, as in hold (D135 item 2). A tap on
+        // `p` while write is so held lets it go, as a second tap lets any latch go (⚠ ours: the
+        // design is silent on a second tap).
+        if k == PI_KEY_WRITE && (shift || self.is_latched(PI_KEY_PATTERN) || self.is_latched(PI_KEY_WRITE)) {
             return self.toggle_latch(k);
         }
         if k >= 16 {
@@ -353,6 +381,10 @@ impl Host {
                 self.release(j, KBD);
             }
             return;
+        }
+        // D135 item 1: Shift on the key keeps a latched pattern latched (a chain).
+        if shift {
+            self.shifted |= 1 << k;
         }
         self.press(k, KBD);
         self.release(k, KBD);

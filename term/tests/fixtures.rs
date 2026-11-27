@@ -392,6 +392,11 @@ fn every_fixture_through_the_terminal_host() {
     let mut report = String::new();
     let (mut runs, mut failed) = (0, Vec::new());
     let all = fixtures();
+    // Issue 143: the four patterns fixtures (ENGINE.md §21) are among them, their keys played
+    // through this host's reader, map and latches like every other's.
+    for want in ["patterns-chain", "patterns-change-playing", "patterns-choose-and-play", "patterns-copy-and-clear"] {
+        assert!(all.iter().any(|(n, _)| n == want), "{want} is not in fixtures/");
+    }
     let mut beats = 0;
     for (name, fx) in &all {
         let seed = fx.n("seed") as u32;
