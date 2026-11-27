@@ -39,6 +39,9 @@ PACK := $(patsubst ../samples/raw/%,res/samples/%,$(wildcard ../samples/raw/*.s1
 PACK += res/panel.svg res/fonts/JetBrainsMono-ExtraBold.ttf res/fonts/OFL.txt
 # D77 item 5: the MIT notice of the stmlib and Plaits code the effects port, beside the OFL.
 PACK += res/stmlib-plaits-MIT.txt
+# The bank (docs/BANK.md; D141 item 5, proposed; issue 164): beats/ copied in as the files are,
+# as the starter pack is, and read with pib_read when a beat is wanted (Rhythm.cpp, "The bank").
+PACK += $(patsubst ../beats/%,res/beats/%,$(wildcard ../beats/*.beat)) res/beats/bank.txt
 DISTRIBUTABLES += res
 
 include $(RACK_DIR)/plugin.mk
@@ -59,6 +62,9 @@ res/fonts/%: ../design/fonts/%
 	cp $< $@
 res/stmlib-plaits-MIT.txt: ../core/stmlib-plaits-MIT.txt
 	@mkdir -p res
+	cp $< $@
+res/beats/%: ../beats/%
+	@mkdir -p res/beats
 	cp $< $@
 
 # cargo decides for itself whether anything changed, so always ask it.

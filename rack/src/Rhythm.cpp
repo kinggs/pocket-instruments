@@ -73,9 +73,11 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iterator>
@@ -128,6 +130,66 @@ const char *beatText(const char *name) {
     for (const BeatText *b = BEATS; b->name; b++)
         if (!std::strcmp(b->name, name)) return b->text;
     return nullptr;
+}
+
+// ---- The bank (docs/BANK.md; D141, D142, proposed for Kenny to rule; issue 164). ----
+// res/beats/ in the plugin, copied from ../beats at build as res/samples/ is from ../samples, in
+// bank.txt's order; bank.txt's first line is the beat a new module opens on. Nothing here names
+// which beat that is. A beat is read with pib_read when it is wanted, and loaded by the module's
+// ordinary load (queueLoad), as the menu's Open does; no snapshot is made at build time. Rack's
+// other threads only: never process().
+// PI_RHYTHM_BANK names another folder: a test aid for selftest.sh's broken bank, not an option.
+std::string bankFolder() {
+    const char *env = std::getenv("PI_RHYTHM_BANK");
+    return env && *env ? std::string(env) : asset::plugin(pluginInstance, "res/beats");
+}
+bool readAll(const std::string &path, std::vector<uint8_t> &out) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f.good()) return false;
+    out.assign(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
+    return !f.bad();
+}
+std::vector<std::string> bankOrder(const std::string &dir) {
+    std::vector<std::string> order;
+    std::ifstream list(dir + "/bank.txt");
+    for (std::string l; std::getline(list, l);) {
+        while (!l.empty() && std::isspace((unsigned char)l.back())) l.pop_back();
+        while (!l.empty() && std::isspace((unsigned char)l.front())) l.erase(0, 1);
+        if (!l.empty()) order.push_back(l);
+    }
+    return order;
+}
+// A snapshot's name (version 5's bytes 112 to 143, zero-padded).
+std::string snapName(const std::vector<uint8_t> &s) {
+    if (s.size() < 144) return "";
+    const char *p = (const char *)s.data() + 112;
+    return std::string(p, strnlen(p, 32));
+}
+// The bank's n-th beat (from 1, as the menu numbers them): its file, its text, and what pib_read
+// makes of it (its name, for the menu); or, in `why`, why not, and then `text` is empty. Reading
+// it loads nothing: a load goes through Rhythm::openBeat, as the menu's Open does.
+struct BankBeat {
+    std::string file, name, why;
+    std::vector<uint8_t> text, snap;
+};
+BankBeat bankBeat(const std::string &dir, int n) {
+    BankBeat b;
+    std::vector<std::string> order = bankOrder(dir);
+    if (order.empty()) return b.why = "the bank lists no beat (" + dir + "/bank.txt)", b;
+    if (n < 1 || n > int(order.size())) return b.why = string::f("the bank has beats 1 to %d, not %d", int(order.size()), n), b;
+    b.file = order[n - 1];
+    std::vector<uint8_t> text;
+    if (!readAll(dir + "/" + b.file, text)) return b.why = b.file + " could not be read", b;
+    if (text.size() > PIB_TEXT_MAX) return b.why = b.file + " is too long to be a beat", b;
+    std::vector<uint8_t> snap(PIB_SNAPSHOT_MAX);
+    char msg[PIB_MSG_MAX] = {};
+    int32_t r = pib_read(text.data(), uint32_t(text.size()), snap.data(), uint32_t(snap.size()), nullptr, (uint8_t *)msg, sizeof msg);
+    if (r < 0) return b.why = b.file + ": " + (msg[0] ? std::string(msg) : string::f("not a beat file (%d)", int(r))), b;
+    snap.resize(size_t(r));
+    b.snap = snap;
+    b.text = text;
+    b.name = snapName(snap);
+    return b;
 }
 
 const char *const SOUND_NAMES[PI_TRACKS] = {"Bass drum", "Snare", "Closed hat", "Open hat", "Synth snare", "Sticks",
@@ -254,6 +316,13 @@ struct Rhythm : Module {
     uint32_t shiftKeys = 0;      // D135 item 1: the grid keys pressed with Shift, which keep pattern latched
     std::vector<uint8_t> pendingLoad; // the last snapshot a patch gave, until a save holds it
     uint32_t loadsAsked = 0;
+    // The bank (docs/BANK.md; D142, proposed): the beat a new module opens on, read in the
+    // constructor beside the starter pack and queued in onAdd, unless dataFromJson came first, as
+    // it does for a module from a patch, a duplicate, a paste or a preset: those keep their own.
+    std::vector<uint8_t> defaultText, defaultBeat; // the file's text, and pib_read's snapshot (for the report)
+    std::string defaultFile, defaultWhy;
+    bool defaultWanted = true;
+    std::atomic<int> openedNew{0}; // 0: not new; 1: new, the bank's first beat queued; 2: new, and it did not open
 
     // ---- The audio thread's own. ----
     // Every host's room for the engine is 32 KiB since ABI 16 (ENGINE.md §21, D133 item 1: sixteen
@@ -371,6 +440,34 @@ struct Rhythm : Module {
         loadPack();
         e = pi_init(mem, sizeof mem, 48000, SEED);
         givePack();
+        // D142: two small files read here, on the thread that builds the module, as the pack is
+        // above; nothing is queued until onAdd. Every module reads it; only a new one uses it.
+        BankBeat b = bankBeat(bankFolder(), 1);
+        defaultText = b.text;
+        defaultBeat = b.snap;
+        defaultFile = b.file;
+        defaultWhy = b.why;
+    }
+
+    // D142 (proposed): a module added with no data at all, as Rack's module browser adds one,
+    // opens on the bank's first beat. The SDK's Module.hpp: dataFromJson is "Not called if 'data'
+    // property is not present", and onAdd is "Called after adding the module to the Engine". A
+    // patch, a duplicate, a paste and a preset carry data, so dataFromJson clears defaultWanted
+    // before this; and should Rack ever call them in the other order, the saved snapshot is
+    // queued after the default and the last load wins. The text read in the constructor goes
+    // through openBeat, the menu's Open: pib_read (microseconds, no file: onAdd runs with the
+    // engine locked) and the ordinary queued load, which the audio thread takes between frames.
+    void onAdd(const AddEvent &ev) override {
+        Module::onAdd(ev);
+        if (!defaultWanted) return;
+        defaultWanted = false;
+        uint32_t own = 0;
+        std::string why = defaultWhy.empty() ? openBeat(defaultText, own) : defaultWhy;
+        openedNew = why.empty() ? 1 : 2;
+        if (!why.empty()) {
+            defaultWhy = why;
+            WARN("Pocket Instruments: a new Rhythm module starts empty: the bank's first beat did not open: %s", why.c_str());
+        }
     }
 
     ~Rhythm() {
@@ -419,6 +516,9 @@ struct Rhythm : Module {
     void beatTester(int fx) {
         const char *t = beatText(FIXTURES[fx].beat);
         std::vector<uint8_t> text = t ? std::vector<uint8_t>(t, t + std::strlen(t)) : std::vector<uint8_t>();
+        // Issue 164: a fixture whose beat is the bank's own file (../beats/<file>, beat-amen-break)
+        // is read from the bank as this plugin carries it (res/beats/), as the Beat menu reads it.
+        if (!std::strncmp(FIXTURES[fx].beat, "../beats/", 9)) readAll(bankFolder() + "/" + (FIXTURES[fx].beat + 9), text);
         std::string newer(text.begin(), text.end()), broken = newer;
         size_t v = newer.find("beat 1");
         if (v != std::string::npos) newer[v + 5] = '2';                    // a newer beat: refused by name
@@ -447,6 +547,68 @@ struct Rhythm : Module {
             std::string ws = saveBeat(again);
             (ws.empty() && !canon.empty() && again == canon ? beatSavedSame : beatSavedNot)++;
         }
+    }
+
+    // The bank's self-test (selftest.sh, a module whose data says "bankTest"; issue 164), doing
+    // what Rack's UI thread does: each of the bank's beats loaded through loadFromBank, as the Beat
+    // menu loads it, must become the module's beat, pib_read of its file byte for byte; then what
+    // Edit, Undo does (the module's data from before the load, through dataFromJson) must bring
+    // the beat before back. A broken bank changes nothing and says why. Initialize (onReset's own
+    // part, initialize()) gives the empty beat, the one this module began with.
+    std::atomic<uint32_t> bankSame{0}, bankNot{0}, bankUndone{0}, bankUndoNot{0}, bankBrokenHeld{0}, bankBrokenNot{0}, bankEmptied{0}, bankEmptyNot{0};
+    char bankWhy[300] = {};
+    std::vector<uint8_t> settled() { // the module's saved beat once the last load asked for is in it
+        for (int ms = 0; ms < 3000 && !testerStop.load(); ms++) {
+            const Snap *s = saved.latest();
+            if (s && s->loads >= loadsAsked && loadsTaken.load() >= loadsAsked) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(300)); // a save made after the load
+                s = saved.latest();
+                return std::vector<uint8_t>(s->b, s->b + s->len);
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        return {};
+    }
+    void bankTester() {
+        for (int ms = 0; ms < 5000 && !testerStop.load() && !(lastRate.load() && published.load()); ms++)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::vector<uint8_t> empty = settled();
+        std::string dir = bankFolder();
+        int count = int(bankOrder(dir).size());
+        for (int n = 1; n <= count && !testerStop.load(); n++) {
+            std::vector<uint8_t> before = settled();
+            // The module's data as the menu's ModuleChange keeps it (its oldModuleJ's "data"). Undo
+            // gives that JSON to the widget's fromJson, which gives its "data" to dataFromJson; the
+            // whole Module::toJson and fromJson need Rack's UI thread (a ParamQuantity reads APP),
+            // so this thread takes the data part, the only part a beat is in.
+            json_t *oldJ = dataToJson();
+            std::string said, why = loadFromBank(dir, n, said);
+            (why.empty() && settled() == bankBeat(dir, n).snap ? bankSame : bankNot)++;
+            dataFromJson(oldJ);
+            json_decref(oldJ);
+            (settled() == before ? bankUndone : bankUndoNot)++;
+            if (why.empty()) loadFromBank(dir, n, said); // and Redo: the next one replaces it
+        }
+        // A broken bank: a file the reader refuses, and a folder with no bank.txt.
+        std::string broken = asset::user("pi-rhythm-broken-bank");
+        system::createDirectories(broken);
+        std::ofstream(broken + "/bank.txt") << "broken.beat\n";
+        std::ofstream(broken + "/broken.beat") << "pocket-instruments beat 1\ntempo 999\n";
+        std::vector<uint8_t> before = settled();
+        uint32_t asked = loadsAsked;
+        std::string said, w1 = loadFromBank(broken, 1, said), w2 = loadFromBank(broken + "/none", 1, said);
+        (!w1.empty() && !w2.empty() && loadsAsked == asked && settled() == before ? bankBrokenHeld : bankBrokenNot)++;
+        std::snprintf(bankWhy, sizeof bankWhy, "\"%s\" and \"%s\"", w1.c_str(), w2.c_str());
+        // Initialize, after a bank beat: empty again.
+        loadFromBank(dir, 1, said);
+        settled();
+        // Initialize (D142 item 4): onReset's own part, which empties the beat; Module::onReset,
+        // which sets the parameters back, needs Rack's UI thread, and holds no beat.
+        initialize();
+        for (int ms = 0; ms < 2000 && freshWanted.load(); ms++) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(400));
+        const Snap *s = saved.latest();
+        (!empty.empty() && s && std::vector<uint8_t>(s->b, s->b + s->len) == empty ? bankEmptied : bankEmptyNot)++;
     }
 
     // As the Probe: res/samples/ in the plugin, in tracks.txt's order (D50).
@@ -510,6 +672,20 @@ struct Rhythm : Module {
                  "nothing, %u did; saved again %u times as its canonical text, %u not; refused with %s",
                  when, FIXTURES[fx].name, testedEdges.load() ? " on edges" : " on the table", FIXTURES[fx].beat, beatOpened.load(), beatOpenNot.load(),
                  beatRefusedHeld.load(), beatRefusedNot.load(), beatSavedSame.load(), beatSavedNot.load(), beatWhy[0] ? beatWhy : "nothing");
+        // Issue 164 (D142, proposed): a new module, and whether its beat is the bank's first now.
+        if (int o = openedNew.load()) {
+            const Snap *s = saved.latest();
+            bool same = s && !defaultBeat.empty() && std::vector<uint8_t>(s->b, s->b + s->len) == defaultBeat;
+            INFO("Pocket Instruments rhythm bank (%s): module %lld: new: %s", when, (long long)id,
+                 o == 1 ? string::f("opened on the bank's first beat, %s, %zu bytes; the module's beat is it: %s", defaultFile.c_str(), defaultBeat.size(), same ? "yes" : "no").c_str()
+                        : string::f("started empty: the bank's first beat did not open: %s; the module's beat is empty: %s", defaultWhy.c_str(),
+                                    s && s->len && u16(s->b, 92) == 0 ? "yes" : "no").c_str());
+        }
+        if (bankSame.load() + bankNot.load())
+            INFO("Pocket Instruments rhythm bank test (%s): module %lld: %u beats loaded as their files, %u not; %u undone to the beat before, %u not; "
+                 "a broken bank changed nothing %u times, %u did (%s); Initialize emptied it %u times, %u not",
+                 when, (long long)id, bankSame.load(), bankNot.load(), bankUndone.load(), bankUndoNot.load(), bankBrokenHeld.load(), bankBrokenNot.load(),
+                 bankWhy, bankEmptied.load(), bankEmptyNot.load());
         if (playTested.load()) // D138: selftest.sh compares these between modules run from one signal
             INFO("Pocket Instruments rhythm play (%s): module %lld: rate %u Hz, %u starts, %u steps, sum %016llx", when, (long long)id,
                  lastRate.load(), playStarts.load(), playSteps.load(), (unsigned long long)playSum.load());
@@ -1491,7 +1667,13 @@ struct Rhythm : Module {
     }
 
     void onReset(const ResetEvent &ev) override {
-        Module::onReset(ev);
+        Module::onReset(ev); // the parameters to their defaults
+        initialize();
+    }
+    // Initialize's own part, unchanged by issue 164 (D142 item 4: it gives the empty beat, never the
+    // bank's): split out of onReset only so the bank's self-test can call it without Rack's UI
+    // thread, which Module::onReset needs (a ParamQuantity reads APP).
+    void initialize() {
         for (int k = 0; k < 23; k++) holders[k] = 0;
         latched = 0;
         shiftKeys = 0;
@@ -1554,6 +1736,17 @@ struct Rhythm : Module {
         queueLoad(snap);
         return "";
     }
+    // The bank's n-th beat (D141, proposed): its file read now and opened by openBeat, as the
+    // menu's Open opens a file. "" if it was asked for, and `said` names it; else why not, and
+    // then nothing changed. The menu puts the change in Rack's undo history (bankMenu).
+    std::string loadFromBank(const std::string &dir, int n, std::string &said) {
+        BankBeat b = bankBeat(dir, n);
+        if (!b.why.empty()) return b.why;
+        uint32_t own = 0;
+        std::string why = openBeat(b.text, own);
+        if (why.empty()) said = b.name.empty() ? b.file : b.name;
+        return why;
+    }
     // Save: the beat as it is now (currentSnapshot, so the last move is in it), as text. "" and
     // the text, or why not. Rack plays no sample a player loaded, so `own` is always none.
     std::string saveBeat(std::vector<uint8_t> &text) {
@@ -1589,6 +1782,7 @@ struct Rhythm : Module {
     }
 
     void dataFromJson(json_t *root) override {
+        defaultWanted = false; // D142: data, so not a new module; its beat, if it has one, is below
         stillWeave = json_is_true(json_object_get(root, "reducedMotion"));
         clockBeat = json_is_true(json_object_get(root, "clockBeat")); // a patch from before ABI 15: one edge a step
         if (json_t *j = json_object_get(root, "return")) returnChosen = int32_t(clamp(int(json_integer_value(j)), -1, 0xffff));
@@ -1608,6 +1802,7 @@ struct Rhythm : Module {
             for (int i = LOOP_RETURN; i <= LOOP_LAST; i++)
                 if (json_is_string(j) && std::string(LOOP_NAMES[i]) == json_string_value(j)) loopWanted = i;
         if (loopWanted.load() == LOOP_SAVE && !tester.joinable()) tester = std::thread([this] { saveTester(); });
+        if (json_is_true(json_object_get(root, "bankTest")) && !tester.joinable()) tester = std::thread([this] { bankTester(); });
         if (json_t *j = json_object_get(root, "fixture"))
             for (size_t i = 0; i < FIXTURES.size(); i++)
                 if (json_is_string(j) && FIXTURES[i].name == std::string(json_string_value(j))) fixtureWanted = int(i);
@@ -2416,6 +2611,29 @@ struct RhythmWidget : ModuleWidget {
         if (!f) osdialog_message(OSDIALOG_WARNING, OSDIALOG_OK, ("Not saved: " + p + " could not be written").c_str());
     }
 
+    // D141 (proposed; issue 164): the bank's n-th beat, opened by the module's own openBeat, and
+    // put in Rack's undo history as a preset load is (history::ModuleChange: the module's JSON
+    // before and after), so Edit, Undo (Ctrl+Z) brings back the beat it replaced, and Redo the
+    // bank's. ⚠ Rack's history restoring a module's data is Rack's own (ModuleChange::undo calls
+    // the widget's fromJson, so dataFromJson queues the old snapshot): the self-test's "bank"
+    // loop does what undo does; the menu's own Ctrl+Z is for Kenny to try.
+    void bankLoad(Rhythm *m, int n) {
+        json_t *oldJ = toJson();
+        std::string said;
+        std::string why = m->loadFromBank(bankFolder(), n, said);
+        if (!why.empty()) {
+            json_decref(oldJ);
+            osdialog_message(OSDIALOG_WARNING, OSDIALOG_OK, ("Not loaded, and nothing changed: " + why).c_str());
+            return;
+        }
+        history::ModuleChange *h = new history::ModuleChange;
+        h->name = "load " + said;
+        h->moduleId = m->id;
+        h->oldModuleJ = oldJ;
+        h->newModuleJ = toJson();
+        APP->history->push(h);
+    }
+
     void appendContextMenu(Menu *menu) override {
         Rhythm *m = getModule<Rhythm>();
         if (!m) return;
@@ -2424,6 +2642,23 @@ struct RhythmWidget : ModuleWidget {
         // Issue 142: the beat as a text file (docs/BEAT.md). Opening one replaces the beat.
         menu->addChild(createMenuItem("Open beat file...", "", [=]() { openBeatDialog(m); }));
         menu->addChild(createMenuItem("Save beat file...", "", [=]() { saveBeatDialog(m); }));
+        // Issue 164 (D141, D142, proposed): the bank, read when the submenu opens. Words only, a
+        // stand-in until Kenny rules a look. Initialize, above, gives the empty beat, as before.
+        menu->addChild(createSubmenuItem("Beat", "", [=](Menu *sub) {
+            sub->addChild(createMenuLabel("The bank: a beat replaces this one (Edit, Undo brings it back)"));
+            std::string dir = bankFolder();
+            int count = int(bankOrder(dir).size());
+            if (!count) sub->addChild(createMenuLabel("(the bank lists no beat)"));
+            for (int n = 1; n <= count; n++) {
+                BankBeat b = bankBeat(dir, n);
+                if (!b.why.empty()) {
+                    sub->addChild(createMenuLabel(string::f("%d  (%s)", n, b.why.c_str())));
+                    continue;
+                }
+                sub->addChild(createMenuItem(string::f("%d  %s", n, (b.name.empty() ? b.file : b.name).c_str()), "", [=]() { bankLoad(m, n); }));
+            }
+            sub->addChild(createMenuLabel("Initialize empties the module"));
+        }));
         // Each key's code or sample (D50). The switch, then the sound as it now is, in one frame
         // (VOICE first), as the page's sheet does (D60 item 4) ⚠.
         menu->addChild(createSubmenuItem("Sounds", "", [=](Menu *sub) {
