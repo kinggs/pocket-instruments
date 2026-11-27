@@ -1004,6 +1004,7 @@ async function phaseShift() {
   const hc = pid++;
   hold(r.fkeys[1], hc); tap(r.keys[6], pid++); tap(r.keys[5], pid++); lift(r.fkeys[1], hc);
   v = await settle((x) => x[67] === 2, "a next chain waiting");
+  await frames2(); // the page draws the view on its next frame
   D.waiting = document.getElementById("patline").textContent;
   v = await settle((x) => x[66] === 2 && x[67] === 0, "the chain landed", 6000);
   await frames2();
